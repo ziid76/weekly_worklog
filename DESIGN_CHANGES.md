@@ -83,7 +83,7 @@ static/
 ├── css/
 │   └── naver-style.css (추가 스타일)
 └── js/
-    └── naver-interactions.js (인터랙션 스크립트)
+    └── app.js (통합 스크립트)
 ```
 
 ## 주요 기능
