@@ -317,6 +317,13 @@ $(document).ready(function() {
     const $body = $('body');
     const $toggleBtn = $('#sidebarToggle');
 
+    function setNavbarHeight() {
+        const height = $('.navbar').outerHeight() || 0;
+        document.documentElement.style.setProperty('--navbar-height', height + 'px');
+    }
+    setNavbarHeight();
+    $(window).on('resize load', setNavbarHeight);
+
     function openSidebar() {
         const scrollTop = $(window).scrollTop();
         $body.data('scroll-position', scrollTop);
