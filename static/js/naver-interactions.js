@@ -44,11 +44,12 @@ class NaverStyleUI {
         // 무한 스크롤
         $(window).on('scroll', this.handleInfiniteScroll);
 
-        // 모바일 사이드바 토글
-        $(document).on('click', '.navbar-toggler', function() {
-            $('#sidebar').toggleClass('show');
-            $('body').toggleClass('sidebar-open');
-        });
+        // 모바일 사이드바 토글은 custom.js에서 담당하므로
+        // 중복 이벤트 등록을 피하기 위해 기본 동작을 제거합니다.
+        // $(document).on('click', '.navbar-toggler', function() {
+        //     $('#sidebar').toggleClass('show');
+        //     $('body').toggleClass('sidebar-open');
+        // });
 
         // 사이드바 외부 클릭시 닫기
         $(document).on('click', function(e) {
