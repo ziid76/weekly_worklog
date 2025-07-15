@@ -125,6 +125,8 @@ body {
         display: block;
         opacity: 1;
         pointer-events: auto;
+        left: 280px;
+        width: calc(100% - 280px);
     }
     
     /* 사이드바가 열렸을 때 body 스크롤 방지 */
