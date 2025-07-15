@@ -1,5 +1,6 @@
-// 네이버 스타일 인터랙션 스크립트
+/* app.js: merged custom and naver interactions */
 
+// Naver style interactions
 class NaverStyleUI {
     constructor() {
         this.init();
@@ -44,36 +45,21 @@ class NaverStyleUI {
         // 무한 스크롤
         $(window).on('scroll', this.handleInfiniteScroll);
 
-        // 모바일 사이드바 토글은 custom.js에서 담당하므로
-        // 중복 이벤트 등록을 피하기 위해 기본 동작을 제거합니다.
-        // $(document).on('click', '.navbar-toggler', function() {
-        //     $('#sidebar').toggleClass('show');
-        //     $('body').toggleClass('sidebar-open');
-        // });
-
         // 사이드바 외부 클릭시 닫기
         $(document).on('click', function(e) {
-            if (!$(e.target).closest('#sidebar, .navbar-toggler').length) {
+            if (!$(e.target).closest('#sidebar, #sidebarToggle').length) {
                 $('#sidebar').removeClass('show');
+                $('#sidebarOverlay').removeClass('show');
                 $('body').removeClass('sidebar-open');
             }
         });
     }
 
     initializeComponents() {
-        // 툴팁 초기화
         this.initTooltips();
-        
-        // 프로그레스 바 애니메이션
         this.animateProgressBars();
-        
-        // 숫자 카운터 애니메이션
         this.animateCounters();
-        
-        // 테이블 반응형 처리
         this.makeTablesResponsive();
-        
-        // 이미지 지연 로딩
         this.initLazyLoading();
     }
 
@@ -96,11 +82,8 @@ class NaverStyleUI {
         $('.stat-card h4, .stat-number').each(function() {
             const $this = $(this);
             const countTo = parseInt($this.text().replace(/,/g, ''));
-            
             if (!isNaN(countTo)) {
-                $({ countNum: 0 }).animate({
-                    countNum: countTo
-                }, {
+                $({ countNum: 0 }).animate({ countNum: countTo }, {
                     duration: 1500,
                     easing: 'swing',
                     step: function() {
@@ -144,13 +127,10 @@ class NaverStyleUI {
     handleFormSubmit(e) {
         const $form = $(e.target);
         const $submitBtn = $form.find('button[type="submit"]');
-        
         if ($submitBtn.length) {
             const originalText = $submitBtn.html();
             $submitBtn.html('<span class="loading"></span> 처리중...');
             $submitBtn.prop('disabled', true);
-            
-            // 3초 후 원래 상태로 복원 (실제로는 서버 응답에 따라 처리)
             setTimeout(() => {
                 $submitBtn.html(originalText);
                 $submitBtn.prop('disabled', false);
@@ -160,7 +140,6 @@ class NaverStyleUI {
 
     handleInfiniteScroll() {
         if ($(window).scrollTop() + $(window).height() >= $(document).height() - 100) {
-            // 무한 스크롤 로직
             const $loadMore = $('.load-more');
             if ($loadMore.length && !$loadMore.hasClass('loading')) {
                 $loadMore.addClass('loading');
@@ -176,7 +155,6 @@ class NaverStyleUI {
                 e.preventDefault();
                 $('input[type="search"]').first().focus();
             }
-            
             // Ctrl/Cmd + N: 새 항목 생성
             if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
                 e.preventDefault();
@@ -185,31 +163,27 @@ class NaverStyleUI {
                     window.location.href = createBtn.attr('href');
                 }
             }
-            
             // ESC: 모달/사이드바 닫기
             if (e.key === 'Escape') {
                 $('.modal').modal('hide');
                 $('#sidebar').removeClass('show');
+                $('#sidebarOverlay').removeClass('show');
                 $('body').removeClass('sidebar-open');
             }
         });
     }
 
-    // 유틸리티 메서드들
+    // 유틸리티 메서드
     showNotification(message, type = 'info', duration = 5000) {
         const alertClass = 'alert-' + type;
         const iconClass = this.getIconClass(type);
-        
         const alertHtml = `
             <div class="alert ${alertClass} alert-dismissible fade show" role="alert">
                 <i class="fas fa-${iconClass} me-2"></i>
                 ${message}
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-        `;
-        
+            </div>`;
         $('.main-content').prepend(alertHtml);
-        
         setTimeout(() => {
             $('.alert').first().fadeOut('slow', function() {
                 $(this).remove();
@@ -239,13 +213,10 @@ class NaverStyleUI {
                 <div class="toast-body">
                     ${message}
                 </div>
-            </div>
-        `;
-        
+            </div>`;
         if (!$('.toast-container').length) {
             $('body').append('<div class="toast-container"></div>');
         }
-        
         $('.toast-container').append(toastHtml);
         $('.toast').last().toast('show');
     }
@@ -262,8 +233,7 @@ class NaverStyleUI {
                 $('body').append(`
                     <div class="loading-overlay">
                         <div class="loading-spinner"></div>
-                    </div>
-                `);
+                    </div>`);
             }
             $('.loading-overlay').fadeIn();
         } else {
@@ -271,13 +241,11 @@ class NaverStyleUI {
         }
     }
 
-    // 검색 하이라이트
     highlightSearchTerms(container, searchTerm) {
         if (!searchTerm) return;
-        
         const regex = new RegExp(`(${searchTerm})`, 'gi');
         $(container).find('*').contents().filter(function() {
-            return this.nodeType === 3; // 텍스트 노드만
+            return this.nodeType === 3;
         }).each(function() {
             const text = this.textContent;
             if (regex.test(text)) {
@@ -287,7 +255,6 @@ class NaverStyleUI {
         });
     }
 
-    // 드래그 앤 드롭 파일 업로드
     initDragAndDrop(selector, callback) {
         $(selector).on('dragover dragenter', function(e) {
             e.preventDefault();
@@ -305,13 +272,11 @@ class NaverStyleUI {
         });
     }
 
-    // 자동 저장 기능
     autoSave(formSelector, interval = 30000) {
         setInterval(() => {
             const $form = $(formSelector);
             if ($form.length) {
                 const formData = $form.serialize();
-                // AJAX로 임시 저장
                 $.ajax({
                     url: $form.data('autosave-url'),
                     method: 'POST',
@@ -325,56 +290,122 @@ class NaverStyleUI {
     }
 }
 
-// 전역 인스턴스 생성
+// expose global instance
 window.naverUI = new NaverStyleUI();
 
-// jQuery 플러그인으로 확장
-$.fn.naverCard = function() {
-    return this.each(function() {
-        $(this).addClass('card').hover(
-            function() { $(this).addClass('shadow-lg'); },
-            function() { $(this).removeClass('shadow-lg'); }
-        );
-    });
+// alias for compatibility
+window.showNotification = function(message, type = 'info', duration = 5000) {
+    if (window.naverUI) {
+        window.naverUI.showNotification(message, type, duration);
+    }
+};
+window.confirmDelete = function(message = '정말로 삭제하시겠습니까?') {
+    return confirm(message);
 };
 
-$.fn.naverButton = function() {
-    return this.each(function() {
-        $(this).addClass('btn').on('click', function() {
-            $(this).addClass('btn-clicked');
-            setTimeout(() => $(this).removeClass('btn-clicked'), 150);
-        });
-    });
-};
-
-// 페이지 로드 완료 후 초기화
+// custom interactions from former custom.js
 $(document).ready(function() {
-    // 기존 요소들에 네이버 스타일 적용
-    $('.card').naverCard();
-    $('.btn').naverButton();
-    
-    // 검색어 하이라이트
-    const searchTerm = new URLSearchParams(window.location.search).get('q');
-    if (searchTerm) {
-        naverUI.highlightSearchTerms('.main-content', searchTerm);
+    // 사이드바 활성 메뉴 표시
+    $('.sidebar .nav-link').each(function() {
+        if ($(this).attr('href') === window.location.pathname) {
+            $(this).addClass('active');
+        }
+    });
+
+    const $sidebar = $('#sidebar');
+    const $overlay = $('#sidebarOverlay');
+    const $body = $('body');
+    const $toggleBtn = $('#sidebarToggle');
+
+    function openSidebar() {
+        const scrollTop = $(window).scrollTop();
+        $body.data('scroll-position', scrollTop);
+        $sidebar.addClass('show');
+        $overlay.addClass('show');
+        $body.addClass('sidebar-open');
+        $body.css('top', -scrollTop + 'px');
+        $toggleBtn.addClass('active').attr({'aria-expanded': 'true', 'aria-label': '메뉴 닫기'});
+        setTimeout(() => {
+            $sidebar.find('.nav-link').first().focus();
+        }, 300);
     }
-    
-    // 드래그 앤 드롭 초기화
-    if ($('.drag-area').length) {
-        naverUI.initDragAndDrop('.drag-area', function(files) {
-            console.log('Files dropped:', files);
-        });
+
+    function closeSidebar() {
+        $sidebar.removeClass('show');
+        $overlay.removeClass('show');
+        $body.removeClass('sidebar-open');
+        const scrollTop = $body.data('scroll-position') || 0;
+        $body.css('top', '');
+        $(window).scrollTop(scrollTop);
+        $toggleBtn.removeClass('active').attr({'aria-expanded': 'false', 'aria-label': '메뉴 열기'});
     }
-    
-    // 자동 저장 활성화 (폼이 있는 경우)
-    if ($('form[data-autosave-url]').length) {
-        naverUI.autoSave('form[data-autosave-url]');
+
+    function toggleSidebar() {
+        if ($sidebar.hasClass('show')) {
+            closeSidebar();
+        } else {
+            openSidebar();
+        }
     }
+
+    $('#sidebarToggle').on('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        toggleSidebar();
+    }).on('touchstart', function(e) {
+        e.preventDefault();
+    });
+
+    $('#sidebarOverlay').on('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        closeSidebar();
+    });
+
+    $sidebar.on('click', function(e) {
+        e.stopPropagation();
+    });
+
+    $(document).keyup(function(e) {
+        if (e.keyCode === 27) {
+            closeSidebar();
+        }
+    });
+
+    $(window).resize(function() {
+        if ($(window).width() >= 768) {
+            closeSidebar();
+        }
+    });
+
+    $('.sidebar .nav-link').on('click', function() {
+        const href = $(this).attr('href');
+        if (href && href !== '#' && href !== 'javascript:void(0)') {
+            if ($(window).width() < 768) {
+                setTimeout(closeSidebar, 100);
+            }
+        }
+    });
+
+    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    if (isTouchDevice) {
+        $body.addClass('touch-device');
+    }
+
+    $(window).on('load', function() {
+        if ($(window).width() < 768) {
+            $sidebar.removeClass('show');
+            $overlay.removeClass('show');
+            $body.removeClass('sidebar-open');
+        }
+    });
+
+    // ensure tables are responsive
+    window.naverUI.makeTablesResponsive();
 });
 
-// 페이지 언로드 시 정리
+// clean up on unload
 $(window).on('beforeunload', function() {
-    // 진행 중인 AJAX 요청 취소
     if (window.activeRequests) {
         window.activeRequests.forEach(request => request.abort());
     }
