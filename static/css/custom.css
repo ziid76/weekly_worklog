@@ -204,27 +204,9 @@ body {
         background-color: var(--naver-light-green);
     }
     
-    /* 터치 디바이스 전용 스타일 */
-    .touch-device .sidebar .nav-link {
-        -webkit-tap-highlight-color: rgba(3, 199, 90, 0.2);
-        tap-highlight-color: rgba(3, 199, 90, 0.2);
-    }
+
     
-    .touch-device .navbar-toggler {
-        -webkit-tap-highlight-color: rgba(255, 255, 255, 0.2);
-        tap-highlight-color: rgba(255, 255, 255, 0.2);
-    }
-    
-    /* iOS Safari 전용 수정 */
-    @supports (-webkit-touch-callout: none) {
-        .sidebar {
-            -webkit-overflow-scrolling: touch;
-        }
-        
-        body.sidebar-open {
-            -webkit-overflow-scrolling: none;
-        }
-    }
+
 }
 
 .sidebar .nav-link {
@@ -512,31 +494,7 @@ body {
     font-weight: 500;
 }
 
-/* 반응형 */
-@media (max-width: 768px) {
-    .sidebar {
-        position: fixed;
-        top: 76px;
-        left: -250px;
-        width: 250px;
-        height: calc(100vh - 76px);
-        z-index: 1000;
-        transition: left 0.3s ease;
-    }
 
-    .sidebar.show {
-        left: 0;
-    }
-
-    .main-content {
-        margin-left: 0;
-        padding: 16px;
-    }
-
-    .stat-card h4 {
-        font-size: 24px;
-    }
-}
 
 /* 로딩 애니메이션 */
 .loading {
@@ -595,6 +553,29 @@ body {
       order: 3; /* 셀1, 셀3 다음에 배치 */
     }
   }
+
+.table-3-wrapper {
+  display: flex;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.cell {
+  box-sizing: border-box;
+  padding: 10px;
+  border: 1px solid #000;
+}
+
+/* 기본 레이아웃: 데스크탑에서 한 줄에 3개씩 */
+.cell-2 {
+  width: 20%;
+}
+.cell-5 {
+  width: 40%;
+}
+.cell-default {
+  width: 40%; /* 나머지 셀 */
+}
 
 /* 페이지 헤더 일관성 */
 .page-header {

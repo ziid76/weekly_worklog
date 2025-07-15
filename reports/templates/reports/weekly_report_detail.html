@@ -18,10 +18,10 @@
             입력마감
         </button>
         {% endif %}
-        <button class="btn btn-outline-primary" onclick="window.print()">
+        <button class="btn btn-outline-primary d-none d-md-block" onclick="window.print()">
             <i class="fas fa-print"></i> 인쇄
         </button>
-        <button class="btn btn-outline-primary" onclick="exportToExcel()">
+        <button class="btn btn-outline-primary d-none d-md-block" onclick="exportToExcel()">
             <i class="fas fa-file-excel"></i> Excel
         </button>
     </div>
@@ -55,6 +55,7 @@
         </h5>
     </div>
     <div class="card-body">
+            <div class="d-none d-md-block">
                     <div class="table-3-wrapper">
                         <div class="cell cell-2 p-3 col-2 border bg-light text-center fw-bold">담당자</div>                        
                         <div class="cell cell-5 p-3 col-5 border bg-light text-center fw-bold">금주 실적 ({{ worklog.week_start_date|date:"m월 d일" }} ~ {{ worklog.week_end_date|date:"m월 d일" }})</div>
@@ -91,6 +92,8 @@
             {% endfor %}
         {% endif %}
                     </div>
+            </div>
+            <div class="d-block d-md-none">
         {% if worklog_by_author %}
             {% for author_name, worklog in worklog_by_author.items %}
                 <div class="border rounded p-3 mb-3 table-3-mobile">
@@ -145,6 +148,8 @@
                 <p class="h5 text-muted">해당 주차에 작성된 워크로그가 없습니다.</p>
             </div>
         {% endif %}
+        </div>
+
     </div>
 </div>
 
@@ -245,37 +250,7 @@ function exportToExcel() {
 </script>
 
 <script>
-    
-document.getElementById('confirmCloseBtn').addEventListener('click', function () {
-    if (!confirm('마감하시겠습니까?')) {
-        return;
-    }
-
-    fetch("{% url 'confirm_closing_api' %}", {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({})  // 필요시 payload 추가
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error('Network response was not ok');
-        }
-        return response.json();  // 응답 JSON 형식이면
-    })
-    .then(data => {
-        document.getElementById('closeStatusMessage').innerHTML =
-            '<div class="text-success">마감처리되었습니다.</div>';
-    })
-    .catch(error => {
-        console.error('Error during closing:', error);
-        document.getElementById('closeStatusMessage').innerHTML =
-            '<div class="text-danger">오류가 발생하였습니다.</div>';
-    });
-});
-
-
+ 
 function close_report() {
     if (confirm('입력을 마감하시겠습니까?')) {
         // AJAX로 상태 업데이트
