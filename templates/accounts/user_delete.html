@@ -1,0 +1,272 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .delete-container {
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+    
+    .delete-card {
+        background: white;
+        border-radius: 12px;
+        padding: 30px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        text-align: center;
+    }
+    
+    .delete-icon {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #dc3545, #c82333);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 20px;
+        color: white;
+        font-size: 32px;
+    }
+    
+    .delete-title {
+        color: #dc3545;
+        font-size: 24px;
+        font-weight: 600;
+        margin-bottom: 15px;
+    }
+    
+    .delete-message {
+        color: #666;
+        font-size: 16px;
+        line-height: 1.6;
+        margin-bottom: 30px;
+    }
+    
+    .user-info {
+        background: #f8f9fa;
+        border: 1px solid #e9ecef;
+        border-radius: 8px;
+        padding: 20px;
+        margin: 20px 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 15px;
+    }
+    
+    .user-avatar {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #03C75A, #029B47);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 20px;
+        font-weight: bold;
+    }
+    
+    .user-details h5 {
+        margin: 0;
+        color: #333;
+        font-weight: 600;
+    }
+    
+    .user-details p {
+        margin: 5px 0 0;
+        color: #666;
+        font-size: 14px;
+    }
+    
+    .warning-list {
+        background: #fff3cd;
+        border: 1px solid #ffeaa7;
+        border-radius: 8px;
+        padding: 20px;
+        margin: 20px 0;
+        text-align: left;
+    }
+    
+    .warning-list h6 {
+        color: #856404;
+        font-weight: 600;
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .warning-list ul {
+        margin: 0;
+        padding-left: 20px;
+        color: #856404;
+    }
+    
+    .warning-list li {
+        margin-bottom: 5px;
+    }
+    
+    .btn-group {
+        display: flex;
+        gap: 15px;
+        justify-content: center;
+        margin-top: 30px;
+    }
+    
+    .btn {
+        padding: 12px 24px;
+        border-radius: 8px;
+        font-weight: 500;
+        font-size: 14px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: none;
+        min-width: 120px;
+        line-height: 1;
+    }
+    
+    .btn-danger {
+        background: linear-gradient(135deg, #dc3545, #c82333);
+        color: white;
+    }
+    
+    .btn-danger:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+        color: white;
+        text-decoration: none;
+    }
+    
+    .btn-secondary {
+        background: #6c757d;
+        color: white;
+    }
+    
+    .btn-secondary:hover {
+        background: #5a6268;
+        color: white;
+        text-decoration: none;
+        transform: translateY(-1px);
+    }
+    
+    @media (max-width: 768px) {
+        .user-info {
+            flex-direction: column;
+            text-align: center;
+        }
+        
+        .user-avatar {
+            margin-bottom: 10px;
+        }
+        
+        .btn-group {
+            flex-direction: column;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="delete-container">
+    <div class="delete-card">
+        <div class="delete-icon">
+            <i class="fas fa-exclamation-triangle"></i>
+        </div>
+        
+        <h2 class="delete-title">사용자 삭제 확인</h2>
+        
+        <p class="delete-message">
+            정말로 이 사용자를 삭제하시겠습니까?<br>
+            <strong>이 작업은 되돌릴 수 없습니다.</strong>
+        </p>
+        
+        <!-- 사용자 정보 -->
+        <div class="user-info">
+            <div class="user-avatar">
+                {% if user.profile %}
+                    {{ user.profile.get_korean_name|first|upper }}
+                {% else %}
+                    {{ user.username|first|upper }}
+                {% endif %}
+            </div>
+            <div class="user-details">
+                <h5>
+                    {% if user.profile %}
+                        {{ user.profile.display_name }}
+                    {% else %}
+                        {{ user.username }}
+                    {% endif %}
+                </h5>
+                <p>{{ user.email }}</p>
+                {% if user.profile.primary_team %}
+                    <p>{{ user.profile.primary_team.name }}{% if user.profile.position %} · {{ user.profile.position }}{% endif %}</p>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- 경고 메시지 -->
+        <div class="warning-list">
+            <h6>
+                <i class="fas fa-exclamation-circle"></i>
+                삭제 시 다음 데이터도 함께 삭제됩니다:
+            </h6>
+            <ul>
+                <li>사용자 프로필 정보</li>
+                <li>작성한 모든 업무 및 댓글</li>
+                <li>업로드한 파일들</li>
+                <li>워크로그 기록</li>
+                <li>팀 멤버십 정보</li>
+                <li>알림 및 활동 기록</li>
+            </ul>
+        </div>
+        
+        <form method="post" id="deleteForm">
+            {% csrf_token %}
+            <div class="btn-group">
+                <a href="{% url 'user_detail' user.id %}" class="btn btn-secondary">
+                    <i class="fas fa-times me-2"></i>취소
+                </a>
+                <button type="submit" class="btn btn-danger" id="confirmDelete">
+                    <i class="fas fa-trash me-2"></i>삭제 확인
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 삭제 확인 처리
+document.getElementById('deleteForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const userName = '{% if user.profile %}{{ user.profile.display_name }}{% else %}{{ user.username }}{% endif %}';
+    
+    if (confirm(`정말로 "${userName}" 사용자를 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없으며, 관련된 모든 데이터가 함께 삭제됩니다.`)) {
+        // 두 번째 확인
+        if (confirm('마지막 확인입니다. 정말로 삭제하시겠습니까?')) {
+            this.submit();
+        }
+    }
+});
+
+// 삭제 버튼 호버 효과
+document.getElementById('confirmDelete').addEventListener('mouseenter', function() {
+    this.innerHTML = '<i class="fas fa-trash me-2"></i>영구 삭제';
+});
+
+document.getElementById('confirmDelete').addEventListener('mouseleave', function() {
+    this.innerHTML = '<i class="fas fa-trash me-2"></i>삭제 확인';
+});
+</script>
+{% endblock %}

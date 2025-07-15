@@ -1,0 +1,391 @@
+{% extends 'base.html' %}
+{% load markdown_extras %}
+
+{% block title %}{{ report.month_week_display}} 주간보고서{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h2">
+        <i class="fas fa-chart-line"></i> {{ report.month_week_display}} 주간보고서
+    </h1>
+    <div class="btn-group">
+        {% if report.editable %}
+        <button class="btn btn-primary"  onclick="close_report()">
+            <i class="fas fa-close"></i> 마감처리
+        </button>
+        {% else %}
+        <button class="btn btn-primary" disabled>
+            입력마감
+        </button>
+        {% endif %}
+        <button class="btn btn-outline-primary" onclick="window.print()">
+            <i class="fas fa-print"></i> 인쇄
+        </button>
+        <button class="btn btn-outline-primary" onclick="exportToExcel()">
+            <i class="fas fa-file-excel"></i> Excel
+        </button>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card bg-light">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <strong>기간:</strong> {{ report.week_start_date|date:"Y년 m월 d일" }} ~ {{ report.week_end_date|date:"Y년 m월 d일" }}
+                    </div>
+                    <div class="col-md-4">
+                        <strong>작성자 수:</strong> {{ worklog_by_author|length }}명
+                    </div>
+                    <div class="col-md-4">
+                        <strong>생성일:</strong> {{ report.created_at|date:"Y-m-d H:i" }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 작성자별 워크로그 집계 -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="card-title mb-0">
+            <i class="fas fa-users me-2"></i>  {{ report.month_week_display}}
+        </h5>
+    </div>
+    <div class="card-body">
+                    <div class="table-3-wrapper">
+                        <div class="cell cell-2 p-3 col-2 border bg-light text-center fw-bold">담당자</div>                        
+                        <div class="cell cell-5 p-3 col-5 border bg-light text-center fw-bold">금주 실적 ({{ worklog.week_start_date|date:"m월 d일" }} ~ {{ worklog.week_end_date|date:"m월 d일" }})</div>
+                        <div class="cell cell-default p-3 col-5 border bg-light text-center fw-bold">차주 계획</div>
+
+        {% if worklog_by_author %}
+            {% for author_name, worklog in worklog_by_author.items %}        
+                        <div class="cell cell-2 p-3 col-2 border ">
+                            <div id="this-week-rendered" class="markdown-content ">
+                                <i class="fas fa-user"></i> {{ author_name }}
+                            </div>
+                        </div>
+                        <div class="cell cell-5 p-3 col-5 border ">
+                            <div id="this-week-rendered" class="markdown-content rendered-content">
+                            {% if worklog.this_week_work %}
+                                {{ worklog.this_week_work|markdown }}
+                            {% else %}
+                                <p class="text-muted">작성된 내용이 없습니다.</p>
+                            {% endif %}
+                            </div>
+                            <pre id="this-week-raw" class="d-none">{% if worklog.this_week_work %}{{ worklog.this_week_work }}{% endif %}</pre>
+                        </div>                    
+                        <div class="cell cell-default p-3 col-5 border ">                                        
+                            <div id="next-week-rendered" class="markdown-content">
+                            {% if worklog.next_week_plan %}
+                                {{ worklog.next_week_plan|markdown }}
+                            {% else %}
+                                <p class="text-muted">작성된 계획이 없습니다.</p>
+                            {% endif %}
+                            </div>
+                            <pre id="next-week-raw" class="d-none">{% if worklog.next_week_plan %}{{ worklog.next_week_plan }}{% endif %}</pre>
+                        </div>
+                    
+            {% endfor %}
+        {% endif %}
+                    </div>
+        {% if worklog_by_author %}
+            {% for author_name, worklog in worklog_by_author.items %}
+                <div class="border rounded p-3 mb-3 table-3-mobile">
+                    <div class="row">
+                        <div class="col-md-2">
+                            <h6 class="text-primary">
+                                <i class="fas fa-user"></i> {{ author_name }}
+                            </h6>
+                            {% if worklog.author.profile.department %}
+                                <small class="text-muted">{{ worklog.author.profile.department }}</small>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-5">
+                            <strong class="text-success">금주 실적:</strong>
+                            <!-- 마크다운 렌더링 뷰 -->
+                            <div class="mt-2 p-2 bg-light rounded rendered-content">
+                                {% if worklog.this_week_work %}
+                                    <div class="markdown-content">
+                                        {{ worklog.this_week_work|markdown }}
+                                    </div>
+                                {% else %}
+                                    <span class="text-muted">작성된 내용이 없습니다.</span>
+                                {% endif %}
+                            </div>
+                            <!-- 원본 텍스트 뷰 (숨김) -->
+                            <div class="mt-2 p-2 bg-light rounded raw-content d-none">
+                                <pre class="mb-0"><code>{{ worklog.this_week_work|default:"작성된 내용이 없습니다." }}</code></pre>
+                            </div>
+                        </div>
+                        <div class="col-md-5">
+                            <strong class="text-success">차주 계획:</strong>
+                            <!-- 마크다운 렌더링 뷰 -->
+                            <div class="mt-2 p-2 bg-light rounded rendered-content">
+                                {% if worklog.next_week_plan %}
+                                    <div class="markdown-content">
+                                        {{ worklog.next_week_plan|markdown }}
+                                    </div>
+                                {% else %}
+                                    <span class="text-muted">작성된 계획이 없습니다.</span>
+                                {% endif %}
+                            </div>
+                            <!-- 원본 텍스트 뷰 (숨김) -->
+                            <div class="mt-2 p-2 bg-light rounded raw-content d-none">
+                                <pre class="mb-0"><code>{{ worklog.next_week_plan|default:"작성된 계획이 없습니다." }}</code></pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="text-center p-5">
+                <p class="h5 text-muted">해당 주차에 작성된 워크로그가 없습니다.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- 코멘트 섹션 -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="card-title mb-0">
+            <i class="fas fa-comments me-2"></i> Comment
+        </h5>
+    </div>
+    <div class="card-body">
+        <!-- 기존 코멘트 표시 -->
+        {% if comments %}
+            {% for comment in comments %}
+                <div class="border-bottom pb-3 mb-3">
+                    <div class="d-flex justify-content-between">
+                        <strong>
+                            {% if comment.author.profile %}
+                                {{ comment.author.profile.get_korean_name }}
+                            {% else %}
+                                {{ comment.author.username }}
+                            {% endif %}
+                        </strong>
+                        <small class="text-muted">{{ comment.created_at|date:"Y-m-d H:i" }}</small>
+                    </div>
+                    <div class="mt-2 markdown-content">{{ comment.content|markdown }}</div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <p class="text-muted">코멘트가 없습니다.</p>
+        {% endif %}
+
+        <!-- 코멘트 작성 폼 -->
+        <form method="post" class="mt-4">
+            {% csrf_token %}
+            <div class="mb-3">
+                {{ form.content }}
+                <small class="form-text text-muted">마크다운 문법을 사용할 수 있습니다.</small>
+            </div>
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-comment"></i> 코멘트 추가
+            </button>
+        </form>
+    </div>
+</div>
+
+<div class="mt-4">
+    <a href="{% url 'weekly_report_list' %}" class="btn btn-secondary">
+        <i class="fas fa-arrow-left"></i> 목록으로
+    </a>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let isRawView = false;
+
+function toggleRawView() {
+    const renderedContents = document.querySelectorAll('.rendered-content');
+    const rawContents = document.querySelectorAll('.raw-content');
+    const toggleText = document.getElementById('toggleText');
+    
+    if (isRawView) {
+        // 렌더링 뷰로 전환
+        renderedContents.forEach(el => el.classList.remove('d-none'));
+        rawContents.forEach(el => el.classList.add('d-none'));
+        toggleText.textContent = '원본 보기';
+        isRawView = false;
+    } else {
+        // 원본 뷰로 전환
+        renderedContents.forEach(el => el.classList.add('d-none'));
+        rawContents.forEach(el => el.classList.remove('d-none'));
+        toggleText.textContent = '렌더링 보기';
+        isRawView = true;
+    }
+}
+
+function exportToExcel() {
+    // 간단한 CSV 형태로 내보내기
+    let csvContent = "작성자,이번주업무,다음주계획\n";
+    
+    {% for author_name, worklog in worklog_by_author.items %}
+        csvContent += "{{ author_name|escapejs }}," + 
+                     "{{ worklog.this_week_work|escapejs|linebreaksbr|striptags }}" + "," +
+                     "{{ worklog.next_week_plan|escapejs|linebreaksbr|striptags }}" + "\n";
+    {% endfor %}
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", "{{ year }}년_{{ week_number }}주차_주간리포트.csv");
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+</script>
+
+<script>
+    
+document.getElementById('confirmCloseBtn').addEventListener('click', function () {
+    if (!confirm('마감하시겠습니까?')) {
+        return;
+    }
+
+    fetch("{% url 'confirm_closing_api' %}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({})  // 필요시 payload 추가
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();  // 응답 JSON 형식이면
+    })
+    .then(data => {
+        document.getElementById('closeStatusMessage').innerHTML =
+            '<div class="text-success">마감처리되었습니다.</div>';
+    })
+    .catch(error => {
+        console.error('Error during closing:', error);
+        document.getElementById('closeStatusMessage').innerHTML =
+            '<div class="text-danger">오류가 발생하였습니다.</div>';
+    });
+});
+
+
+function close_report() {
+    if (confirm('입력을 마감하시겠습니까?')) {
+        // AJAX로 상태 업데이트
+        $.ajax({
+            url: '{% url "confirm_closing_api"  %}',
+            method: 'POST',
+            data: {
+                'pk': '{{report.pk}}',
+                'csrfmiddlewaretoken': '{{ csrf_token }}'
+            },
+            success: function(response) {
+                location.reload();
+            },
+            error: function() {
+                alert('마감처리에 실패했습니다.');
+            }
+        });
+    }
+}
+</script>
+
+<style>
+.markdown-content {
+    line-height: 1.5;
+}
+
+.markdown-content h1, .markdown-content h2, .markdown-content h3 {
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.markdown-content h1 {
+    font-size: 1.25rem;
+    border-bottom: 2px solid #eee;
+    padding-bottom: 0.25rem;
+}
+
+.markdown-content h2 {
+    font-size: 1.1rem;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 0.2rem;
+}
+
+.markdown-content h3 {
+    font-size: 1rem;
+}
+
+.markdown-content ul, .markdown-content ol {
+    padding-left: 1.5rem;
+    margin: 0.5rem 0;
+}
+
+.markdown-content li {
+    margin-bottom: 0.25rem;
+}
+
+.markdown-content p {
+    margin-bottom: 0.5rem;
+}
+
+.markdown-content blockquote {
+    border-left: 4px solid #ddd;
+    padding-left: 0.75rem;
+    margin: 0.5rem 0;
+    color: #666;
+    font-style: italic;
+}
+
+.markdown-content code {
+    background-color: #f8f9fa;
+    padding: 0.1rem 0.3rem;
+    border-radius: 0.2rem;
+    font-size: 0.875em;
+}
+
+.markdown-content pre {
+    background-color: #f8f9fa;
+    padding: 0.75rem;
+    border-radius: 0.375rem;
+    overflow-x: auto;
+    font-size: 0.875em;
+}
+
+.markdown-content table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 0.5rem 0;
+    font-size: 0.875em;
+}
+
+.markdown-content table th,
+.markdown-content table td {
+    border: 1px solid #ddd;
+    padding: 0.375rem;
+    text-align: left;
+}
+
+.markdown-content table th {
+    background-color: #f8f9fa;
+    font-weight: bold;
+}
+
+.markdown-content input[type="checkbox"] {
+    margin-right: 0.375rem;
+}
+
+@media print {
+    .btn-group {
+        display: none !important;
+    }
+}
+</style>
+{% endblock %}

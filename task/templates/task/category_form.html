@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+
+{% block title %}
+    {% if object %}카테고리 수정{% else %}새 카테고리 추가{% endif %} - 업무 관리 시스템
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">
+                    {% if object %}
+                        <i class="fas fa-edit"></i> 카테고리 수정
+                    {% else %}
+                        <i class="fas fa-plus"></i> 새 카테고리 추가
+                    {% endif %}
+                </h4>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    <div class="mb-3">
+                        <label for="{{ form.name.id_for_label }}" class="form-label">{{ form.name.label }}</label>
+                        {{ form.name }}
+                        {% if form.name.errors %}
+                            <div class="text-danger">{{ form.name.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="{{ form.color.id_for_label }}" class="form-label">{{ form.color.label }}</label>
+                        {{ form.color }}
+                        {% if form.color.errors %}
+                            <div class="text-danger">{{ form.color.errors }}</div>
+                        {% endif %}
+                        <small class="form-text text-muted">카테고리를 구분할 색상을 선택하세요.</small>
+                    </div>
+
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'category_list' %}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> 목록으로
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> 
+                            {% if object %}수정{% else %}생성{% endif %}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

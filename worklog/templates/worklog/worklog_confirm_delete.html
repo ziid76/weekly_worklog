@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+
+{% block title %}워크로그 삭제 확인 - 업무 관리 시스템{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-danger text-white">
+                <h4 class="mb-0">
+                    <i class="fas fa-exclamation-triangle"></i> 워크로그 삭제 확인
+                </h4>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-warning">
+                    <strong>주의:</strong> 이 작업은 되돌릴 수 없습니다.
+                </div>
+                
+                <p>다음 워크로그를 정말 삭제하시겠습니까?</p>
+                
+                <div class="bg-light p-3 rounded mb-4">
+                    <h5>
+                        <i class="fas fa-calendar-week"></i> 
+                        {{ object.year }}년 {{ object.week_number }}주차
+                    </h5>
+                    <p class="mb-2">
+                        <strong>기간:</strong> {{ object.week_start_date|date:"Y-m-d" }} ~ {{ object.week_end_date|date:"Y-m-d" }}
+                    </p>
+                    
+                    {% if object.this_week_content %}
+                        <div class="mb-2">
+                            <strong>이번 주 내용:</strong>
+                            <p class="text-muted small">{{ object.this_week_content|truncatewords:20 }}</p>
+                        </div>
+                    {% endif %}
+                    
+                    {% if object.next_week_content %}
+                        <div class="mb-2">
+                            <strong>다음 주 계획:</strong>
+                            <p class="text-muted small">{{ object.next_week_content|truncatewords:20 }}</p>
+                        </div>
+                    {% endif %}
+                    
+                    <small class="text-muted">
+                        생성일: {{ object.created_at|date:"Y-m-d H:i" }}
+                    </small>
+                </div>
+
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'worklog_detail' object.pk %}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> 취소
+                        </a>
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fas fa-trash"></i> 삭제 확인
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

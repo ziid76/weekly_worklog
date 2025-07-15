@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+
+{% block title %}업무 삭제 확인 - 업무 관리 시스템{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-danger text-white">
+                <h4 class="mb-0">
+                    <i class="fas fa-exclamation-triangle"></i> 업무 삭제 확인
+                </h4>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-warning">
+                    <strong>주의:</strong> 이 작업은 되돌릴 수 없습니다.
+                </div>
+                
+                <p>다음 업무를 정말 삭제하시겠습니까?</p>
+                
+                <div class="bg-light p-3 rounded mb-4">
+                    <h5>{{ object.title }}</h5>
+                    {% if object.description %}
+                        <p class="text-muted mb-2">{{ object.description|truncatewords:20 }}</p>
+                    {% endif %}
+                    <small class="text-muted">
+                        생성일: {{ object.created_at|date:"Y-m-d H:i" }} | 
+                        상태: {{ object.get_status_display }}
+                    </small>
+                </div>
+
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'task_detail' object.pk %}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> 취소
+                        </a>
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fas fa-trash"></i> 삭제 확인
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

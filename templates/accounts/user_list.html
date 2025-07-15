@@ -1,0 +1,484 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .user-list-container {
+        padding: 20px;
+    }
+    
+    .header-section {
+        background: white;
+        border-radius: 12px;
+        padding: 24px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .search-filters {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .filter-row {
+        display: flex;
+        gap: 15px;
+        align-items: end;
+        flex-wrap: wrap;
+    }
+    
+    .filter-group {
+        flex: 1;
+        min-width: 200px;
+    }
+    
+    .filter-label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 500;
+        color: #333;
+        font-size: 14px;
+    }
+    
+    .form-control {
+        padding: 12px 16px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        font-size: 14px;
+        line-height: 1.5;
+        transition: all 0.3s ease;
+        background-color: #fff;
+    }
+    
+    .form-control:focus {
+        outline: none;
+        border-color: #03C75A;
+        box-shadow: 0 0 0 3px rgba(3, 199, 90, 0.1);
+        background-color: #fff;
+    }
+    
+    .form-control::placeholder {
+        color: #999;
+        opacity: 1;
+    }
+    
+    select.form-control {
+        cursor: pointer;
+    }
+    
+    .btn-primary {
+        background: linear-gradient(135deg, #03C75A 0%, #029B47 100%);
+        border: none;
+        color: white;
+        padding: 12px 20px;
+        border-radius: 8px;
+        font-weight: 500;
+        font-size: 14px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        line-height: 1;
+    }
+    
+    .btn-primary:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(3, 199, 90, 0.3);
+        color: white;
+        text-decoration: none;
+    }
+    
+    .btn-secondary {
+        background: #6c757d;
+        border: none;
+        color: white;
+        padding: 12px 20px;
+        border-radius: 8px;
+        font-weight: 500;
+        font-size: 14px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        line-height: 1;
+    }
+    
+    .btn-secondary:hover {
+        background: #5a6268;
+        color: white;
+        text-decoration: none;
+        transform: translateY(-1px);
+    }
+    
+    .btn-sm {
+        padding: 8px 12px;
+        font-size: 12px;
+        min-width: 36px;
+    }
+    
+    .users-table {
+        background: white;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .table {
+        margin: 0;
+    }
+    
+    .table th {
+        background: #f8f9fa;
+        border-bottom: 2px solid #03C75A;
+        font-weight: 600;
+        color: #333;
+        padding: 15px;
+    }
+    
+    .table td {
+        padding: 15px;
+        vertical-align: middle;
+        border-bottom: 1px solid #eee;
+    }
+    
+    .table tbody tr:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .user-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #03C75A, #029B47);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: bold;
+        margin-right: 10px;
+    }
+    
+    .user-info {
+        display: flex;
+        align-items: center;
+    }
+    
+    .user-details h6 {
+        margin: 0;
+        font-weight: 600;
+        color: #333;
+    }
+    
+    .user-details small {
+        color: #666;
+    }
+    
+    .badge {
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-size: 11px;
+        font-weight: 500;
+        margin-right: 4px;
+    }
+    
+    .badge-success {
+        background-color: #d4edda;
+        color: #155724;
+    }
+    
+    .badge-warning {
+        background-color: #fff3cd;
+        color: #856404;
+    }
+    
+    .badge-info {
+        background-color: #d1ecf1;
+        color: #0c5460;
+    }
+    
+    .badge-secondary {
+        background-color: #e2e3e5;
+        color: #383d41;
+    }
+    
+    .team-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+    }
+    
+    .pagination {
+        justify-content: center;
+        margin-top: 20px;
+    }
+    
+    .page-link {
+        color: #03C75A;
+        border-color: #03C75A;
+    }
+    
+    .page-link:hover {
+        color: #029B47;
+        background-color: rgba(3, 199, 90, 0.1);
+        border-color: #029B47;
+    }
+    
+    .page-item.active .page-link {
+        background-color: #03C75A;
+        border-color: #03C75A;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #666;
+    }
+    
+    .empty-state i {
+        font-size: 48px;
+        color: #ddd;
+        margin-bottom: 20px;
+    }
+    
+    @media (max-width: 768px) {
+        .filter-row {
+            flex-direction: column;
+        }
+        
+        .filter-group {
+            min-width: 100%;
+        }
+        
+        .table-responsive {
+            font-size: 14px;
+        }
+        
+        .user-info {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        
+        .user-avatar {
+            margin-bottom: 5px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="user-list-container">
+    <!-- 헤더 -->
+    <div class="header-section">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h2 class="mb-2">{{ title }}</h2>
+                <p class="text-muted mb-0">시스템 사용자를 관리합니다.</p>
+            </div>
+            <a href="{% url 'user_create' %}" class="btn btn-primary">
+                <i class="fas fa-plus me-2"></i>새 사용자 생성
+            </a>
+        </div>
+    </div>
+
+    <!-- 검색 및 필터 -->
+    <div class="search-filters">
+        <form method="get" class="filter-form">
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label class="filter-label">검색</label>
+                    <input type="text" name="search" class="form-control" 
+                           placeholder="이름, ID, 이메일로 검색" 
+                           value="{{ search_query }}">
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">팀</label>
+                    <select name="team" class="form-control">
+                        <option value="">전체 팀</option>
+                        {% for team in teams %}
+                        <option value="{{ team.id }}" {% if team_filter == team.id|stringformat:"s" %}selected{% endif %}>
+                            {{ team.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-search me-2"></i>검색
+                    </button>
+                    <a href="{% url 'user_list' %}" class="btn btn-secondary ms-2">
+                        <i class="fas fa-times me-2"></i>초기화
+                    </a>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- 사용자 목록 -->
+    <div class="users-table">
+        {% if page_obj %}
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>사용자</th>
+                        <th>팀/직급</th>
+                        <th>소속 팀</th>
+                        <th>권한</th>
+                        <th>가입일</th>
+                        <th>작업</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in page_obj %}
+                    <tr>
+                        <td>
+                            <div class="user-info">
+                                <div class="user-avatar">
+                                    {{ user.profile.get_korean_name|first|upper }}
+                                </div>
+                                <div class="user-details">
+                                    <h6>{{ user.profile.display_name }}</h6>
+                                    <small>{{ user.email }}</small>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            {% if user.profile.primary_team %}
+                                <div>{{ user.profile.primary_team.name }}</div>
+                            {% endif %}
+                            {% if user.profile.position %}
+                                <small class="text-muted">{{ user.profile.position }}</small>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="team-list">
+                                {% for team in user.teams.all %}
+                                    <span class="badge badge-info">{{ team.name }}</span>
+                                {% empty %}
+                                    <span class="text-muted">-</span>
+                                {% endfor %}
+                            </div>
+                        </td>
+                        <td>
+                            {% if user.is_superuser %}
+                                <span class="badge badge-warning">슈퍼유저</span>
+                            {% elif user.is_staff %}
+                                <span class="badge badge-success">관리자</span>
+                            {% else %}
+                                <span class="badge badge-secondary">일반사용자</span>
+                            {% endif %}
+                            
+                            {% for group in user.groups.all %}
+                                <span class="badge badge-info">{{ group.name }}</span>
+                            {% endfor %}
+                        </td>
+                        <td>
+                            <small>{{ user.date_joined|date:"Y-m-d" }}</small>
+                        </td>
+                        <td>
+                            <div class="btn-group" role="group">
+                                <a href="{% url 'user_detail' user.id %}" 
+                                   class="btn btn-sm btn-secondary" title="상세보기">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <a href="{% url 'user_edit' user.id %}" 
+                                   class="btn btn-sm btn-primary" title="수정">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <a href="{% url 'user_team_manage' user.id %}" 
+                                   class="btn btn-sm btn-info" title="팀 관리">
+                                    <i class="fas fa-users"></i>
+                                </a>
+                                {% if user != request.user %}
+                                <a href="{% url 'user_delete' user.id %}" 
+                                   class="btn btn-sm btn-danger" title="삭제"
+                                   onclick="return confirm('정말로 이 사용자를 삭제하시겠습니까?')">
+                                    <i class="fas fa-trash"></i>
+                                </a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 페이지네이션 -->
+        {% if page_obj.has_other_pages %}
+        <nav aria-label="사용자 목록 페이지네이션">
+            <ul class="pagination">
+                {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page=1{% if search_query %}&search={{ search_query }}{% endif %}{% if team_filter %}&team={{ team_filter }}{% endif %}">
+                            <i class="fas fa-angle-double-left"></i>
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if team_filter %}&team={{ team_filter }}{% endif %}">
+                            <i class="fas fa-angle-left"></i>
+                        </a>
+                    </li>
+                {% endif %}
+
+                {% for num in page_obj.paginator.page_range %}
+                    {% if page_obj.number == num %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ num }}</span>
+                        </li>
+                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if team_filter %}&team={{ team_filter }}{% endif %}">{{ num }}</a>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if team_filter %}&team={{ team_filter }}{% endif %}">
+                            <i class="fas fa-angle-right"></i>
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}{% if team_filter %}&team={{ team_filter }}{% endif %}">
+                            <i class="fas fa-angle-double-right"></i>
+                        </a>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-users"></i>
+            <h4>사용자가 없습니다</h4>
+            <p>검색 조건을 변경하거나 새 사용자를 생성해보세요.</p>
+            <a href="{% url 'user_create' %}" class="btn btn-primary">
+                <i class="fas fa-plus me-2"></i>새 사용자 생성
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 검색 폼 자동 제출 (엔터키)
+document.querySelector('input[name="search"]').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        this.form.submit();
+    }
+});
+</script>
+{% endblock %}

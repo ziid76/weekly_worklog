@@ -1,0 +1,12 @@
+*.pyc
+__pycache__/
+db.sqlite3
+/media/
+*.log
+.env
+venv/
+.envrc
+.idea/
+*.sqlite3
+/staticfiles/
+node_modules/

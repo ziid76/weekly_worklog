@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+
+{% block title %}주간 리포트 생성 - 업무 관리 시스템{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">
+                    <i class="fas fa-chart-line"></i> 주간 리포트 생성
+                </h4>
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-4">
+                    특정 주차의 모든 워크로그를 집계하여 주간 리포트를 생성합니다.
+                </p>
+
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="year" class="form-label">연도</label>
+                            <select name="year" id="year" class="form-control" required>
+                                {% for year_choice in year_choices %}
+                                    <option value="{{ year_choice }}" {% if year_choice == current_year %}selected{% endif %}>
+                                        {{ year_choice }}년
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="week_number" class="form-label">주차</label>
+                            <select name="week_number" id="week_number" class="form-control" required>
+                                {% for week_choice in week_choices %}
+                                    <option value="{{ week_choice }}" {% if week_choice == current_week %}selected{% endif %}>
+                                        {{ week_choice }}주차 ({{month_week_display}})
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'weekly_report_list' %}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> 목록으로
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-chart-line"></i> 리포트 생성
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- 사용 가능한 주차 목록 -->
+        {% if available_weeks %}
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-info-circle"></i> 주간업무가 있는 주차
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% for week in available_weeks %}
+                        <div class="col-md-4 mb-2">
+                            <a href="{% url 'weekly_report_detail' week.year week.week_number %}" 
+                               class="btn btn-outline-info btn-sm w-100">
+                                {{ week.year }}년 {{ week.week_number }}주차({{ week.month_week_display }})
+                            </a>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
