@@ -355,15 +355,15 @@ $(document).ready(function() {
         }
     }
 
-    $('#sidebarToggle').on('click', function(e) {
+    // 모바일 환경에서도 제대로 동작하도록 click과 touchend 모두 처리
+    $('#sidebarToggle').on('click touchend', function(e) {
         e.preventDefault();
         e.stopPropagation();
         toggleSidebar();
-    }).on('touchstart', function(e) {
-        e.preventDefault();
     });
 
-    $('#sidebarOverlay').on('click', function(e) {
+    // 오버레이 영역도 터치 이벤트를 지원해 자연스럽게 닫히도록 수정
+    $('#sidebarOverlay').on('click touchend', function(e) {
         e.preventDefault();
         e.stopPropagation();
         closeSidebar();
