@@ -4,6 +4,8 @@ db.sqlite3
 /media/
 *.log
 venv/
+.env
+.env.dev
 .envrc
 .idea/
 *.sqlite3
