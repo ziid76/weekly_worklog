@@ -63,7 +63,7 @@ services:
       - "443:443"
     volumes:
       - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+    #  - ./nginx/nginx.conf:/etc/nginx/nginx.conf
       - static_volume:/static
       - media_volume:/media
     #  - ./ssl:/etc/nginx/ssl  # SSL 인증서용 (선택사항)
