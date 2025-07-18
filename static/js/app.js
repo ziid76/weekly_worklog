@@ -355,12 +355,17 @@ $(document).ready(function() {
         }
     }
 
-    // 모바일 환경에서도 제대로 동작하도록 click과 touchend 모두 처리
-    $('#sidebarToggle').on('click touchend', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        toggleSidebar();
-    });
+    // iOS Safari에서 중복 이벤트가 발생하지 않도록 클릭과 터치를 분리
+    $('#sidebarToggle')
+        .on('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            toggleSidebar();
+        })
+        .on('touchstart', function(e) {
+            // 터치 시작 시 기본 동작을 막아 300ms 지연을 방지
+            e.preventDefault();
+        });
 
     // 오버레이 영역도 터치 이벤트를 지원해 자연스럽게 닫히도록 수정
     $('#sidebarOverlay').on('click touchend', function(e) {
