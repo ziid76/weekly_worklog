@@ -162,6 +162,8 @@ body {
         position: relative;
         overflow: hidden;
         z-index: 1070;
+        min-width: 44px;
+        min-height: 44px;
     }
     
     .navbar-toggler:hover {
@@ -181,6 +183,7 @@ body {
     /* 햄버거 아이콘 애니메이션 */
     .navbar-toggler i {
         transition: transform 0.3s ease;
+        
     }
     
     .navbar-toggler.active i {

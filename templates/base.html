@@ -19,14 +19,14 @@
             </a>
             
             <!-- 모바일 메뉴 토글 -->
-            <button class="navbar-toggler d-md-none" 
+            <div class="navbar-toggler d-md-none" 
                     type="button" 
                     id="sidebarToggle"
                     aria-label="메뉴 열기"
                     aria-expanded="false"
                     aria-controls="sidebar">
                 <i class="fas fa-bars text-white"></i>
-            </button>
+            </div>
             
             <div class="navbar-nav ms-auto">
                 {% if user.is_authenticated %}
