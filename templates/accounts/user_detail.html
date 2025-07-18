@@ -1,428 +1,107 @@
 {% extends 'base.html' %}
-{% load static %}
 
 {% block title %}{{ title }}{% endblock %}
 
-{% block extra_css %}
-<style>
-    .user-detail-container {
-        max-width: 1000px;
-        margin: 0 auto;
-        padding: 20px;
-    }
-    
-    .profile-header {
-        background: white;
-        border-radius: 12px;
-        padding: 30px;
-        margin-bottom: 20px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        text-align: center;
-    }
-    
-    .profile-avatar {
-        width: 80px;
-        height: 80px;
-        border-radius: 50%;
-        background: linear-gradient(135deg, #03C75A, #029B47);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        font-size: 32px;
-        font-weight: bold;
-        margin: 0 auto 20px;
-    }
-    
-    .profile-name {
-        font-size: 24px;
-        font-weight: 600;
-        color: #333;
-        margin-bottom: 5px;
-    }
-    
-    .profile-email {
-        color: #666;
-        margin-bottom: 15px;
-    }
-    
-    .profile-badges {
-        display: flex;
-        justify-content: center;
-        gap: 8px;
-        flex-wrap: wrap;
-    }
-    
-    .info-section {
-        background: white;
-        border-radius: 12px;
-        padding: 24px;
-        margin-bottom: 20px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
-    
-    .section-title {
-        color: #333;
-        font-size: 18px;
-        font-weight: 600;
-        margin-bottom: 20px;
-        padding-bottom: 10px;
-        border-bottom: 2px solid #03C75A;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-    
-    .info-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-        gap: 20px;
-    }
-    
-    .info-item {
-        display: flex;
-        flex-direction: column;
-    }
-    
-    .info-label {
-        font-weight: 500;
-        color: #666;
-        font-size: 14px;
-        margin-bottom: 5px;
-    }
-    
-    .info-value {
-        color: #333;
-        font-size: 16px;
-    }
-    
-    .badge {
-        padding: 6px 12px;
-        border-radius: 12px;
-        font-size: 12px;
-        font-weight: 500;
-        margin-right: 6px;
-        margin-bottom: 6px;
-        display: inline-block;
-    }
-    
-    .badge-success {
-        background-color: #d4edda;
-        color: #155724;
-    }
-    
-    .badge-warning {
-        background-color: #fff3cd;
-        color: #856404;
-    }
-    
-    .badge-info {
-        background-color: #d1ecf1;
-        color: #0c5460;
-    }
-    
-    .badge-secondary {
-        background-color: #e2e3e5;
-        color: #383d41;
-    }
-    
-    .team-card {
-        border: 1px solid #eee;
-        border-radius: 8px;
-        padding: 15px;
-        margin-bottom: 10px;
-        transition: all 0.3s;
-    }
-    
-    .team-card:hover {
-        border-color: #03C75A;
-        box-shadow: 0 2px 8px rgba(3, 199, 90, 0.1);
-    }
-    
-    .team-name {
-        font-weight: 600;
-        color: #333;
-        margin-bottom: 5px;
-    }
-    
-    .team-role {
-        font-size: 14px;
-        color: #666;
-    }
-    
-    .team-joined {
-        font-size: 12px;
-        color: #999;
-        margin-top: 5px;
-    }
-    
-    .btn-group {
-        display: flex;
-        gap: 10px;
-        justify-content: flex-end;
-        margin-top: 30px;
-    }
-    
-    .btn {
-        padding: 10px 20px;
-        border-radius: 6px;
-        font-weight: 500;
-        cursor: pointer;
-        transition: all 0.3s;
-        text-decoration: none;
-        display: inline-block;
-        border: none;
-    }
-    
-    .btn-primary {
-        background: linear-gradient(135deg, #03C75A 0%, #029B47 100%);
-        color: white;
-    }
-    
-    .btn-primary:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(3, 199, 90, 0.3);
-        color: white;
-        text-decoration: none;
-    }
-    
-    .btn-secondary {
-        background: #6c757d;
-        color: white;
-    }
-    
-    .btn-secondary:hover {
-        background: #5a6268;
-        color: white;
-        text-decoration: none;
-    }
-    
-    .btn-info {
-        background: #17a2b8;
-        color: white;
-    }
-    
-    .btn-info:hover {
-        background: #138496;
-        color: white;
-        text-decoration: none;
-    }
-    
-    .btn-danger {
-        background: #dc3545;
-        color: white;
-    }
-    
-    .btn-danger:hover {
-        background: #c82333;
-        color: white;
-        text-decoration: none;
-    }
-    
-    .empty-state {
-        text-align: center;
-        padding: 40px 20px;
-        color: #666;
-    }
-    
-    .empty-state i {
-        font-size: 32px;
-        color: #ddd;
-        margin-bottom: 15px;
-    }
-    
-    @media (max-width: 768px) {
-        .info-grid {
-            grid-template-columns: 1fr;
-        }
-        
-        .btn-group {
-            flex-direction: column;
-        }
-        
-        .profile-badges {
-            justify-content: center;
-        }
-    }
-</style>
-{% endblock %}
-
 {% block content %}
-<div class="user-detail-container">
-    <!-- 프로필 헤더 -->
-    <div class="profile-header">
-        <div class="profile-avatar">
-            {{ profile.get_korean_name|first|upper }}
-        </div>
-        <h1 class="profile-name">{{ profile.display_name }}</h1>
-        <div class="profile-email">{{ user.email }}</div>
-        <div class="profile-badges">
-            {% if user.is_superuser %}
-                <span class="badge badge-warning">슈퍼유저</span>
-            {% elif user.is_staff %}
-                <span class="badge badge-success">관리자</span>
-            {% else %}
-                <span class="badge badge-secondary">일반사용자</span>
-            {% endif %}
-            
-            {% for group in user.groups.all %}
-                <span class="badge badge-info">{{ group.name }}</span>
-            {% endfor %}
-        </div>
-    </div>
-
-    <!-- 기본 정보 -->
-    <div class="info-section">
-        <h3 class="section-title">
-            <i class="fas fa-id-card"></i>
-            기본 정보
-        </h3>
-        <div class="info-grid">
-            <div class="info-item">
-                <span class="info-label">사용자 ID</span>
-                <span class="info-value">{{ user.username }}</span>
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header text-center">
+                <h4 class="mb-0"><i class="fas fa-user"></i> {{ profile.display_name }}</h4>
             </div>
-            <div class="info-item">
-                <span class="info-label">이메일</span>
-                <span class="info-value">{{ user.email|default:"-" }}</span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">한글 이름</span>
-                <span class="info-value">{{ profile.get_korean_name|default:"-" }}</span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">영문 이름</span>
-                <span class="info-value">
-                    {% if user.first_name or user.last_name %}
-                        {{ user.first_name }} {{ user.last_name }}
-                    {% else %}
-                        -
-                    {% endif %}
-                </span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">주요 팀</span>
-                <span class="info-value">{{ profile.primary_team.name|default:"-" }}</span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">직급</span>
-                <span class="info-value">{{ profile.position|default:"-" }}</span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">전화번호</span>
-                <span class="info-value">{{ profile.phone|default:"-" }}</span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">가입일</span>
-                <span class="info-value">{{ user.date_joined|date:"Y년 m월 d일" }}</span>
-            </div>
-        </div>
-    </div>
-
-    <!-- 소속 팀 정보 -->
-    <div class="info-section">
-        <h3 class="section-title">
-            <i class="fas fa-users"></i>
-            소속 팀 ({{ team_memberships.count }}개)
-        </h3>
-        
-        {% if team_memberships %}
-            {% for membership in team_memberships %}
-            <div class="team-card">
-                <div class="team-name">{{ membership.team.name }}</div>
-                <div class="team-role">
-                    역할: 
-                    {% if membership.role == 'leader' %}
-                        <span class="badge badge-warning">팀장</span>
-                    {% elif membership.role == 'admin' %}
-                        <span class="badge badge-success">관리자</span>
-                    {% else %}
-                        <span class="badge badge-info">멤버</span>
-                    {% endif %}
+            <div class="card-body">
+                <div class="text-center mb-4">
+                    <div class="rounded-circle bg-success text-white d-inline-flex align-items-center justify-content-center" style="width:80px;height:80px;font-size:32px;">
+                        {{ profile.get_korean_name|first|upper }}
+                    </div>
+                    <p class="mt-2 mb-0">{{ user.email }}</p>
                 </div>
-                {% if membership.team.description %}
-                <div class="text-muted small mt-2">{{ membership.team.description }}</div>
-                {% endif %}
-                <div class="team-joined">{{ membership.joined_at|date:"Y년 m월 d일" }} 가입</div>
-            </div>
-            {% endfor %}
-        {% else %}
-            <div class="empty-state">
-                <i class="fas fa-users"></i>
-                <p>소속된 팀이 없습니다.</p>
-            </div>
-        {% endif %}
-    </div>
 
-    <!-- 권한 정보 -->
-    <div class="info-section">
-        <h3 class="section-title">
-            <i class="fas fa-shield-alt"></i>
-            권한 정보
-        </h3>
-        <div class="info-grid">
-            <div class="info-item">
-                <span class="info-label">시스템 권한</span>
-                <div class="info-value">
+                <h5 class="mb-3">기본 정보</h5>
+                <div class="row mb-3">
+                    <div class="col-sm-4 text-muted">사용자 ID</div>
+                    <div class="col-sm-8">{{ user.username }}</div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-sm-4 text-muted">한글 이름</div>
+                    <div class="col-sm-8">{{ profile.get_korean_name|default:"-" }}</div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-sm-4 text-muted">영문 이름</div>
+                    <div class="col-sm-8">
+                        {% if user.first_name or user.last_name %}
+                            {{ user.first_name }} {{ user.last_name }}
+                        {% else %}-{% endif %}
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-sm-4 text-muted">직급</div>
+                    <div class="col-sm-8">{{ profile.position|default:"-" }}</div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-sm-4 text-muted">전화번호</div>
+                    <div class="col-sm-8">{{ profile.phone|default:"-" }}</div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-sm-4 text-muted">가입일</div>
+                    <div class="col-sm-8">{{ user.date_joined|date:"Y년 m월 d일" }}</div>
+                </div>
+
+                <h5 class="mt-4 mb-3">권한 정보</h5>
+                <div class="mb-2">
                     {% if user.is_superuser %}
-                        <span class="badge badge-warning">슈퍼유저</span>
+                        <span class="badge bg-warning text-dark">슈퍼유저</span>
                     {% elif user.is_staff %}
-                        <span class="badge badge-success">관리자</span>
+                        <span class="badge bg-success">관리자</span>
                     {% else %}
-                        <span class="badge badge-secondary">일반사용자</span>
+                        <span class="badge bg-secondary">일반사용자</span>
                     {% endif %}
                 </div>
-            </div>
-            <div class="info-item">
-                <span class="info-label">권한 그룹</span>
-                <div class="info-value">
+                <div>
                     {% for group in user.groups.all %}
-                        <span class="badge badge-info">{{ group.name }}</span>
+                        <span class="badge bg-info text-dark">{{ group.name }}</span>
                     {% empty %}
-                        <span class="text-muted">-</span>
+                        <span class="text-muted">권한 그룹 없음</span>
                     {% endfor %}
                 </div>
             </div>
-            <div class="info-item">
-                <span class="info-label">계정 상태</span>
-                <div class="info-value">
-                    {% if user.is_active %}
-                        <span class="badge badge-success">활성</span>
-                    {% else %}
-                        <span class="badge badge-secondary">비활성</span>
-                    {% endif %}
-                </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-users"></i> 소속 팀 ({{ team_memberships.count }})</h5>
             </div>
-            <div class="info-item">
-                <span class="info-label">최근 로그인</span>
-                <span class="info-value">
-                    {% if user.last_login %}
-                        {{ user.last_login|date:"Y년 m월 d일 H:i" }}
-                    {% else %}
-                        로그인 기록 없음
-                    {% endif %}
-                </span>
+            <div class="card-body">
+                {% if team_memberships %}
+                    {% for membership in team_memberships %}
+                        <div class="mb-2">
+                            <strong>{{ membership.team.name }}</strong>
+                            {% if membership.role == 'leader' %}
+                                <span class="badge bg-warning text-dark">팀장</span>
+                            {% elif membership.role == 'admin' %}
+                                <span class="badge bg-success">관리자</span>
+                            {% else %}
+                                <span class="badge bg-info text-dark">멤버</span>
+                            {% endif %}
+                            <div class="text-muted small">{{ membership.joined_at|date:"Y년 m월 d일" }} 가입</div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-center text-muted mb-0">소속된 팀이 없습니다.</p>
+                {% endif %}
             </div>
         </div>
-    </div>
 
-    <!-- 작업 버튼 -->
-    <div class="btn-group">
-        <a href="{% url 'user_list' %}" class="btn btn-secondary">
-            <i class="fas fa-arrow-left me-2"></i>목록으로
-        </a>
-        <a href="{% url 'user_edit' user.id %}" class="btn btn-primary">
-            <i class="fas fa-edit me-2"></i>정보 수정
-        </a>
-        <a href="{% url 'user_team_manage' user.id %}" class="btn btn-info">
-            <i class="fas fa-users me-2"></i>팀 관리
-        </a>
-        {% if user != request.user %}
-        <a href="{% url 'user_delete' user.id %}" class="btn btn-danger"
-           onclick="return confirm('정말로 이 사용자를 삭제하시겠습니까?')">
-            <i class="fas fa-trash me-2"></i>사용자 삭제
-        </a>
-        {% endif %}
+        <div class="d-flex justify-content-between">
+            <a href="{% url 'user_list' %}" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> 목록으로</a>
+            <div>
+                <a href="{% url 'user_team_manage' user.id %}" class="btn btn-info me-2"><i class="fas fa-users"></i> 팀 관리</a>
+                <a href="{% url 'user_edit' user.id %}" class="btn btn-primary me-2"><i class="fas fa-edit"></i> 정보 수정</a>
+                {% if user != request.user %}
+                <a href="{% url 'user_delete' user.id %}" class="btn btn-danger" onclick="return confirm('정말로 이 사용자를 삭제하시겠습니까?')"><i class="fas fa-trash"></i> 삭제</a>
+                {% endif %}
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}
