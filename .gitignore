@@ -11,3 +11,5 @@ venv/
 *.sqlite3
 /staticfiles/
 node_modules/
+docker-compose.yml
+docker-compose-prd.yml

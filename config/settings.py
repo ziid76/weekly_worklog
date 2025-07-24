@@ -44,6 +44,9 @@ INSTALLED_APPS = [
     'notifications',
     'dashboard',
     'reports',
+    'monitor',
+    'service',
+    'django_summernote',
 ]
 
 MIDDLEWARE = [

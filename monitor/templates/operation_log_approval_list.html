@@ -1,0 +1,22 @@
+{% extends "base_generic.html" %}
+{% block page_name %}운영일지 승인{% endblock %}
+{% block content %}
+<div class="table-responsive border bg-white p-3">
+<table class="table table-bordered text-center">
+    <thead>
+        <tr><th>일자</th><th>담당자</th><th>승인</th></tr>
+    </thead>
+    <tbody>
+    {% for log in logs %}
+        <tr>
+            <td>{{ log.date }}</td>
+            <td>{{ log.duty_user.profile.kor_name }}</td>
+            <td><a href="{% url 'operation_log_approve' log.id %}">승인</a></td>
+        </tr>
+    {% empty %}
+        <tr><td colspan="3" class="text-center">승인 대기 목록이 없습니다.</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+</div>
+{% endblock %}

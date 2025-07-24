@@ -99,16 +99,17 @@
                                 <i class="fas fa-plus me-1"></i>업무 추가
                             </button>
                         </div>
+                        <div class="form-text">
+                            <i class="fas fa-lightbulb me-1"></i>
+                            우측 "업무 추가" 버튼으로 업무를 선택하여 자동으로 텍스트를 추가할 수 있습니다.
+                        </div>
                         {{ form.this_week_work }}
                         {% if form.this_week_work.errors %}
                             <div class="invalid-feedback d-block">
                                 {% for error in form.this_week_work.errors %}{{ error }}{% endfor %}
                             </div>
                         {% endif %}
-                        <div class="form-text">
-                            <i class="fas fa-lightbulb me-1"></i>
-                            마크다운 문법을 사용할 수 있습니다. 우측 "업무 추가" 버튼으로 Task를 선택하여 자동으로 텍스트를 추가할 수 있습니다.
-                        </div>
+
                     </div>
                     
                     
@@ -129,10 +130,6 @@
                                 {% for error in form.next_week_plan.errors %}{{ error }}{% endfor %}
                             </div>
                         {% endif %}
-                        <div class="form-text">
-                            <i class="fas fa-lightbulb me-1"></i>
-                            다음 주에 수행할 업무나 목표를 작성하세요.
-                        </div>
                     </div>
                     
                     <!-- 버튼 그룹 -->
@@ -165,17 +162,8 @@
                 </h5>
             </div>
             <div class="card-body">
+          
                 <div class="help-section">
-                    <h6><i class="fas fa-markdown me-1"></i>마크다운 문법</h6>
-                    <ul class="list-unstyled small">
-                        <li><code>**굵은 글씨**</code></li>
-                        <li><code>- 목록 항목</code></li>
-                        <li><code>1. 번호 목록</code></li>
-
-                    </ul>
-                </div>
-                
-                <div class="help-section mt-3">
                     <h6><i class="fas fa-lightbulb me-1"></i>작성 팁</h6>
                     <ul class="list-unstyled small">
                         <li>• 구체적인 성과와 결과 기록</li>
@@ -360,83 +348,60 @@ textarea {
     </div>
 </div>
 
-<!-- Task 연결 모달 (기존) -->
-{% if object %}
-<div class="modal fade" id="addTaskModal" tabindex="-1" aria-labelledby="addTaskModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="addTaskModalLabel">
-                    <i class="fas fa-plus me-2"></i>업무 연결
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form method="post" action="{% url 'add_task_to_worklog' object.id %}">
-                <div class="modal-body">
-                    {% csrf_token %}
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="{{ task_form.task.id_for_label }}" class="form-label">업무 선택</label>
-                            {{ task_form.task }}
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="{{ task_form.status.id_for_label }}" class="form-label">상태</label>
-                            {{ task_form.status }}
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="{{ task_form.progress.id_for_label }}" class="form-label">진행률 (%)</label>
-                            {{ task_form.progress }}
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="{{ task_form.time_spent.id_for_label }}" class="form-label">소요 시간 (시간)</label>
-                            {{ task_form.time_spent }}
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <label for="{{ task_form.notes.id_for_label }}" class="form-label">비고</label>
-                        {{ task_form.notes }}
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-plus me-1"></i>연결
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-{% endif %}
 
 <script>
-// 워크로그 복사 기능
+$(document).ready(function() {
+    $('#this_week_work').summernote({
+    height: 300, // set editor height
+    minHeight: 300, // set minimum height of editor
+    maxHeight: null, // set maximum height of editor
+    lang: "ko-KR",                    // 한글 설정
+    placeholder: '금주 실적을 입력해주세요.'   , //placeholder 설정
+    toolbar: [
+        //['style', ['style']],
+        ['style', ['bold',  'italic', 'underline', 'clear']],
+        ['color', ['color']],
+        ['para', ['ul', 'ol']],
+        ['table', ['table']],
+        //['insert', ['link', 'picture']],
+    ],
+    });
+
+    $('#next_week_plan').summernote({
+    height: 300, // set editor height
+    minHeight: 300, // set minimum height of editor
+    maxHeight: null, // set maximum height of editor
+    lang: "ko-KR",                    // 한글 설정
+    placeholder: '차주 계획을 입력해주세요.'   , //placeholder 설정
+    toolbar: [
+        //['style', ['style']],
+        ['style', ['bold',  'italic', 'underline', 'clear']],
+        ['color', ['color']],
+        ['para', ['ul', 'ol']],
+        ['table', ['table']],
+        //['insert', ['link', 'picture']],
+    ],    
+    });
+    $('p').css('margin-bottom','0')
+});
+
+</script>
+
+<script>
 function copyWorklog(worklogId, weekDisplay) {
     if (confirm(`"${weekDisplay}" 워크로그의 내용을 복사하시겠습니까?\n\n현재 작성 중인 내용은 덮어쓰여집니다.`)) {
         fetch(`/worklog/api/copy/${worklogId}/`)
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    // 텍스트 영역에 내용 복사
-                    const thisWeekTextarea = document.getElementById('{{ form.this_week_work.id_for_label }}');
-                    const nextWeekTextarea = document.getElementById('{{ form.next_week_plan.id_for_label }}');
-                    
-                    if (data.this_week_work && thisWeekTextarea) {
-                        thisWeekTextarea.value = data.this_week_work;
-                        // 텍스트 영역 크기 자동 조정
-                        thisWeekTextarea.style.height = 'auto';
-                        thisWeekTextarea.style.height = (thisWeekTextarea.scrollHeight) + 'px';
+
+                    // 텍스트 영역의 값을 업데이트합니다.
+                    if (data.this_week_work) {
+                        $('#{{ form.this_week_work.id_for_label }}').summernote('code', data.this_week_work);  
                     }
-                    
-                    if (data.next_week_plan && nextWeekTextarea) {
-                        nextWeekTextarea.value = data.next_week_plan;
-                        // 텍스트 영역 크기 자동 조정
-                        nextWeekTextarea.style.height = 'auto';
-                        nextWeekTextarea.style.height = (nextWeekTextarea.scrollHeight) + 'px';
+                    if (data.next_week_plan) {
+                        $('#{{ form.next_week_plan.id_for_label }}').summernote('code', data.next_week_plan);
                     }
-                    
                     showToast(`"${weekDisplay}" 워크로그 내용이 복사되었습니다.`, 'success');
                 } else {
                     showToast('워크로그 복사에 실패했습니다.', 'error');
@@ -448,7 +413,6 @@ function copyWorklog(worklogId, weekDisplay) {
             });
     }
 }
-
 let currentTargetField = '';
 
 // Task 선택 모달 표시
@@ -524,36 +488,21 @@ function createTaskItem(task) {
     return div;
 }
 
-// Task를 텍스트 영역에 추가
+// Task를 Summernote 에디터에 추가
 function addTaskToText(taskId, title, status, priority) {
-    const targetTextarea = currentTargetField === 'this_week' 
-        ? document.getElementById('{{ form.this_week_work.id_for_label }}')
-        : document.getElementById('{{ form.next_week_plan.id_for_label }}');
+    const targetEditor = currentTargetField === 'this_week' 
+        ? $('#{{ form.this_week_work.id_for_label }}')
+        : $('#{{ form.next_week_plan.id_for_label }}');
     
-    if (!targetTextarea) return;
+    if (!targetEditor.length) return;
     
-    // 상태에 따른 아이콘 선택
-    const statusIcon = status === '완료' ? '✅' : status === '진행중' ? '🔄' : '📋';
-    const priorityText = priority !== '보통' ? ` [${priority}]` : '';
+    //const priorityText = priority !== '보통' ? ` [${priority}]` : '';
     
-    // 마크다운 형식으로 업무 정보 생성
-    const taskMarkdown = `- ${statusIcon} **${title}**${priorityText}\n`;
+    // Summernote에 삽입할 HTML 생성
+    const taskHtml = `<li><strong>${title}</strong></li>`;
     
-    // 현재 커서 위치에 텍스트 삽입
-    const cursorPos = targetTextarea.selectionStart;
-    const textBefore = targetTextarea.value.substring(0, cursorPos);
-    const textAfter = targetTextarea.value.substring(targetTextarea.selectionEnd);
-    
-    targetTextarea.value = textBefore + taskMarkdown + textAfter;
-    
-    // 커서 위치 조정
-    const newCursorPos = cursorPos + taskMarkdown.length;
-    targetTextarea.setSelectionRange(newCursorPos, newCursorPos);
-    targetTextarea.focus();
-    
-    // 텍스트 영역 크기 자동 조정
-    targetTextarea.style.height = 'auto';
-    targetTextarea.style.height = (targetTextarea.scrollHeight) + 'px';
+    // 현재 커서 위치에 HTML 삽입
+    targetEditor.summernote('pasteHTML', taskHtml);
     
     // 모달 닫기
     const modal = bootstrap.Modal.getInstance(document.getElementById('taskSelectorModal'));
@@ -596,24 +545,5 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// Task 수정 기능
-function editWorklogTask(worklogTaskId) {
-    // 간단한 구현 - 실제로는 모달을 통해 수정
-    alert('Task 수정 기능은 추후 구현 예정입니다.');
-}
-
-// 진행률 슬라이더 업데이트
-document.addEventListener('DOMContentLoaded', function() {
-    const progressInput = document.getElementById('{{ task_form.progress.id_for_label }}');
-    if (progressInput) {
-        progressInput.addEventListener('input', function() {
-            const value = this.value;
-            const label = document.querySelector('label[for="{{ task_form.progress.id_for_label }}"]');
-            if (label) {
-                label.textContent = `진행률 (${value}%)`;
-            }
-        });
-    }
-});
 </script>
 {% endblock %}

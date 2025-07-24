@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}주간 리포트 목록 - 업무 관리 시스템{% endblock %}
+{% block title %}주간 리포트 목록{% endblock %}
 
 {% block content %}
 
@@ -23,15 +23,15 @@
 <div class="card">
     <div class="card-body">
         {% if reports %}
-            <div class="table-responsive">
+            <div class="table-responsive  d-none d-md-block">
                 <table class="table table-hover">
                     <thead>
                         <tr class="text-center">
                             <th>주차</th>
-                            <th class="d-none d-md-block">기간</th>
+                            <th>기간</th>
                             <th>작성자 수</th>
                             <th>코멘트 수</th>
-                            <th class="d-none d-md-block">생성일</th>
+                            <th>생성일</th>
                             <th>작업</th>
                         </tr>
                     </thead>
@@ -44,7 +44,7 @@
                                     <span class="tag tag-primary">작성마감</span>
                                     {% endif %}
                                 </td>
-                                <td class="d-none d-md-block">
+                                <td>
                                     {{ report.week_start_date|date:"Y-m-d" }} ~ {{ report.week_end_date|date:"Y-m-d" }}
                                 </td>
                                 <td>
@@ -53,10 +53,48 @@
                                 <td>
                                     <span class="badge bg-primary">{{ report.comments.count }}</span>
                                 </td>
-                                <td class="d-none d-md-block">{{ report.created_at|date:"Y-m-d" }}</td>
+                                <td>{{ report.created_at|date:"Y-m-d" }}</td>
                                 <td>
                                     <a href="{% url 'weekly_report_detail' report.year report.week_number %}" class="btn btn-outline-primary btn-sm">
                                         <i class="fas fa-eye d-none d-md-block"></i> 보기
+                                    </a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="table-responsive  d-block d-md-none">
+                <table class="table table-hover">
+                    <thead>
+                        <tr class="text-center">
+                            <th>주차</th>
+                            <th>작성자 수</th>
+                            <th>코멘트 수</th>
+                            <th>작업</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for report in reports %}
+                            <tr class="text-center">
+                                <td>
+                                    <strong>{{ report.month_week_display }}</strong> <div class="d-none d-md-block"> ({{ report.year }}년 {{ report.week_number }}주차)</div>
+                                    {% if not report.editable %}   
+                                    <span class="tag tag-primary">작성마감</span>
+                                    {% endif %}
+                                </td>
+
+                                <td>
+                                    <span>{{ report.get_worklog_count }}</span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-primary">{{ report.comments.count }}</span>
+                                </td>
+                                
+                                
+                                <td>
+                                    <a href="{% url 'weekly_report_detail' report.year report.week_number %}" class="btn btn-outline-primary btn-sm">
+                                        보기
                                     </a>
                                 </td>
                             </tr>

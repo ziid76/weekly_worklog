@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+
+{% block title %}
+시스템점검 담당자 관리
+{% endblock %}
+
+{% block content %}
+    <div class="d-flex justify-content-start mb-3 border bg-white p-3">
+        <form method="get" id="monthFilterForm">
+            <label for="monthPicker" class="me-2 fw-bold">조회 월</label>
+            <input type="month" id="monthPicker" name="month" value="{{ selected_month|default:'' }}" class="form-control d-inline-block" style="width: 200px;">
+        </form>
+    </div>
+
+    <div class="table-responsive border bg-white p-3">
+        <table id="manager_table" class="table table-bordered text-center">
+            <thead>
+                <tr>
+                    <th>일자</th>
+                    <th>담당자</th>
+                </tr>
+            </thead>
+            <tbody id="table-body">
+            </tbody>
+        </table>
+    </div>
+    <div class="mt-3">
+        <button class="scl-btn scl-btn-sm" id="save-btn">저장하기</button>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let options = [];
+
+    function loadData(month) {
+        fetch("{% url 'get_duty_data' %}?month=" + month)
+            .then(response => response.json())
+            .then(data => {
+                options = data.options;
+                const tbody = document.getElementById('table-body');
+                tbody.innerHTML = '';
+
+                data.data.forEach(row => {
+                    const tr = document.createElement('tr');
+
+                    const tdDate = document.createElement('td');
+                    tdDate.textContent = row[0];
+                    tr.appendChild(tdDate);
+
+                    const tdSelect = document.createElement('td');
+                    const select = document.createElement('select');
+                    select.className = 'form-select';
+                    const emptyOpt = document.createElement('option');
+                    emptyOpt.value = '';
+                    emptyOpt.textContent = '--선택--';
+                    select.appendChild(emptyOpt);
+
+                    options.forEach(opt => {
+                        const optEl = document.createElement('option');
+                        optEl.value = opt.value;
+                        optEl.textContent = opt.label;
+                        if (String(opt.value) === String(row[1])) {
+                            optEl.selected = true;
+                        }
+                        select.appendChild(optEl);
+                    });
+
+                    tdSelect.appendChild(select);
+                    tr.appendChild(tdSelect);
+                    tbody.appendChild(tr);
+                });
+            });
+    }
+
+    document.getElementById('monthPicker').addEventListener('change', function () {
+        if (this.value) {
+            loadData(this.value);
+        }
+    });
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const monthPicker = document.getElementById('monthPicker');
+        if (monthPicker.value) {
+            loadData(monthPicker.value);
+        }
+
+        document.getElementById('save-btn').addEventListener('click', function () {
+            const rows = Array.from(document.querySelectorAll('#table-body tr'));
+            const data = rows.map(row => {
+                const date = row.children[0].textContent.trim();
+                const userId = row.children[1].querySelector('select').value;
+                return [date, userId];
+            });
+
+            fetch('{% url "save_duty_data" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({month: monthPicker.value, data: data})
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(result => {
+                if (result.status === 'success') {
+                    alert('저장되었습니다!');
+                } else {
+                    alert('저장 실패');
+                }
+            })
+            .catch(error => {
+                alert('저장 중 오류 발생: ' + error);
+            });
+        });
+    });
+</script>
+{% endblock %}

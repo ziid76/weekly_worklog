@@ -97,8 +97,8 @@
         </div>
     </div>
     <div class="col-md-6">
-        <!-- 관련 정보 -->
-        <div class="card">
+                <!-- 관련 정보 -->
+        <div class="card mb-4">
             <div class="card-header">
                 <h5 class="card-title mb-0">
                     <i class="fas fa-link me-2"></i>관련 정보
@@ -106,16 +106,15 @@
             </div>
             <div class="card-body">
                 <div class="related-info">
-                    <div class="info-row mt-2">
-                        <span class="info-label">작성자</span>
+                    <div class="info-row">
+                        <span class="info-label">생성자</span>
                         <span class="info-value">
                             {% if worklog.author %}
                                 <div class="d-flex align-items-center">
                                     <div class="avatar avatar-sm me-2">
-                                        {{ worklog.author.username|first|upper }}
+                                        {{ worklog.author.profile.display_name|first|upper }}
                                     </div>
                                     {{ worklog.author.profile.display_name|default:''}}
-                                    
                                 </div>
                             {% else %}
                                 <span class="text-muted">-</span>
@@ -125,6 +124,7 @@
                     <div class="info-row mt-2">
                         <span class="info-label">최초 생성</span>
                         <span class="info-value">
+                            {{ worklog.created_at|date:"Y-m-d H:i" }}
                             <i class="fas fa-clock me-1"></i>
                             {{ worklog.created_at|timesince }} 전
                         </span>
@@ -132,6 +132,7 @@
                     <div class="info-row">
                         <span class="info-label">최종 수정</span>
                         <span class="info-value">
+                            {{ worklog.updated_at|date:"Y-m-d H:i" }}
                             <i class="fas fa-clock me-1 text-muted"></i>
                             {{ worklog.updated_at|timesince }} 전
                         </span>
@@ -237,76 +238,5 @@ function shareWorklog() {
 }
 </script>
 
-<style>
-.markdown-content {
-    line-height: 1.6;
-}
 
-.markdown-content h1, .markdown-content h2, .markdown-content h3 {
-    margin-top: 1.5rem;
-    margin-bottom: 1rem;
-}
-
-.markdown-content h1 {
-    border-bottom: 2px solid #eee;
-    padding-bottom: 0.5rem;
-}
-
-.markdown-content h2 {
-    border-bottom: 1px solid #eee;
-    padding-bottom: 0.3rem;
-}
-
-.markdown-content ul, .markdown-content ol {
-    padding-left: 2rem;
-}
-
-.markdown-content li {
-    margin-bottom: 0.5rem;
-}
-
-.markdown-content blockquote {
-    border-left: 4px solid #ddd;
-    padding-left: 1rem;
-    margin-left: 0;
-    color: #666;
-    font-style: italic;
-}
-
-.markdown-content code {
-    background-color: #f8f9fa;
-    padding: 0.2rem 0.4rem;
-    border-radius: 0.25rem;
-    font-size: 0.875em;
-}
-
-.markdown-content pre {
-    background-color: #f8f9fa;
-    padding: 1rem;
-    border-radius: 0.5rem;
-    overflow-x: auto;
-}
-
-.markdown-content table {
-    border-collapse: collapse;
-    width: 100%;
-    margin: 1rem 0;
-}
-
-.markdown-content table th,
-.markdown-content table td {
-    border: 1px solid #ddd;
-    padding: 0.5rem;
-    text-align: left;
-}
-
-.markdown-content table th {
-    background-color: #f8f9fa;
-    font-weight: bold;
-}
-
-.markdown-content input[type="checkbox"] {
-    margin-right: 0.5rem;
-}
-</style>
 {% endblock %}

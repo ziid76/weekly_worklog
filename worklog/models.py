@@ -25,8 +25,8 @@ class Worklog(models.Model):
 
     @property
     def week_end_date(self):
-        """해당 주의 일요일 날짜를 반환합니다."""
-        return self.week_start_date + datetime.timedelta(days=6)
+        """해당 주의 금요일 날짜를 반환합니다."""
+        return self.week_start_date + datetime.timedelta(days=4)
 
     @property
     def month_week_display(self):

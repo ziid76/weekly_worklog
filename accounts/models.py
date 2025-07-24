@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from teams.models import TeamMembership
 
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
@@ -9,6 +10,7 @@ class UserProfile(models.Model):
     first_name_ko = models.CharField("이름", max_length=20, blank=True)
     position = models.CharField("직급", max_length=30, blank=True)
     phone = models.CharField("전화번호", max_length=20, blank=True)
+    team_role = models.CharField("팀 내 역할", max_length=20, choices=TeamMembership.ROLE_CHOICES, default='member', blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -30,7 +32,9 @@ class UserProfile(models.Model):
         """화면 표시용 이름"""
         korean_name = self.get_korean_name
         if korean_name != self.user.username:
-            return f"{korean_name} ({self.user.username})"
+            if self.user.profile.position:
+                return f"{korean_name} ({self.user.profile.position})"
+            else: return f"{korean_name} "
         return self.user.username
 
     @property

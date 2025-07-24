@@ -6,7 +6,7 @@ from django.core.paginator import Paginator
 from django.db.models import Q
 from django.http import JsonResponse
 from .models import UserProfile
-from .forms import UserProfileForm, UserUpdateForm, UserCreationFormWithProfile, TeamCreationForm, UserEditForm
+from .forms import UserProfileForm, UserUpdateForm, UserCreationFormWithProfile, TeamCreationForm
 from teams.models import Team, TeamMembership
 
 def is_staff_or_superuser(user):
@@ -29,7 +29,9 @@ def profile_edit(request):
             user_form.save()
             profile_form.save()
             messages.success(request, '프로필이 성공적으로 업데이트되었습니다.')
-            return redirect('profile_edit')
+            return redirect('profile_view')
+        else:
+            messages.error(request, '입력된 정보를 다시 확인해주세요.') 
     else:
         user_form = UserUpdateForm(instance=user)
         profile_form = UserProfileForm(instance=profile)
@@ -143,19 +145,46 @@ def user_edit(request, user_id):
     """사용자 정보 수정"""
     user = get_object_or_404(User, id=user_id)
     profile, created = UserProfile.objects.get_or_create(user=user)
-    
+
     if request.method == 'POST':
-        form = UserEditForm(request.POST, user=user)
-        
-        if form.is_valid():
-            form.save()
+        user_form = UserUpdateForm(request.POST, instance=user)
+        profile_form = UserProfileForm(request.POST, instance=profile)
+
+        if user_form.is_valid() and profile_form.is_valid():
+            user_form.save()
+            profile_form.save()
+
+            # 팀 정보 업데이트
+            selected_teams = request.POST.getlist('teams')
+            user.teams.set(selected_teams)
+
+            # 권한 그룹 업데이트
+            selected_groups = request.POST.getlist('groups')
+            user.groups.set(selected_groups)
+            
+            # 팀 역할 업데이트
+            team_role = profile_form.cleaned_data.get('team_role')
+            if team_role:
+                # 이 부분은 UserProfile 모델에 team_role 필드가 있다고 가정합니다.
+                # 실제 모델 필드에 맞게 조정해야 할 수 있습니다.
+                profile.team_role = team_role
+                profile.save()
+
             messages.success(request, f'사용자 "{user.username}" 정보가 성공적으로 업데이트되었습니다.')
             return redirect('user_detail', user_id=user.id)
+        else:
+            # 폼 유효성 검사 실패 시
+            messages.error(request, '입력된 정보를 다시 확인해주세요.')
+
     else:
-        form = UserEditForm(user=user)
+        user_form = UserUpdateForm(instance=user)
+        profile_form = UserProfileForm(instance=profile)
     
+    # 템플릿에서 user_form과 form을 모두 사용할 수 있도록 컨텍스트를 구성합니다.
+    # user_edit.html 템플릿은 user_form과 form을 사용하도록 수정되었습니다.
     context = {
-        'form': form,
+        'user_form': user_form,
+        'form': profile_form, # 템플릿에서 'form'을 사용하므로 이름을 맞춥니다.
         'user': user,
         'profile': profile,
         'title': f'{profile.display_name} 정보 수정',

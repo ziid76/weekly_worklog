@@ -86,7 +86,7 @@ def search(request):
         
         # 워크로그 검색
         results['worklogs'] = Worklog.objects.filter(
-            Q(this_week_content__icontains=query) | Q(next_week_content__icontains=query),
+            Q(this_week_work__icontains=query) | Q(next_week_plan__icontains=query),
             author=request.user
         )
     

@@ -102,58 +102,57 @@ def weekly_report_detail(request, year, week_number):
 
 @login_required
 def generate_weekly_report(request):
-    """주간 리포트 생성 페이지"""
+    """주간 리포트 생성 및 최근 5주 현황 페이지"""
     if request.method == 'POST':
         year = int(request.POST.get('year'))
         week_number = int(request.POST.get('week_number'))
-        team_id = request.POST.get('team')
         
-        # 해당 주차에 워크로그가 있는지 확인
-        if team_id:
-            team = get_object_or_404(Team, id=team_id)
-            team_members = team.members.all()
-            worklog_count = Worklog.objects.filter(
-                year=year, 
-                week_number=week_number,
-                author__in=team_members
-            ).count()
-        else:
-            worklog_count = Worklog.objects.filter(year=year, week_number=week_number).count()
+        # 팀 ID는 이제 사용하지 않으므로 team=None으로 고정
+        report, created = WeeklyReport.objects.get_or_create(
+            year=year,
+            week_number=week_number,
+            team=None,
+            defaults={
+                'title': f'{year}년 {week_number}주차 주간보고서',
+                'created_by': request.user
+            }
+        )
         
-        if worklog_count == 0:
-            team_name = f" ({team.name} 팀)" if team_id else ""
-            messages.warning(request, f'{year}년 {week_number}주차{team_name}에는 작성된 워크로그가 없습니다.')
-        else:
-            url = f'/reports/weekly/{year}/{week_number}/'
-            if team_id:
-                url += f'?team={team_id}'
-            return redirect(url)
-    
-    # 현재 주차 정보
+        if created:
+            messages.success(request, f'{year}년 {week_number}주차 주간 리포트가 생성되었습니다.')
+        
+        return redirect('weekly_report_detail', year=year, week_number=week_number)
+
+    # --- 최근 5주 데이터 생성 ---
     today = datetime.date.today()
-    current_year, current_week, _ = today.isocalendar()
-    
-    # 워크로그가 있는 주차들 가져오기
-    available_weeks = Worklog.objects.values('year', 'week_number').distinct().order_by('-year', '-week_number')
-    
-    # 연도 선택 옵션
-    year_choices = []
-    for i in range(current_year - 2, current_year + 3):
-        year_choices.append(i)
-    
-    # 주차 선택 옵션
-    week_choices = list(range(1, 54))
-    
-    # 팀 목록
-    teams = Team.objects.all()
-    
+    recent_weeks = []
+
+    for i in range(5):
+        target_date = today - datetime.timedelta(weeks=i)
+        year, week_number, _ = target_date.isocalendar()
+        
+        # 해당 주의 첫 날과 마지막 날 계산
+        week_start = datetime.date.fromisocalendar(year, week_number, 1)
+        
+        # "M월 W주차" 형식 생성
+        month_week_display = f"{week_start.month}월 {((week_start.day - 1) // 7) + 1}주차"
+
+        # 해당 주차의 Worklog 개수 계산
+        worklog_count = Worklog.objects.filter(year=year, week_number=week_number).count()
+        
+        # 이미 생성된 리포트가 있는지 확인 (팀 없는 전체 리포트 기준)
+        report = WeeklyReport.objects.filter(year=year, week_number=week_number, team=None).first()
+
+        recent_weeks.append({
+            'year': year,
+            'week_number': week_number,
+            'month_week_display': month_week_display,
+            'worklog_count': worklog_count,
+            'report': report,
+        })
+
     context = {
-        'current_year': current_year,
-        'current_week': current_week,
-        'available_weeks': available_weeks,
-        'year_choices': year_choices,
-        'week_choices': week_choices,
-        'teams': teams,
+        'recent_weeks': recent_weeks,
     }
     
     return render(request, 'reports/generate_weekly_report.html', context)

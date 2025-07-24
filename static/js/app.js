@@ -427,3 +427,11 @@ $(window).on('beforeunload', function() {
         window.activeRequests.forEach(request => request.abort());
     }
 });
+
+const back = () => window.history.back();
+
+$(window).bind("pageshow", function(event) {
+    if (event.originalEvent.persisted) {
+        document.location.reload();
+    }
+});

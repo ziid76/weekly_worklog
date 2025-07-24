@@ -11,12 +11,14 @@ class WorklogForm(forms.ModelForm):
         fields = ['this_week_work', 'next_week_plan']
         widgets = {
             'this_week_work': forms.Textarea(attrs={
-                'class': 'form-control markdown-editor', 
+                'class': 'form-control summernote', 
+                'id': 'this_week_work',
                 'rows': 15,
                 'placeholder': '이번 주에 수행한 업무를 마크다운 형식으로 작성하세요...\n\n예시:\n## 주요 업무\n- ✅ **완료된 업무** [높음]\n- 🔄 **진행중인 업무**\n- 📋 **계획된 업무**\n\n### 상세 내용\n**중요한 내용**은 굵게 표시\n\n```python\n# 코드 블록도 사용 가능\nprint("Hello World")\n```'
             }),
             'next_week_plan': forms.Textarea(attrs={
                 'class': 'form-control markdown-editor', 
+                'id': 'next_week_plan',
                 'rows': 15,
                 'placeholder': '다음 주 계획을 마크다운 형식으로 작성하세요...\n\n예시:\n## 다음 주 계획\n1. 새로운 기능 개발\n2. 버그 수정\n3. 문서 작성\n\n> 중요: 우선순위가 높은 업무부터 처리'
             }),

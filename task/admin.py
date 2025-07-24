@@ -3,6 +3,7 @@ from django.utils.html import format_html
 from django.urls import reverse
 from django.utils.safestring import mark_safe
 from .models import Task, Category, TaskComment, TaskFile
+from monitor.models import OperationLog, OperationLogAttachment
 
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
@@ -179,3 +180,13 @@ class TaskFileAdmin(admin.ModelAdmin):
         except:
             return '-'
     file_size.short_description = '파일 크기'
+
+
+class OperationLogAttachmentInline(admin.StackedInline):
+    model = OperationLogAttachment
+    extra = 0
+
+@admin.register(OperationLog)
+class OperationLog(admin.ModelAdmin):
+    inlines = (OperationLogAttachmentInline,)
+    list_display = ('date', 'duty_user', 'completed')
