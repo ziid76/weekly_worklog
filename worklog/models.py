@@ -29,6 +29,16 @@ class Worklog(models.Model):
         return self.week_start_date + datetime.timedelta(days=4)
 
     @property
+    def next_week_start_date(self):
+        import datetime
+        return self.week_start_date + datetime.timedelta(days=7)
+
+    @property
+    def next_week_end_date(self):
+        import datetime
+        return self.week_start_date + datetime.timedelta(days=11)
+
+    @property
     def month_week_display(self):
         """'7월 1주차'와 같은 형식으로 월별 주차를 반환합니다."""
         start_date = self.week_start_date

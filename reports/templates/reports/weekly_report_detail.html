@@ -18,8 +18,8 @@
             입력마감
         </button>
         {% endif %}
-        <button class="btn btn-outline-primary d-none d-md-block" onclick="window.print()">
-            <i class="fas fa-print"></i> 인쇄
+        <button class="btn btn-outline-primary d-none d-md-block" onclick="openWorklogSummaryPopup()">
+            <i class="fas fa-table"></i> 전체화면 보기
         </button>
         <button class="btn btn-outline-primary d-none d-md-block" onclick="exportToExcel()">
             <i class="fas fa-file-excel"></i> Excel
@@ -246,6 +246,25 @@ function exportToExcel() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+}
+
+function openWorklogSummaryPopup() {
+    // 팝업 창 열기
+    const url = "{% url 'worklog_summary_popup' year=report.year week_number=report.week_number %}";
+    const teamParam = "{% if selected_team %}team={{ selected_team.id }}{% endif %}";
+    const fullUrl = teamParam ? `${url}?${teamParam}` : url;
+    
+    // 화면 크기에 맞게 팝업 창 크기 설정
+    const width = window.innerWidth * 0.9;
+    const height = window.innerHeight * 0.9;
+    const left = (window.innerWidth - width) / 2;
+    const top = (window.innerHeight - height) / 2;
+    
+    window.open(
+        fullUrl, 
+        "작성자별 워크로그 집계", 
+        `width=${width},height=${height},top=${top},left=${left},resizable=yes,scrollbars=yes,status=no,toolbar=no,menubar=no,location=no`
+    );
 }
 </script>
 

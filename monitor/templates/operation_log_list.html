@@ -1,5 +1,6 @@
 {% extends "base.html" %}
-{% load static%}
+{% load static %}
+{% load monitor_filters %}
 {% block title %}시스템점검일지 목록{% endblock %}
 
 {% block content %}
@@ -18,11 +19,9 @@
                   <th>일자</th>
                   <th>완료여부</th>
                   <th>담당자</th>
-                  <th>운영 모니터링</th>
-                  <th>SAP 백업</th>
-                  <th>전산실 백업</th>
-                  <th>클라우드 백업</th>
-                  <th>백업소산</th>            
+                  {% for category in categories %}
+                  <th>{{ category.name }}</th>
+                  {% endfor %}
                   <th>검토완료일시</th>
                   <th>승인일시</th>
               </tr>
@@ -37,39 +36,23 @@
                   </td>
                   
                   <td>{{ log.duty_user.profile.display_name }}</td>
-                  <td>
-                      {% if log.monitoring_yn %}
-                      <button class="scl-btn-icon scl-btn-28"><span class="material-icons">check</span></button>
-                      {% else %}
-                      <button type="button" class="scl-btn-icon-outline scl-btn-28" data-bs-toggle="modal" data-bs-target="#monitoringModal" data-id="{{ log.id }}" data-type="1"><span class="material-icons">add</span></button>                
-                      {% endif %}
-                  </td>
-                  <td>    
-                      {% if log.sap_backup_yn %}
-                      <button class="scl-btn-icon scl-btn-28"><span class="material-icons">check</span></button>
-                      {% else %}
-                      <button type="button" class="scl-btn-icon-outline scl-btn-28" data-bs-toggle="modal" data-bs-target="#monitoringModal" data-id="{{ log.id }}" data-type="2"><span class="material-icons">add</span></button>                
-                      {% endif %}
-                      
-                  </td>
-                  <td>{% if log.room_backup_yn %}
-                      <button class="scl-btn-icon scl-btn-28"><span class="material-icons">check</span></button>
-                      {% else %}
-                      <button type="button" class="scl-btn-icon-outline scl-btn-28" data-bs-toggle="modal" data-bs-target="#monitoringModal" data-id="{{ log.id }}" data-type="3"><span class="material-icons">add</span></button>                
-                      {% endif %}
-                  </td>
-                  <td>{% if log.cloud_backup_yn %}
-                      <button class="scl-btn-icon scl-btn-28"><span class="material-icons">check</span></button>
-                      {% else %}
-                      <button type="button" class="scl-btn-icon-outline scl-btn-28" data-bs-toggle="modal" data-bs-target="#monitoringModal" data-id="{{ log.id }}" data-type="4"><span class="material-icons">add</span></button>                
-                      {% endif %}
-                  </td>
-                  <td>{% if log.offsite_backup_yn %}
-                      <button class="scl-btn-icon scl-btn-28"><span class="material-icons">check</span></button>
-                      {% else %}
-                      <button type="button" class="scl-btn-icon-outline scl-btn-28" data-bs-toggle="modal" data-bs-target="#monitoringModal" data-id="{{ log.id }}" data-type="5"><span class="material-icons">add</span></button>                
-                      {% endif %}
-                  </td>
+                  
+                  {% for category in categories %}
+                    {% with entry=log_entries_map|get_item:log.id|get_item:category.id %}
+                    <td>
+                        {% if entry and entry.is_checked %}
+                          {% if entry.has_trouble %}
+                          <button class="scl-btn-icon-red scl-btn-28">
+                          {% else %}
+                          <button class="scl-btn-icon scl-btn-28">
+                          {% endif %}
+                          <span class="material-icons">check</span></button>
+                        {% else %}
+                        <button type="button" class="scl-btn-icon-outline scl-btn-28" data-bs-toggle="modal" data-bs-target="#monitoringModal" data-id="{{ log.id }}" data-category="{{ category.id }}"><span class="material-icons">add</span></button>                
+                        {% endif %}
+                    </td>
+                    {% endwith %}
+                  {% endfor %}
                   
                   <td>{{ log.completed_at|date:'Y-m-d H:i' }}</td>
                   <td>{{ log.approved_at|date:'Y-m-d H:i' }}</td>
@@ -111,19 +94,33 @@
         </div>
 
         <div class="modal-body">
+          <!-- 카테고리 정보 -->
+          <input type="hidden" name="log_id" id="modalHiddenId">
+          <input type="hidden" name="category_id" id="modalHiddenCategory">
+          
           <!-- 점검내용 -->
           <section class="section-block">
-            <h6 class="section-title">① 점검내용</h6>
+            <h6 class="section-title">점검내용</h6>
+              <input class="form-check-input" type="checkbox" value="1" id="hasTrouble" name="has_trouble">
+              <label class="form-check-label fw-medium" for="hasTrouble">
+                <h6>장애/오류 발생</h6>
+             </label>
             <div class="form-group mt-3">
               <textarea id="monitor_log" name="monitor_log" class="form-control rounded-3" rows="6">{{desc|safe}}</textarea>
-              <input type="hidden" name="log_id" id="modalHiddenId">
-              <input type="hidden" name="log_type" id="modalHiddenType">
+            </div>
+          </section>
+          
+          <!-- 하위 카테고리 -->
+          <section class="section-block mt-3" id="subcategoriesSection" style="display: none;">
+            <h6 class="section-title">하위 점검항목</h6>
+            <div class="mt-3" id="subcategoriesContainer">
+              <!-- 하위 카테고리 항목들이 여기에 동적으로 추가됩니다 -->
             </div>
           </section>
 
           <!-- 첨부파일 -->
           <section class="section-block mt-3">
-            <h6 class="section-title">② 첨부파일</h6>
+            <h6 class="section-title">첨부파일</h6>
             <div class="mt-3">
               <input type="file" id="fileInput" name="attachments" class="form-control d-none">
               <button type="button" class="scl-btn scl-btn-outline scl-btn-sm mt-2" id="addFileBtn">파일 추가</button>
@@ -133,7 +130,6 @@
 
           <!-- 점검완료 체크 -->
           <section class="section-block mt-3">
-            
             <div class="form-check d-flex justify-content-center gap-3">
               <input class="form-check-input" type="checkbox" value="1" id="checkComplete" name="is_checked" checked>
               <label class="form-check-label fw-medium" for="checkComplete">
@@ -279,16 +275,82 @@ document.getElementById('monthPicker').addEventListener('change', function(){
           });
     </script>
 <script>
-    const srProcessModal = document.getElementById('monitoringModal');
-    srProcessModal.addEventListener('show.bs.modal', function (event) {
+    const monitoringModal = document.getElementById('monitoringModal');
+    monitoringModal.addEventListener('show.bs.modal', function (event) {
         const button = event.relatedTarget;
-        const LogId = button.getAttribute('data-id');
-        const LogType = button.getAttribute('data-type');
+        const logId = button.getAttribute('data-id');
+        const categoryId = button.getAttribute('data-category');
         
         // hidden input 값 업데이트 (서버로 전송용)
-        document.getElementById('modalHiddenId').value = LogId;
-        document.getElementById('modalHiddenType').value = LogType;
+        document.getElementById('modalHiddenId').value = logId;
+        document.getElementById('modalHiddenCategory').value = categoryId;
+        
+        // 하위 카테고리 로드
+        loadSubcategories(categoryId);
     });
+    
+    function loadSubcategories(categoryId) {
+        fetch(`/monitor/ops/subcategories/?category_id=${categoryId}`)
+            .then(response => response.json())
+            .then(data => {
+                const subcategoriesContainer = document.getElementById('subcategoriesContainer');
+                subcategoriesContainer.innerHTML = '';
+                
+                if (data.subcategories && data.subcategories.length > 0) {
+                    document.getElementById('subcategoriesSection').style.display = 'block';
+                    
+                    data.subcategories.forEach(subcategory => {
+                        const subcategoryDiv = document.createElement('div');
+                        subcategoryDiv.className = 'card mb-3 p-3';
+                        
+                        const header = document.createElement('div');
+                        header.className = 'd-flex justify-content-between align-items-center mb-2';
+                        
+                        const title = document.createElement('h6');
+                        title.className = 'mb-0';
+                        title.textContent = subcategory.name;
+                        
+                        const checkboxDiv = document.createElement('div');
+                        checkboxDiv.className = 'form-check';
+                        
+                        const checkbox = document.createElement('input');
+                        checkbox.type = 'checkbox';
+                        checkbox.className = 'form-check-input';
+                        checkbox.id = `subcategory_check_${subcategory.id}`;
+                        checkbox.name = `subcategory_${subcategory.id}`;
+                        checkbox.value = '1';
+                        
+                        const label = document.createElement('label');
+                        label.className = 'form-check-label';
+                        label.htmlFor = `subcategory_check_${subcategory.id}`;
+                        label.textContent = '점검완료';
+                        
+                        checkboxDiv.appendChild(checkbox);
+                        checkboxDiv.appendChild(label);
+                        
+                        header.appendChild(title);
+                        header.appendChild(checkboxDiv);
+                        
+                        const textarea = document.createElement('textarea');
+                        textarea.className = 'form-control';
+                        textarea.name = `subcategory_result_${subcategory.id}`;
+                        textarea.rows = 3;
+                        textarea.placeholder = '점검 결과를 입력하세요';
+                        
+                        subcategoryDiv.appendChild(header);
+                        subcategoryDiv.appendChild(textarea);
+                        
+                        subcategoriesContainer.appendChild(subcategoryDiv);
+                    });
+                } else {
+                    document.getElementById('subcategoriesSection').style.display = 'none';
+                }
+            })
+            .catch(error => {
+                console.error('하위 카테고리 로드 실패:', error);
+                document.getElementById('subcategoriesSection').style.display = 'none';
+            });
+    }
 </script>
 
 <script>

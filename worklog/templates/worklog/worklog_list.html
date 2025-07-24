@@ -48,7 +48,7 @@
                                 <i class="fas fa-eye me-1"></i>상세보기
                             </a>
                         {% else %}
-                            <a href="{% url 'worklog_create_for_week' year=week.year week_number=week.week_number %}" class="btn btn-sm btn-success">
+                            <a href="{% url 'worklog_create_for_week' year=week.year week_number=week.week_number %}" class="btn btn-sm btn-primary">
                                 <i class="fas fa-plus me-1"></i>생성
                             </a>
                         {% endif %}

@@ -182,11 +182,7 @@ class TaskFileAdmin(admin.ModelAdmin):
     file_size.short_description = '파일 크기'
 
 
+# OperationLog 모델 등록 제거 - monitor 앱에서 이미 등록되어 있음
 class OperationLogAttachmentInline(admin.StackedInline):
     model = OperationLogAttachment
     extra = 0
-
-@admin.register(OperationLog)
-class OperationLog(admin.ModelAdmin):
-    inlines = (OperationLogAttachmentInline,)
-    list_display = ('date', 'duty_user', 'completed')

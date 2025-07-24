@@ -39,7 +39,18 @@ class WeeklyReport(models.Model):
     def week_end_date(self):
         """해당 주의 일요일 날짜"""
         import datetime
-        return self.week_start_date + datetime.timedelta(days=6)
+        return self.week_start_date + datetime.timedelta(days=4)
+
+    @property
+    def next_week_start_date(self):
+        import datetime
+        return self.week_start_date + datetime.timedelta(days=7)
+
+    @property
+    def next_week_end_date(self):
+        import datetime
+        return self.week_start_date + datetime.timedelta(days=11)
+
 
     @property
     def month_week_display_with_year(self):

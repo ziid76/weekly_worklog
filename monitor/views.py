@@ -1,6 +1,9 @@
 from django.http import HttpResponse
 from django.contrib.auth.decorators import login_required
-from monitor.models import OperationLog, OperationLogAttachment
+from monitor.models import (
+    OperationLog, OperationLogAttachment, LogCategory, 
+    LogSubcategory, LogEntry, SubcategoryEntry
+)
 from datetime import date, datetime
 from calendar import monthrange
 from django.utils import timezone
@@ -10,6 +13,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from django.http import JsonResponse
 from django.contrib.auth.models import User
+from django.db.models import Prefetch
 
 from django.views.decorators.csrf import csrf_exempt
 import json
@@ -17,6 +21,7 @@ import json
 
 def index(request):
     return HttpResponse("Monitor 앱입니다.")
+
 
 @login_required
 def operation_log_list(request):
@@ -26,41 +31,24 @@ def operation_log_list(request):
     year, mon = map(int, month.split('-'))
 
     logs = OperationLog.objects.filter(date__year=year, date__month=mon).order_by('date')
+    
+    # Get all active categories for display
+    categories = LogCategory.objects.filter(is_active=True).order_by('order')
+    
+    # 각 로그와 카테고리에 대한 로그 항목을 미리 준비
+    log_entries_map = {}
+    for log in logs:
+        log_entries_map[log.id] = {}
+        for category in categories:
+            entry = LogEntry.objects.filter(operation_log=log, category=category).first()
+            log_entries_map[log.id][category.id] = entry
+    
     return render(request, 'operation_log_list.html', {
         'logs': logs,
         'selected_month': month,
+        'categories': categories,
+        'log_entries_map': log_entries_map,
     })
-
-
-@login_required
-def operation_log_edit(request, pk):
-    log = get_object_or_404(OperationLog, pk=pk)
-    if request.method == 'POST':
-        form = OperationLogForm(request.POST, request.FILES, instance=log)
-        if form.is_valid():
-            form.save()
-            messages.info(request, '저장되었습니다.')
-            return redirect('{}?month={}'.format(
-                reverse('operation_log_list'),
-                log.date.strftime('%Y-%m')
-            ))
-    else:
-        form = OperationLogForm(instance=log)
-    return render(request, 'operation_log_form.html', {'form': form, 'log': log})
-
-def get_workflow_status(check_start, check_complete, completed, approved):
-    print(check_start)
-    print(check_complete)
-    if not check_start:
-        return 0
-    elif not check_complete:
-        return 1
-    elif not completed:
-        return 2
-    elif not approved:
-        return 3
-    else:
-        return 4
 
 
 @login_required
@@ -84,13 +72,38 @@ def operation_log_detail(request, pk):
             s['status'] = 'P'
         else:
             s['status'] = 'N'
-
+    
+    # Get all categories and their log entries for this operation log
+    categories = LogCategory.objects.filter(is_active=True).order_by('order')
+    log_entries = {}
+    
+    for category in categories:
+        entry = LogEntry.objects.filter(operation_log=log, category=category).first()
+        if not entry:
+            entry = None
+        log_entries[category.id] = entry
+    
     return render(request, 'operation_log_detail.html', {
         'log': log,
         'ready': ready,
         'steps': steps,
         'step': current_step+1,
+        'categories': categories,
+        'log_entries': log_entries,
     })
+
+
+def get_workflow_status(check_start, check_complete, completed, approved):
+    if not check_start:
+        return 0
+    elif not check_complete:
+        return 1
+    elif not completed:
+        return 2
+    elif not approved:
+        return 3
+    else:
+        return 4
 
 
 @login_required
@@ -123,48 +136,75 @@ def operation_log_approve(request, pk):
     messages.info(request, '승인되었습니다.')
     return redirect('operation_log_approval_list')
 
+
 @login_required
 def operation_log_add(request):
-
     if request.method == 'POST':
         log = get_object_or_404(OperationLog, pk=request.POST.get('log_id'))
-        log_type = request.POST.get('log_type')
+        category_id = request.POST.get('category_id')
         content = request.POST.get('monitor_log', '')
         checked = bool(request.POST.get('is_checked'))
+        troubled = bool(request.POST.get('has_trouble'))
         now = timezone.now()
-
-        if log_type == '1':
-            log.monitoring_result = content
-            log.monitoring_yn = checked
-            log.monitoring_user = request.user
-            log.monitoring_created_at = now
-        elif log_type == '2':
-            log.sap_backup_result = content
-            log.sap_backup_yn = checked
-            log.sap_backup_user = request.user
-            log.sap_backup_created_at = now
-        elif log_type == '3':
-            log.room_backup_result = content
-            log.room_backup_yn = checked
-            log.room_backup_user = request.user
-            log.room_backup_created_at = now
-        elif log_type == '4':
-            log.cloud_backup_result = content
-            log.cloud_backup_yn = checked
-            log.cloud_backup_user = request.user
-            log.cloud_backup_created_at = now
-        elif log_type == '5':
-            log.offsite_backup_result = content
-            log.offsite_backup_yn = checked
-            log.offsite_backup_user = request.user
-            log.offsite_backup_created_at = now
-
-        log.save()
-
+        
+        # Get or create log entry for this category
+        category = get_object_or_404(LogCategory, pk=category_id)
+        log_entry, created = LogEntry.objects.get_or_create(
+            operation_log=log,
+            category=category,
+            defaults={
+                'result': content,
+                'is_checked': checked,
+                'has_trouble': troubled,
+                'checked_by': request.user,
+                'checked_at': now
+            }
+        )
+        
+        if not created:
+            log_entry.result = content
+            log_entry.is_checked = checked
+            log_entry.checked_by = request.user
+            log_entry.checked_at = now
+            log_entry.save()
+        
+        # Process subcategory entries if provided
+        for key, value in request.POST.items():
+            if key.startswith('subcategory_'):
+                try:
+                    subcategory_id = int(key.split('_')[1])
+                    subcategory = get_object_or_404(LogSubcategory, pk=subcategory_id)
+                    
+                    # Check if this subcategory belongs to the selected category
+                    if subcategory.category_id != int(category_id):
+                        continue
+                    
+                    is_checked = bool(value)
+                    result = request.POST.get(f'subcategory_result_{subcategory_id}', '')
+                    
+                    # Get or create subcategory entry
+                    subcategory_entry, _ = SubcategoryEntry.objects.get_or_create(
+                        log_entry=log_entry,
+                        subcategory=subcategory,
+                        defaults={
+                            'result': result,
+                            'is_checked': is_checked
+                        }
+                    )
+                    
+                    if not _:
+                        subcategory_entry.result = result
+                        subcategory_entry.is_checked = is_checked
+                        subcategory_entry.save()
+                except (ValueError, LogSubcategory.DoesNotExist):
+                    continue
+        
+        # Handle file attachments
         for file_ in request.FILES.getlist('attachments'):
             OperationLogAttachment.objects.create(record=log, file=file_)
 
     return redirect('operation_log_list')
+
 
 @login_required
 def operation_duty(request):
@@ -173,6 +213,21 @@ def operation_duty(request):
         month = datetime.today().strftime('%Y-%m')
 
     return render(request, 'operation_duty.html', {'selected_month': month})
+
+
+@login_required
+def get_subcategories(request):
+    category_id = request.GET.get('category_id')
+    if not category_id:
+        return JsonResponse({'subcategories': []})
+    
+    try:
+        category = LogCategory.objects.get(pk=category_id)
+        subcategories = category.subcategories.filter(is_active=True).order_by('order')
+        data = [{'id': sub.id, 'name': sub.name, 'code': sub.code} for sub in subcategories]
+        return JsonResponse({'subcategories': data})
+    except LogCategory.DoesNotExist:
+        return JsonResponse({'subcategories': []})
 
 
 def get_table_data(request):

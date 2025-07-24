@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load monitor_filters %}
 {% block title %}운영일지 상세{% endblock %}
 {% block content %}
 <div class="border bg-white mb-3 p-3">
@@ -28,71 +29,74 @@
 <h6 class="mt-4 pb-2 section-title border-bottom">항목별 점검결과</h6>
     <table class="table table-bordered mt-3 text-center">
         <thead>
-            <tr><th class="col-3">항목</th><th class="col-2">점검여부</th><th class="col-2">점검자</th><th class="col-3">점검시간</th><th class="col-2">점검결과</th></tr>
+            <tr><th class="col-2">항목</th><th class="col-2">점검여부</th><th class="col-2">장애/오류</th><th class="col-2">점검자</th><th class="col-2">점검시간</th><th class="col-2">점검결과</th></tr>
         </thead>
-        <tbody >
-            <tr><th>운영 모니터링</th><td>{{ log.monitoring_yn|yesno:"O,X" }}</td>
-                <td>{{ log.monitoring_user.profile.display_name }}</td><td>{{ log.monitoring_created_at }}</td>
-                <td>
-                  {% if log.monitoring_result %}
-                    <button type="button" class="scl-btn scl-btn-sm scl-btn-outline openResultModal" data-result="{{ log.monitoring_result }}" data-bs-toggle="modal" data-bs-target="#dynamicResultModal">
-                      점검결과보기
-                    </button>
-                  {% else %}
-                    <button type="button" class="scl-btn scl-btn-sm scl-btn-ghost openResultModal" disabled>점검내용없음
-                    </button>
-                  {% endif %}
-                </td>
-            </tr>
-            <tr><th>SAP 백업</th><td>{{ log.sap_backup_yn|yesno:"O,X" }}</td><td>{{ log.sap_backup_user.profile.display_name }}</td><td>{{ log.sap_backup_created_at }}</td>
-                <td>
-                  {% if log.sap_backup_result %}
-                    <button type="button" class="scl-btn scl-btn-sm scl-btn-outline openResultModal" data-result="{{ log.sap_backup_result }}" data-bs-toggle="modal" data-bs-target="#dynamicResultModal">
-                      점검결과보기
-                    </button>
-                  {% else %}
-                    <button type="button" class="scl-btn scl-btn-sm scl-btn-ghost openResultModal" disabled>점검내용없음
-                    </button>
-                  {% endif %}
-                </td>
-            </tr>
-            <tr><th>전산실 백업</th><td>{{ log.room_backup_yn|yesno:"O,X" }}</td><td>{{ log.room_backup_user.profile.display_name }}</td><td>{{ log.room_backup_created_at }}</td>
-                <td>
-                  {% if log.room_backup_result %}
-                    <button type="button" class="scl-btn scl-btn-sm scl-btn-outline openResultModal" data-result="{{ log.room_backup_result }}" data-bs-toggle="modal" data-bs-target="#dynamicResultModal">
-                      점검결과보기
-                    </button>
-                  {% else %}
-                    <button type="button" class="scl-btn scl-btn-sm scl-btn-ghost openResultModal" disabled>점검내용없음
-                    </button>
-                  {% endif %}
-                </td>
-            </tr>
-            <tr><th>클라우드 백업</th><td>{{ log.cloud_backup_yn|yesno:"O,X" }}</td><td>{{ log.cloud_backup_user.profile.display_name }}</td><td>{{ log.cloud_backup_created_at }}</td>
-                <td>
-                  {% if log.cloud_backup_result %}
-                    <button type="button" class="scl-btn scl-btn-sm scl-btn-outline openResultModal" data-result="{{ log.cloud_backup_result }}" data-bs-toggle="modal" data-bs-target="#dynamicResultModal">
-                      점검결과보기
-                    </button>
-                  {% else %}
-                    <button type="button" class="scl-btn scl-btn-sm scl-btn-ghost openResultModal" disabled>점검내용없음
-                    </button>
-                  {% endif %}
-                </td>
-            </tr>
-            <tr><th>백업소산</th><td>{{ log.offsite_backup_yn|yesno:"O,X" }}</td><td>{{ log.offsite_backup_user.profile.display_name }}</td><td>{{ log.offsite_backup_created_at }}</td>
-                <td>
-                  {% if log.offsite_backup_result %}
-                    <button type="button" class="scl-btn scl-btn-sm scl-btn-outline openResultModal" data-result="{{ log.offsite_backup_result }}" data-bs-toggle="modal" data-bs-target="#dynamicResultModal">
-                      점검결과보기
-                    </button>
-                  {% else %}
-                    <button type="button" class="scl-btn scl-btn-sm scl-btn-ghost openResultModal" disabled>점검내용없음
-                    </button>
-                  {% endif %}
-                </td>
-            </tr>
-            </tbody>
+        <tbody>
+            {% for category in categories %}
+                {% with entry=log_entries|get_item:category.id %}
+                <tr>
+                    <th>{{ category.name }}</th>
+                    <td>{{ entry.is_checked|yesno:"O,X" }}</td>
+                    <td>{% if entry.has_trouble %}
+                          <button class="scl-btn-icon-red scl-btn-28"><span class="material-icons">check</span></button>
+                        {% else %}
+                          
+                        {% endif %}
+                    <td>{{ entry.checked_by.profile.display_name|default:"-" }}</td>
+                    <td>{{ entry.checked_at|default:"-" }}</td>
+                    <td>
+                        {% if entry and entry.result %}
+                            <button type="button" class="scl-btn scl-btn-sm scl-btn-outline openResultModal" 
+                                    data-result="{{ entry.result }}" data-bs-toggle="modal" 
+                                    data-bs-target="#dynamicResultModal" data-category="{{ category.name }}">
+                                점검결과보기
+                            </button>
+                        {% else %}
+                            {% if entry.is_checked %}
+                            <button type="button" class="scl-btn scl-btn-sm scl-btn-ghost" disabled>
+                                점검내용없음
+                            </button>
+                            {% else %}      
+                            <button type="button" class="scl-btn scl-btn-sm scl-btn-ghost" disabled>
+                                점검 미수행
+                            </button>
+                            {% endif %}
+                        {% endif %}
+                    </td>
+                </tr>
+                {% if entry %}
+                    {% for subcategory_entry in entry.subcategory_entries.all %}
+                    <tr class="subcategory-row">
+                        <td class="ps-5">- {{ subcategory_entry.subcategory.name }}</td>
+                        <td>{{ subcategory_entry.is_checked|yesno:"O,X" }}</td>
+                        <td>{% if subcategory_entry.has_trouble %}
+                          <button class="scl-btn-icon scl-btn-28"><span class="material-icons">check</span></button>
+                        {% else %}
+                          
+                        {% endif %}
+
+                        </td>
+                        <td>{{ entry.checked_by.profile.display_name|default:"-" }}</td>
+                        <td>{{ entry.checked_at|default:"-" }}</td>
+                        <td>
+                            {% if subcategory_entry.result %}
+                                <button type="button" class="scl-btn scl-btn-sm scl-btn-outline openResultModal" 
+                                        data-result="{{ subcategory_entry.result }}" data-bs-toggle="modal" 
+                                        data-bs-target="#dynamicResultModal" data-category="{{ subcategory_entry.subcategory.name }}">
+                                    점검결과보기
+                                </button>
+                            {% else %}
+                                <button type="button" class="scl-btn scl-btn-sm scl-btn-ghost" disabled>
+                                    점검내용없음
+                                </button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% endif %}
+                {% endwith %}
+            {% endfor %}
+        </tbody>
     </table>
 
     {% if log.attachments.all %}
@@ -164,26 +168,8 @@
     </div>
   </div>
 </div>
-<!-- 점검결과 Modal -->
-<div class="modal fade" id="resultModal{{ log.id }}" tabindex="-1" aria-labelledby="resultModalLabel{{ log.id }}" aria-hidden="true">
-  <div class="modal-dialog modal-lg modal-dialog-centered">
-    <div class="modal-content custom-modal">
-      <div class="modal-header">
-        <h5 class="modal-title fw-semibold" id="resultModalLabel{{ log.id }}">점검결과</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="닫기"></button>
-      </div>
-      <div class="modal-body">
-        <div class="card card-body bg-light">
-          {{ log.monitoring_result|safe }}
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">닫기</button>
-      </div>
-    </div>
-  </div>
-</div>
 
+<!-- 점검결과 Modal -->
 <div class="modal fade" id="dynamicResultModal" tabindex="-1" aria-labelledby="dynamicResultModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-centered">
     <div class="modal-content custom-modal">
@@ -209,14 +195,26 @@
   document.addEventListener('DOMContentLoaded', function () {
     const modal = document.getElementById('dynamicResultModal');
     const modalContent = document.getElementById('resultModalContent');
+    const modalTitle = document.getElementById('dynamicResultModalLabel');
 
     // 모든 버튼에 이벤트 바인딩
     document.querySelectorAll('.openResultModal').forEach(button => {
       button.addEventListener('click', () => {
         const result = button.getAttribute('data-result');
+        const category = button.getAttribute('data-category');
         modalContent.innerHTML = result; // HTML 렌더링
+        if (category) {
+          modalTitle.textContent = `${category} 점검결과`;
+        } else {
+          modalTitle.textContent = '점검결과';
+        }
       });
     });
   });
 </script>
+<style>
+  .subcategory-row {
+    background-color: #f8f9fa;
+  }
+</style>
 {% endblock %}

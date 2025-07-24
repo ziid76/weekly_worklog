@@ -237,11 +237,49 @@ def team_worklog_summary(request):
     return render(request, 'reports/team_worklog_summary.html', context)
 
 @login_required
-def confirm_closing_api(request):
+def worklog_summary_popup(request, year, week_number):
+    """작성자별 워크로그 집계 팝업"""
+    team_id = request.GET.get('team')
+    
+    # 팀이 지정된 경우 해당 팀의 워크로그만, 아니면 전체
+    if team_id:
+        team = get_object_or_404(Team, id=team_id)
+        # 팀 멤버들의 워크로그만 가져오기
+        team_members = team.members.all()
+        worklogs = Worklog.objects.filter(
+            year=year, 
+            week_number=week_number,
+            author__in=team_members
+        ).select_related('author')
+        
+        report = get_object_or_404(WeeklyReport, year=year, week_number=week_number, team=team)
+    else:
+        # 전체 워크로그
+        worklogs = Worklog.objects.filter(year=year, week_number=week_number).select_related('author')
+        report = get_object_or_404(WeeklyReport, year=year, week_number=week_number, team=None)
+    
+    # 작성자별 워크로그 그룹화
+    worklog_by_author = {}
+    for worklog in worklogs:
+        # UserProfile이 있으면 한국식 이름 사용, 없으면 username 사용
+        try:
+            author_name = worklog.author.profile.get_korean_name
+        except:
+            author_name = worklog.author.username
+        
+        worklog_by_author[author_name] = worklog
+    
+    context = {
+        'report': report,
+        'worklog_by_author': worklog_by_author,
+    }
+    
+    return render(request, 'reports/worklog_summary_popup.html', context)
 
+@login_required
+def confirm_closing_api(request):
     try:
         report = get_object_or_404(WeeklyReport, pk=request.POST.get('pk'))
-        print(report)
         report.editable = False
         report.save()
 
