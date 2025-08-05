@@ -48,7 +48,7 @@
                           {% endif %}
                           <span class="material-icons">check</span></button>
                         {% else %}
-                        <button type="button" class="scl-btn-icon-outline scl-btn-28" data-bs-toggle="modal" data-bs-target="#monitoringModal" data-id="{{ log.id }}" data-category="{{ category.id }}"><span class="material-icons">add</span></button>                
+                        <button type="button" class="scl-btn-icon-outline scl-btn-28" data-bs-toggle="modal" data-bs-target="#monitoringModal" data-month="{{selected_month}}" data-id="{{ log.id }}" data-category="{{ category.id }}"><span class="material-icons">add</span></button>                
                         {% endif %}
                     </td>
                     {% endwith %}
@@ -95,6 +95,7 @@
 
         <div class="modal-body">
           <!-- 카테고리 정보 -->
+          <input type="hidden" name="selected_month" id="modalSelectedMonth">
           <input type="hidden" name="log_id" id="modalHiddenId">
           <input type="hidden" name="category_id" id="modalHiddenCategory">
           
@@ -278,10 +279,12 @@ document.getElementById('monthPicker').addEventListener('change', function(){
     const monitoringModal = document.getElementById('monitoringModal');
     monitoringModal.addEventListener('show.bs.modal', function (event) {
         const button = event.relatedTarget;
+        const selectedMonth = button.getAttribute('data-month');
         const logId = button.getAttribute('data-id');
         const categoryId = button.getAttribute('data-category');
         
         // hidden input 값 업데이트 (서버로 전송용)
+        document.getElementById('modalSelectedMonth').value = selectedMonth;
         document.getElementById('modalHiddenId').value = logId;
         document.getElementById('modalHiddenCategory').value = categoryId;
         

@@ -5,13 +5,59 @@ from django.contrib.auth.models import User, Group
 from django.core.paginator import Paginator
 from django.db.models import Q
 from django.http import JsonResponse
+from django.utils import timezone
+from django.contrib.auth import login
+from django.contrib.auth.views import LoginView
 from .models import UserProfile
-from .forms import UserProfileForm, UserUpdateForm, UserCreationFormWithProfile, TeamCreationForm
+from .forms import UserProfileForm, UserUpdateForm, UserCreationFormWithProfile, TeamCreationForm, FirstLoginPasswordChangeForm
 from teams.models import Team, TeamMembership
+from common.message_views import send_kakao_message
+
+
+class CustomLoginView(LoginView):
+    """커스텀 로그인 뷰 - 첫 로그인 사용자 체크"""
+    
+    def get_success_url(self):
+        # 로그인 성공 후 첫 로그인 여부 체크
+        if hasattr(self.request.user, 'profile') and self.request.user.profile.is_first_login:
+            return '/useraccounts/first-login-password-change/'
+        return super().get_success_url()
+
 
 def is_staff_or_superuser(user):
     """관리자 권한 확인"""
     return user.is_staff or user.is_superuser
+
+@login_required
+def first_login_password_change(request):
+    """첫 로그인 시 패스워드 변경"""
+    # 이미 패스워드를 변경한 사용자는 대시보드로 리다이렉트
+    if not request.user.profile.is_first_login:
+        return redirect('dashboard')
+    
+    if request.method == 'POST':
+        form = FirstLoginPasswordChangeForm(request.user, request.POST)
+        if form.is_valid():
+            user = form.save()
+            # 첫 로그인 상태 업데이트
+            profile = user.profile
+            profile.is_first_login = False
+            profile.password_changed_at = timezone.now()
+            profile.save()
+            
+            messages.success(request, '비밀번호가 성공적으로 변경되었습니다.')
+            return redirect('login')
+        else:
+            messages.error(request, '비밀번호 변경에 실패했습니다. 입력 정보를 다시 확인해주세요.')
+    else:
+        form = FirstLoginPasswordChangeForm(request.user)
+    
+    context = {
+        'form': form,
+        'user': request.user,
+    }
+    
+    return render(request, 'accounts/first_login_password_change.html', context)
 
 @login_required
 def profile_edit(request):
@@ -31,7 +77,7 @@ def profile_edit(request):
             messages.success(request, '프로필이 성공적으로 업데이트되었습니다.')
             return redirect('profile_view')
         else:
-            messages.error(request, '입력된 정보를 다시 확인해주세요.') 
+            messages.error(request, '입력된 정보를 다시 확인해주세요.')
     else:
         user_form = UserUpdateForm(instance=user)
         profile_form = UserProfileForm(instance=profile)
@@ -66,7 +112,20 @@ def user_create(request):
         form = UserCreationFormWithProfile(request.POST)
         if form.is_valid():
             user = form.save()
+            # 새 사용자는 첫 로그인 상태로 설정
+            profile, created = UserProfile.objects.get_or_create(user=user)
+            profile.is_first_login = True
+            profile.save()
+            
             messages.success(request, f'사용자 "{user.username}"이 성공적으로 생성되었습니다.')
+
+            send_kakao_message(
+                user.email, 
+                f'{profile.display_name}님의 ITMS계정이 성공적으로 생성되었습니다.\n\n ID: {user.username}\n 초기패스워드 : 123456!@ \n * 첫 로그인 후 비밀번호 변경 바랍니다.', 
+                "box", 
+                "바로가기", 
+                "http://example.com/details/999")
+
             return redirect('user_list')
     else:
         form = UserCreationFormWithProfile()

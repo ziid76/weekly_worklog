@@ -5,10 +5,12 @@ from django.conf import settings
 from django.conf.urls.static import static
 from dashboard.views import dashboard, search
 from django.contrib.auth import views as auth_views
+from accounts.views import CustomLoginView
 
 urlpatterns = [
     path('', RedirectView.as_view(url='/dashboard/', permanent=True)),
     path('admin/', admin.site.urls),
+    path('accounts/login/', CustomLoginView.as_view(), name='login'),
     path('accounts/', include('django.contrib.auth.urls')),
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),
     path('useraccounts/', include('accounts.urls')),
@@ -19,7 +21,7 @@ urlpatterns = [
     path('reports/', include('reports.urls')),
     path('monitor/', include('monitor.urls')),
     path('service/', include('service.urls')),
-    path('summernote/', include('django_summernote.urls')),
+    # path('summernote/', include('django_summernote.urls')),  # 임시 비활성화
 ]
 
 # Media files serving in development

@@ -499,7 +499,7 @@ function addTaskToText(taskId, title, status, priority) {
     //const priorityText = priority !== '보통' ? ` [${priority}]` : '';
     
     // Summernote에 삽입할 HTML 생성
-    const taskHtml = `<li><strong>${title}</strong></li>`;
+    const taskHtml = `<strong>◆ ${title}</strong>`;
     
     // 현재 커서 위치에 HTML 삽입
     targetEditor.summernote('pasteHTML', taskHtml);

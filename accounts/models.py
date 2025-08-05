@@ -11,6 +11,8 @@ class UserProfile(models.Model):
     position = models.CharField("직급", max_length=30, blank=True)
     phone = models.CharField("전화번호", max_length=20, blank=True)
     team_role = models.CharField("팀 내 역할", max_length=20, choices=TeamMembership.ROLE_CHOICES, default='member', blank=True)
+    is_first_login = models.BooleanField("첫 로그인 여부", default=True)
+    password_changed_at = models.DateTimeField("패스워드 변경일", null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -72,7 +74,17 @@ class UserProfile(models.Model):
         if teams:
             return ", ".join([team.name for team in teams])
         return "미배정"
-
+    
+    @property
+    def team_role(self):
+        team = TeamMembership.objects.filter(
+            user=self.user, 
+            role='leader'
+        ).select_related('team').first()
+        
+        if team:
+            return team.role
+    
     @property
     def department_display(self):
         """부서 정보 대신 팀 정보 반환 (하위 호환성)"""

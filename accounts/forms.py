@@ -1,8 +1,38 @@
 from django import forms
 from django.contrib.auth.models import User, Group
-from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.forms import UserCreationForm, PasswordChangeForm
 from .models import UserProfile
 from teams.models import Team, TeamMembership
+
+class FirstLoginPasswordChangeForm(PasswordChangeForm):
+    """첫 로그인 시 패스워드 변경 폼"""
+    old_password = forms.CharField(
+        label="현재 비밀번호",
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-control',
+            'placeholder': '현재 비밀번호를 입력하세요'
+        })
+    )
+    new_password1 = forms.CharField(
+        label="새 비밀번호",
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-control',
+            'placeholder': '새 비밀번호를 입력하세요'
+        }),
+        # help_text="• 8자 이상<br>• 영문, 숫자, 특수문자 조합<br>• 개인정보와 유사하지 않은 비밀번호"
+    )
+    new_password2 = forms.CharField(
+        label="새 비밀번호 확인",
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-control',
+            'placeholder': '새 비밀번호를 다시 입력하세요'
+        })
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # 필드 순서 조정
+        self.fields['old_password'].widget.attrs.update({'autofocus': True})
 
 class UserProfileForm(forms.ModelForm):
     team_role = forms.ChoiceField(
@@ -52,11 +82,15 @@ class UserUpdateForm(forms.ModelForm):
 
 class UserCreationFormWithProfile(UserCreationForm):
     """사용자 생성 폼 (프로필 정보 포함)"""
-    password1 = forms.CharField(required=True,
-        widget=forms.PasswordInput(attrs={'class': 'form-control'})
+    password1 = forms.CharField(
+        required=True,
+        initial='123456!@',  # 기본 패스워드 설정
+        widget=forms.PasswordInput(attrs={'class': 'form-control', 'value': '123456!@'})
     )
-    password2 = forms.CharField(required=True,
-        widget=forms.PasswordInput(attrs={'class': 'form-control'})
+    password2 = forms.CharField(
+        required=True,
+        initial='123456!@',  # 기본 패스워드 설정
+        widget=forms.PasswordInput(attrs={'class': 'form-control', 'value': '123456!@'})
     )
     
     email = forms.EmailField(

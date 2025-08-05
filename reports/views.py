@@ -13,55 +13,39 @@ from worklog.models import Worklog
 from teams.models import Team, TeamMembership
 from .forms import WeeklyReportCommentForm, TeamWeeklyReportForm
 
-class WeeklyReportListView(LoginRequiredMixin, ListView):
+class WeeklyReportListView(LoginRequiredMixin, ListView, ):
     model = WeeklyReport
     template_name = 'reports/weekly_report_list.html'
     context_object_name = 'reports'
     paginate_by = 10
 
     def get_queryset(self):
-        return WeeklyReport.objects.all().order_by('-year', '-week_number')
+        return WeeklyReport.objects.filter(team=self.request.user.profile.primary_team.id).order_by('-year', '-week_number')
 
 @login_required
-def weekly_report_detail(request, year, week_number):
+def weekly_report_detail(request, id):
     """주간 리포트 상세 보기"""
-    team_id = request.GET.get('team')
+    team_id = request.user.profile.primary_team.id
+    print(team_id)
+    report = get_object_or_404(WeeklyReport, id=id)
+    
     
     # 팀이 지정된 경우 해당 팀의 워크로그만, 아니면 전체
-    if team_id:
-        team = get_object_or_404(Team, id=team_id)
+    if report.team:
+        team = get_object_or_404(Team, id=report.team.id)
         # 팀 멤버들의 워크로그만 가져오기
         team_members = team.members.all()
         worklogs = Worklog.objects.filter(
-            year=year, 
-            week_number=week_number,
+            year=report.year, 
+            week_number=report.week_number,
             author__in=team_members
         ).select_related('author')
         
-        # 팀별 주간 리포트 객체 가져오기 또는 생성
-        report, created = WeeklyReport.objects.get_or_create(
-            year=year,
-            week_number=week_number,
-            team=team,
-            defaults={
-                'title': f'{year}년 {week_number}주차 {team.name} 팀 주간 리포트',
-                'created_by': request.user
-            }
-        )
+
     else:
         # 전체 워크로그
-        worklogs = Worklog.objects.filter(year=year, week_number=week_number).select_related('author')
-        
-        # 전체 주간 리포트 객체 가져오기 또는 생성
-        report, created = WeeklyReport.objects.get_or_create(
-            year=year,
-            week_number=week_number,
-            team=None,
-            defaults={
-                'title': f'{week_number}주차 주간보고서',
-                'created_by': request.user
-            }
-        )
+        worklogs = Worklog.objects.filter(year=report.year, week_number=report.week_number).select_related('author')
+
     
     # 댓글 처리
     if request.method == 'POST':
@@ -72,7 +56,7 @@ def weekly_report_detail(request, year, week_number):
             comment.author = request.user
             comment.save()
             messages.success(request, '코멘트가 추가되었습니다.')
-            return redirect('weekly_report_detail', year=year, week_number=week_number)
+            return redirect('weekly_report_detail', id=report.id)
     else:
         form = WeeklyReportCommentForm()
     
@@ -93,35 +77,44 @@ def weekly_report_detail(request, year, week_number):
         'worklog_by_author': worklog_by_author,
         'form': form,
         'comments': report.comments.all(),
-        'year': year,
-        'week_number': week_number,
-        'selected_team': team if team_id else None,
+        'year': report.year,
+        'week_number': report.week_number,
+        'selected_team': report.team,
     }
+    print(report.team)
     
     return render(request, 'reports/weekly_report_detail.html', context)
 
 @login_required
 def generate_weekly_report(request):
     """주간 리포트 생성 및 최근 5주 현황 페이지"""
+
+
+    team = get_object_or_404(Team, id=request.user.profile.primary_team.id)
+    team_members = team.members.all()
+    
     if request.method == 'POST':
         year = int(request.POST.get('year'))
         week_number = int(request.POST.get('week_number'))
+
+        week_start = datetime.date.fromisocalendar(year, week_number, 1)
+        month_week_display = f"{week_start.month}월 {((week_start.day - 1) // 7) + 1}주차"
         
         # 팀 ID는 이제 사용하지 않으므로 team=None으로 고정
         report, created = WeeklyReport.objects.get_or_create(
             year=year,
             week_number=week_number,
-            team=None,
+            team=team,
             defaults={
-                'title': f'{year}년 {week_number}주차 주간보고서',
+                'title': f'{month_week_display} {team.name} 주간보고서',
                 'created_by': request.user
             }
         )
         
         if created:
-            messages.success(request, f'{year}년 {week_number}주차 주간 리포트가 생성되었습니다.')
+            messages.success(request, f'{month_week_display} {team.name} 주간보고서가 생성되었습니다.')
         
-        return redirect('weekly_report_detail', year=year, week_number=week_number)
+        return redirect('weekly_report_detail', id=report.id)
 
     # --- 최근 5주 데이터 생성 ---
     today = datetime.date.today()
@@ -137,11 +130,13 @@ def generate_weekly_report(request):
         # "M월 W주차" 형식 생성
         month_week_display = f"{week_start.month}월 {((week_start.day - 1) // 7) + 1}주차"
 
+
+
         # 해당 주차의 Worklog 개수 계산
-        worklog_count = Worklog.objects.filter(year=year, week_number=week_number).count()
+        worklog_count = Worklog.objects.filter(year=year, week_number=week_number, author__in=team_members).count()
         
         # 이미 생성된 리포트가 있는지 확인 (팀 없는 전체 리포트 기준)
-        report = WeeklyReport.objects.filter(year=year, week_number=week_number, team=None).first()
+        report = WeeklyReport.objects.filter(year=year, week_number=week_number, team=team).first()
 
         recent_weeks.append({
             'year': year,

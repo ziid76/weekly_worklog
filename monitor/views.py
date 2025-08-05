@@ -134,11 +134,14 @@ def operation_log_approve(request, pk):
     log.approved_by = request.user
     log.save()
     messages.info(request, '승인되었습니다.')
-    return redirect('operation_log_approval_list')
+    return redirect('operation_log_detail', pk=pk)
 
 
 @login_required
 def operation_log_add(request):
+
+    seleced_month = request.POST.get('selected_month')
+
     if request.method == 'POST':
         log = get_object_or_404(OperationLog, pk=request.POST.get('log_id'))
         category_id = request.POST.get('category_id')
@@ -202,6 +205,9 @@ def operation_log_add(request):
         # Handle file attachments
         for file_ in request.FILES.getlist('attachments'):
             OperationLogAttachment.objects.create(record=log, file=file_)
+    if seleced_month:
+        url = reverse('operation_log_list')  # URL 패턴 이름 사용
+        return redirect(f"{url}?month={seleced_month}")
 
     return redirect('operation_log_list')
 

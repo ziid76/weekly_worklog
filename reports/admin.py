@@ -12,7 +12,7 @@ class WeeklyReportCommentInline(admin.TabularInline):
 @admin.register(WeeklyReport)
 class WeeklyReportAdmin(admin.ModelAdmin):
     list_display = [
-        'week_display', 'month_week_display', 'title', 'created_by', 
+        'week_display', 'month_week_display', 'title', 'created_by', 'team', 'editable', 
         'comment_count', 'created_at'
     ]
     list_filter = ['year', 'created_at', 'created_by']
@@ -26,7 +26,7 @@ class WeeklyReportAdmin(admin.ModelAdmin):
             'fields': ('year', 'week_number')
         }),
         ('리포트 정보', {
-            'fields': ('title', 'created_by', 'editable')
+            'fields': ('title', 'created_by', 'editable','team')
         }),
         ('시간 정보', {
             'fields': ('created_at', 'updated_at'),
