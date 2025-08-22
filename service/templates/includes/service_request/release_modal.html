@@ -1,0 +1,51 @@
+<div class="modal fade" id="releaseModal" tabindex="-1" aria-labelledby="releaseModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <form method="post" action="{% url 'service_request_release' service_request.id %}">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title" id="releaseModalLabel">CTS/릴리즈 요청</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                  <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label for="release_date" class="form-label fw-bold">반영 요청일자</label>
+                        <input type="date" id="release_date" name="release_date" class="form-control" required>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="source_system" class="form-label fw-bold">Source System</label>
+                        <select id="source_system" name="source_system" class="form-select" required>
+                            <option value="">선택</option>
+                            {% for system in systems %}
+                                <option value="{{ system.name }}">{{ system.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="target_system" class="form-label fw-bold">Target System</label>
+                        <select id="target_system" name="target_system" class="form-select" required>
+                            <option value="">선택</option>
+                            {% for system in systems %}
+                                <option value="{{ system.name }}">{{ system.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                  </div>
+                    <div class="mb-3">
+                        <label for="request_number" class="form-label fw-bold">요청번호</label>
+                        <input type="text" id="request_number" name="request_number" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label for="description" class="form-label fw-bold">설명</label>
+                        <textarea id="description" name="description" class="form-control" rows="5"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="scl-btn scl-btn-outline scl-btn-sm">요청</button>
+                    <button type="button" class="scl-btn scl-btn-outline scl-btn-sm" data-bs-dismiss="modal">취소</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

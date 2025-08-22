@@ -30,10 +30,10 @@ class CustomUserAdmin(UserAdmin):
     def get_is_first_login(self, obj):
         try:
             if hasattr(obj, 'profile'):
-                return '예' if obj.profile.is_first_login else '아니오'
-            return '-'
+                return obj.profile.is_first_login
+            return False
         except:
-            return '-'
+            return False
     get_is_first_login.short_description = '첫 로그인'
     get_is_first_login.boolean = True
     

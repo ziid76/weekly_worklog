@@ -35,7 +35,7 @@ class UserProfile(models.Model):
         korean_name = self.get_korean_name
         if korean_name != self.user.username:
             if self.user.profile.position:
-                return f"{korean_name} ({self.user.profile.position})"
+                return f"{korean_name}({self.user.profile.position})"
             else: return f"{korean_name} "
         return self.user.username
 
@@ -75,16 +75,18 @@ class UserProfile(models.Model):
             return ", ".join([team.name for team in teams])
         return "미배정"
     
+
     @property
     def team_role(self):
         team = TeamMembership.objects.filter(
             user=self.user, 
-            role='leader'
+            team=self.primary_team
         ).select_related('team').first()
         
         if team:
             return team.role
-    
+
+
     @property
     def department_display(self):
         """부서 정보 대신 팀 정보 반환 (하위 호환성)"""

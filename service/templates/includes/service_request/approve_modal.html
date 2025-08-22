@@ -1,0 +1,20 @@
+<div class="modal fade" id="approveModal" tabindex="-1" aria-labelledby="approveModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" action="{% url 'service_request_approve' service_request.id %}">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title" id="approveModalLabel">승인 요청</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>이 요청을 승인하시겠습니까?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="scl-btn scl-btn-sm">승인</button>
+                    <button type="button" class="scl-btn scl-btn-outline scl-btn-sm" data-bs-dismiss="modal">취소</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

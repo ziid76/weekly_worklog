@@ -13,18 +13,31 @@ def dashboard(request):
     user = request.user
     
     # 업무 통계
-    total_tasks = Task.objects.filter(author=user).count()
+    total_tasks = Task.objects.filter(author = user).count()
     todo_tasks = Task.objects.filter(author=user, status='todo').count()
     in_progress_tasks = Task.objects.filter(author=user, status='in_progress').count()
     done_tasks = Task.objects.filter(author=user, status='done').count()
     
     # 마감일 임박 업무 (3일 이내)
     upcoming_deadline = timezone.now() + timedelta(days=3)
+    week_before = timezone.now() + timedelta(days=-7)
     urgent_tasks = Task.objects.filter(
         author=user,
         due_date__lte=upcoming_deadline,
         due_date__gte=timezone.now().date(),
         status__in=['todo', 'in_progress']
+    ).order_by('due_date')
+
+
+    new_tasks = Task.objects.filter(
+        author=user,
+        created_at__gte=week_before
+    ).order_by('due_date')
+
+    newly_start_tasks = Task.objects.filter(
+        author=user,
+        created_at__gte=week_before,
+        status='in_progress'
     ).order_by('due_date')
     
     # 연체된 업무
@@ -36,8 +49,7 @@ def dashboard(request):
 
     # 최근 업무
     recent_tasks = Task.objects.filter(author=user)[:5]
-    print(recent_tasks)
-    
+   
 
     # 최근 워크로그
     recent_worklogs = Worklog.objects.filter(author=user)[:5]
@@ -63,6 +75,8 @@ def dashboard(request):
         'unread_notifications': unread_notifications,
         'priority_stats': priority_stats,
         'category_stats': category_stats,
+        'new_tasks':new_tasks,
+        'newly_start_tasks':newly_start_tasks,
     }
     
     return render(request, 'dashboard/dashboard.html', context)

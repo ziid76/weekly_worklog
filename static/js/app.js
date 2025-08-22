@@ -311,6 +311,21 @@ $(document).ready(function() {
             $(this).addClass('active');
         }
     });
+    $('#summernote').summernote({
+        height: 400,
+        lang: "ko-KR",
+        placeholder: '추가적인 신청내용을 입력해주세요.'
+    });
+    $('p').css('margin-bottom','0');
+    $('#custom_table').DataTable({
+        searching: false,
+        paging: true,
+        info: false,
+        ordering: false,
+        language: {
+            url: "https://cdn.datatables.net/plug-ins/1.11.3/i18n/ko.json"
+        }
+    });
 
     const $sidebar = $('#sidebar');
     const $overlay = $('#sidebarOverlay');

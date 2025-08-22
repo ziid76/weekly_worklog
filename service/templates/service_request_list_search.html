@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+
+{% block page_name %}
+Service Request 조회
+{% endblock %}
+{% block css %}
+<link rel="stylesheet" href="https://cdn.datatables.net/fixedcolumns/4.3.0/css/fixedColumns.dataTables.min.css"/>
+{% endblock %}
+{% block content %}
+
+<div class="container-fluid border bg-white p-1">
+    <form class="row g-2 align-items-center mt-2  w-100">
+  
+      <div class="col d-flex align-items-center gap-2">
+        <label for="start_date" class="fw-bold mb-0 d-inline-block text-end" style="white-space: nowrap; min-width: 80px;">시작일</label>
+        <input type="date" id="start_date" name="start_date" class="form-control" value="{{ start_date }}" required>
+      </div>
+  
+      <div class="col d-flex align-items-center gap-2">
+        <label for="end_date" class="fw-bold mb-0 d-inline-block text-end" style="white-space: nowrap; min-width: 80px;">종료일</label>
+        <input type="date" id="end_date" name="end_date" class="form-control" value="{{ end_date }}" required>
+      </div>
+  
+      <div class="col d-flex align-items-center gap-2">
+        <label for="req_system" class="fw-bold mb-0 d-inline-block text-end" style="white-space: nowrap; min-width: 60px;">시스템</label>
+        <select id="req_system" name="req_system" class="form-select">
+          <option value="">선택</option>
+          {% for system in systems %}
+            <option value="{{ system.name }}" {% if system.name == selected_system %}selected{% endif %}>{{ system.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col d-flex align-items-center gap-2">
+        <label for="req_module" class="fw-bold mb-0 d-inline-block text-end" style="white-space: nowrap; min-width: 60px;">모듈</label>
+        <select id="req_module" name="req_module" class="form-select">
+          <option value="">선택</option>
+          {% for module in modules %}
+            <option value="{{ module.name }}" {% if module.name == selected_module %}selected{% endif %}>{{ module.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+  
+      <div class="col d-flex align-items-center gap-2">
+        <label for="req_manager" class="fw-bold mb-0 d-inline-block text-end" style="white-space: nowrap; min-width: 60px;">담당자</label>
+        <select id="req_manager" name="req_manager" class="form-select">
+          <option value="">선택</option>
+          {% for manager in managers %}
+            <option value="{{ manager.id }}" {% if manager.id == selected_manager.id %}selected{% endif %}>{{ manager.profile.display_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="row g-2 align-items-center mb-2">
+        <!-- 요청유형 -->
+        <div class="col-auto d-flex align-items-center gap-2">
+          <label for="req_type" class="fw-bold mb-0 d-inline-block text-end" style="white-space: nowrap; min-width: 80px;">요청유형</label>
+          <select id="req_type" name="req_type" class="form-select">
+            <option value="">선택</option>
+            {% for service in services %}
+              <option value="{{ service.code }}" {% if selected_type and service.code == selected_type.code %}selected{% endif %}>{{ service.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      
+        <!-- 상태 -->
+        <div class="col d-flex align-items-center gap-2 flex-wrap">
+          <span class="fw-bold text-end d-inline-block" style="min-width: 60px;">상태</span>
+          <div class="d-flex flex-wrap gap-2">
+            {% for status in statuses %}
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="status" value="{{ status.code }}"
+                       id="status_{{ forloop.counter }}"
+                       {% if status.code in selected_statuses %}checked{% endif %}>
+                <label class="form-check-label" for="status_{{ forloop.counter }}">{{ status.name }}</label>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      
+        <!-- 검색 버튼: 같은 줄 + 오른쪽 정렬 -->
+        <div class="col-auto d-flex ms-auto">
+          <button type="submit" class="scl-btn scl-btn-sm rounded-pill" style="min-width: 60px;">검색</button>
+        </div>
+      </div>
+    </form>
+</div>
+  
+  
+  
+<div class="container border bg-white mt-3 p-3">
+    <table id="scroll_table" class="display nowrap table-striped  text-center" style="width:100%" data-order="[[ 0, &quot;desc&quot; ]]">
+        <thead>
+                <th>SR No</th>
+                <th>원SR</th>
+                <th>유형</th>
+                <th>시스템</th>
+                <th>모듈</th>
+                <th>담당자</th>
+                <th>상태</th>
+                <th>요청자(부서)</th>
+                <th>요청제목</th>
+                <th>희망 적용 일자</th>
+                <th>접수 일자</th>
+                <th>완료 예정 일자</th>
+                <th>완료일자</th>
+                <th>계획공수</th>
+                <th>투입공수</th>
+                
+        </thead>
+        <tbody>
+          {% if service_requests %}
+            {% for request in service_requests %}
+            <tr>
+                
+                <td class="fw-bold">
+                  <a href="{% url 'service_request_detail' request.id %}" ><button class="scl-btn scl-btn-sm rounded-pill" style="min-width: 60px;">{{ request.id }}</button></a>
+                </td>
+                <td>{{ request.get_root_sr.id }}</td>
+                <td>{{ request.req_type }}</td> 
+                <td>{{ request.req_system }}</td> 
+                <td>{{ request.req_module }}</td>                 
+                <td>{{ request.assignee.profile.display_name }}</td>
+                <td>{{ request.get_status_text }}</td>
+                <td>{{ request.req_name }}({{ request.req_depart }})</td>
+                <td>{{ request.req_title|truncatechars:30 }}</td>
+                <td>{{ request.date_of_req|default:"-" }}</td>
+                <td>{{ request.date_of_recept|default:"-" }}</td>                
+                <td>
+                {% if request.date_of_due < today %}
+                    <span class="text-danger">{{ request.date_of_due }}</span>
+                {% else %}
+                    {{ request.date_of_due|default:"-" }}
+                {% endif %} 
+                </td>
+                <td>{{ request.date_of_complete|default:"-" }}</td>
+                <td>{{ request.effort_expected|default:"-" }}</td>
+                <td>{{ request.effort|default:"-" }}</td>
+                
+                
+
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td>#</td>
+              <td>-</td>
+              <td colspan="14" class="text-center">등록된 요청이 없습니다.</td>
+            </tr>
+          {% endif %} 
+            
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    $('#scroll_table').DataTable( {
+        "scrollX": true,
+        "language": {
+            "url": "https://cdn.datatables.net/plug-ins/1.11.3/i18n/ko.json"
+        },
+        "search": {
+            return:true 
+        },
+        "lengthMenu": [
+        [15, 30, 60, -1],
+        [15, 30, 60, 'All']
+        ],
+        "fixedColumns": {
+            leftColumns: 2           // 왼쪽 열 2개 고정
+          }
+
+    } );
+} );
+
+</script>
+
+
+<script src="https://cdn.datatables.net/fixedcolumns/4.3.0/js/dataTables.fixedColumns.min.js"></script>
+{% endblock %}

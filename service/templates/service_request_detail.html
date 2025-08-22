@@ -1,0 +1,300 @@
+{% extends "base.html" %}
+
+{% block page_name %}
+<div class = "d-flex align-items-center">
+Service Request 
+
+<button type="button" class="scl-btn scl-btn-sm position-relative  ms-3">
+    SR No : {{ service_request.id }}
+    {% if service_request.is_parent %} 
+    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">원SR</span>
+    {% endif %}
+    {% if service_request.is_child %} 
+    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">분할 SR</span>
+    {% endif %}
+</button>
+</div>
+
+{% endblock %}
+
+{% block content %}
+{% if service_request.is_child or service_request.is_parent %} 
+<div class="alert alert-info" role="alert">
+    <strong>이 SR은 분할된 SR입니다.</strong><br>
+        <a href="{% url 'service_request_detail' service_request.get_root_sr.id %}" class="scl-btn scl-btn-outline scl-btn-sm btn-round-sm" role="button" >원 SR No : {{service_request.get_root_sr.id}} </a>
+        <a href="{% url 'service_request_detail' service_request.get_parent_sr.id %}" class="scl-btn scl-btn-outline scl-btn-sm btn-round-sm" role="button" >상위 SR No : {{service_request.get_parent_sr.id}} </a>
+        {% for sr in service_request.get_all_related_srs %}
+            <a href="{% url 'service_request_detail' sr.id %}" class="scl-btn scl-btn-outline scl-btn-sm btn-round-sm" role="button" >분할 SR No : {{ sr.id }} , 담당자 : {{sr.assignee.profile.display_name}} </a>
+        {% endfor %}    
+</div>
+{% endif %}
+
+<div class="container mt-1 border bg-white p-3">
+    <h6 class="sr-info section-title border-bottom">SR 정보
+        {% if service_request.status == 'G' %} 
+        <span class="sr-badge sr-badge-primary">
+        {% else %}
+        <span class="sr-badge sr-badge-success">
+
+        {% endif %}
+        {{ service_request.get_status_text }}</span>
+    </h6>
+    
+    <table class="table table-bordered text-center">
+        <tr>
+            <th>시스템</th>
+            <td>{{ service_request.req_system }}</td>
+            <th>모듈</th>
+            <td>{{ service_request.req_module }}</td>
+            <th>담당자</th>
+            <td>{{ service_request.assignee.profile.display_name }} {{ service_request.assignee.profile.grade}} 
+            </td>
+
+        </tr>
+    </table>
+    <h6 class="mt-4 pb-2 section-title border-bottom">요청 내용</h6>
+    <table class="table table-bordered text-center">
+        <tr>
+            <th>제목</th>
+            <td colspan='3' class="text-start">{{ service_request.req_title|linebreaksbr|safe }}</td>
+        </tr>        
+        <tr>
+            <th>요청자</th>
+            <td>{{ service_request.req_name }}</td>
+            <th>요청부서</th>
+            <td>{{ service_request.req_depart }}</td>
+        </tr>
+        <tr>
+            <th>요청생성일자</th>
+            <td>{{ service_request.date_of_recept }}</td>
+            <th>희망적용일자</th>
+            <td>{{ service_request.date_of_req }}</td>
+        </tr>
+        <tr>
+            <th>요청사유</th>
+            <td colspan='3' class="text-start">{{ service_request.req_reason|linebreaksbr|safe }}</td>
+        </tr>
+        <tr>
+            <th>요청내용</th>
+            <td colspan='3' class="text-start" >{{ service_request.req_details|safe }}</td>
+        </tr>
+    </table>
+
+            <!-- 첨부파일 섹션 시작 -->
+            
+            {% if attatchments_sr.attachments.all %}
+            <h6 class="mt-4 mb-2 pb-2 section-title">첨부파일</h6>
+                <ul class="list-group mb-3">
+                    {% for attachment in attatchments_sr.attachments.all %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        {# Display the filename. Using a method like attachment.filename is cleaner #}
+                        {{ attachment.filename|default:attachment.file.name }}
+                        <a href="{{ attachment.file.url }}" class="scl-btn scl-btn-outline scl-btn-sm" download="{{ attachment.filename|default:attachment.file.name }}">
+                            <i class="bi bi-download"></i> 다운로드 {# Using Bootstrap Icons, ensure they are included in your base template #}
+                        </a>
+                    </li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+            <!-- 첨부파일 섹션 끝 -->
+    {% if service_request.is_child %}
+    <h6 class="mt-4 pb-2 section-title border-bottom">분할 요청</h6>
+    <table class="table table-bordered text-center">
+
+        <tr>
+            <th>분할 요청자</th>
+            <td>{{ service_request.req_user.profile.display_name }}</td>
+            <th>완료 요청일자</th>
+            <td>{{ service_request.split_date_of_due }}</td>
+            
+        </tr>
+        <tr>
+            <th>요청사항</th>
+            <td colspan='3' class="text-start" >{{ service_request.split_msg|linebreaksbr|safe }}</td>
+        </tr>
+    </table>
+    {% endif %}
+    {% if service_request.date_of_due %}
+    <h6 class="mt-4 pb-2 section-title border-bottom">접수내용</h6>
+    <table class="table table-bordered text-center">
+        <tr>
+            <th>접수내용</th>
+            <td colspan='3' class="text-start" >{{ service_request.rcv_opinion|linebreaksbr|safe }}</td>
+        </tr>
+        <tr>
+            <th>완료예정일자</th>
+            <td>{{ service_request.date_of_due }}</td>
+            <th>예상작업시간(M/H)</th>
+            <td>{{ service_request.effort_expected }}</td>
+        </tr>
+
+    </table>
+    {% endif %}
+
+    {% if inspections %}
+    <h6 class="mt-4 pb-2 section-title border-bottom">검수 요청</h6>
+        {% for inspection in inspections %}
+        <h6>검수 순번 : {{ inspection.seq }}</h6>
+        <table class="table table-bordered text-center mb-2">
+            <tr>
+                <th class="col-2">진행상태</th>
+                <td class="col-2">{{ inspection.get_status_text }} </td>
+                <th class="col-2">검수담당자</th>
+                <td class="col-2">{{ inspection.inspector_name }} ({{ inspection.inspector_email }})</td>
+                <th class="col-2">요청일시</th>
+                <td class="col-2">{{ inspection.created_at|date:'Y-m-d H:m' }}</td>
+            </tr>
+            <tr>
+                <th colspan="2">개발담당자 테스트 내역</th>
+                <td colspan="4" class="text-start">{{ inspection.dev_test_detail|linebreaksbr }}</td>
+            </tr>
+            <tr>
+                <th colspan="2">테스트 요청 사항</th>
+                <td colspan="4" class="text-start">{{ inspection.test_request|linebreaksbr }}</td>
+            </tr>
+
+            {% if inspection.result %}
+            <tr>
+                <th colspan="2">테스트 결과</th>
+                <td colspan="4" class="text-start">{{ inspection.test_result|linebreaksbr }}</td>
+            </tr>
+            {% endif %}
+        </table>
+        {% endfor %}
+    {% endif %}
+
+    {% if releases %}
+    <h6 class="mt-4 pb-2 section-title border-bottom">CTS/릴리즈 요청</h6>
+    <table class="table table-bordered text-center">
+        <tr>
+            <th>반영 요청일자</th>
+            <th>Source System</th>
+            <th>Target System</th>
+            <th>요청번호</th>
+            <th>설명</th>
+            <th>승인</th>
+            <th>승인자</th>
+        </tr>
+        {% for release in releases %}
+        <tr>
+            <td>{{ release.release_date }}</td>
+            <td>{{ release.source_system }}</td>
+            <td>{{ release.target_system }}</td>
+            <td>{{ release.request_number }}</td>
+            <td class="text-start">{{ release.description|linebreaksbr }}</td>
+            <td>
+                {% if not release.approved %}
+                    {% if user.profile.team_role == 'leader' %}
+                        <a href="{% url 'service_request_release_approve' release.id %}" class="scl-btn scl-btn-sm">승인</a>
+                    {% else %}
+                        대기중
+                    {% endif %}
+                {% else %}
+                    승인완료
+                {% endif %}
+            </td>
+            <td>{{ release.approved_by.profile.display_name }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% endif %}
+    
+
+
+    {% if service_request.status == "G" %}
+    <h6 class="mt-4 pb-2 section-title border-bottom">처리결과</h6>
+    <table class="table table-bordered text-center">
+        <tr>
+            <th>처리내용</th>
+            <td colspan='3' class="text-start" >{{ service_request.complete_content|linebreaksbr|safe }}</td>
+        </tr>
+        <tr>
+            <th>완료일자</th>
+            <td>{{ service_request.date_of_complete }}</td>
+            <th>작업시간(M/H)</th>
+            <td>{{ service_request.effort }}</td>
+        </tr>
+
+    </table>
+    {% endif %}
+
+    <h6 class="mt-4 mb-4 pb-2 section-title border-bottom">처리현황</h6>
+    <div class="timeline-container">
+        {% if service_request.status == 'D'%} <div class="timeline-step">
+        {% else %} <div class="timeline-step completed">
+        {% endif %}
+          <div class="dot"></div>
+          <div class="content">
+            <h6>요청 접수</h6>
+            {% for step in service_request.get_status_N %}
+            <p>{{ step.step_time }} : ({{step.user.profile.display_name}} {{step.user.profile.grade}}) {{step.content}}</p>
+            {% endfor %}
+          </div>
+        </div>
+        {% if service_request.status == 'P' %} <div class="timeline-step in-progress">
+        {% elif service_request.status == 'G'%} <div class="timeline-step completed">
+        {% else %} <div class="timeline-step">
+        {% endif %}
+          <div class="dot"></div>
+          <div class="content">
+            <h6>작업 진행 중</h6>
+            
+            {% for step in service_request.get_status_P %}
+                <p>{{ step.step_time }} : ({{step.user.profile.display_name}} {{step.user.profile.grade}}) {{step.content}}</p>
+            {% endfor %}
+            
+          </div>
+        </div>
+        {% if service_request.status == 'G'%} <div class="timeline-step completed">
+        {% else %} <div class="timeline-step">
+        {% endif %}    
+          <div class="dot"></div>
+          <div class="content">
+            <h6>완료</h6>
+          </div>
+        </div>
+        {% if service_request.status == 'D'%} <div class="timeline-step completed">
+        {% else %} <div class="timeline-step">
+        {% endif %}
+          <div class="dot"></div>
+          <div class="content">
+            <h6>반려</h6>
+          </div>
+        </div>
+      </div>
+</div>
+{% include "includes/service_request/function_button.html" %}
+<div class="mt-3"><input type="button " class="scl-btn scl-btn-outline scl-btn-sm float-end" value="뒤로" onclick="back()"></div>
+{% include "includes/service_request/approve_modal.html" %}
+{% include "includes/service_request/assign_modal.html" %}
+{% include "includes/service_request/accept_modal.html" %}
+{% include "includes/service_request/inspect_modal.html" %}
+{% include "includes/service_request/split_modal.html" %}
+{% include "includes/service_request/release_modal.html" %}
+{% include "includes/service_request/complete_modal.html" %}
+{% endblock %}
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const checkbox = document.getElementById('sameAsRequester');
+        const nameField = document.getElementById('inspector_name');
+        const emailField = document.getElementById('inspector_email');
+        const reqName = document.getElementById('req_name').value;
+        const reqEmail = document.getElementById('req_email').value;
+
+        checkbox.addEventListener('change', function () {
+            if (this.checked) {
+                nameField.value = reqName;
+                emailField.value = reqEmail;
+                nameField.setAttribute('readonly', true);
+                emailField.setAttribute('readonly', true);
+            } else {
+                nameField.value = '';
+                emailField.value = '';
+                nameField.removeAttribute('readonly');
+                emailField.removeAttribute('readonly');
+            }
+        });
+    });
+</script>
+{% endblock %}

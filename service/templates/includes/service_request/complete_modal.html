@@ -1,0 +1,32 @@
+<div class="modal fade" id="completeModal" tabindex="-1" aria-labelledby="completeModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <form method="post" action="{% url 'service_request_complete' service_request.id %}">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title" id="completeModalLabel">완료 처리</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- 완료일자 입력 -->
+                    <div class="mb-3">
+                        <label for="date_of_complete" class="form-label fw-bold">완료일자</label>
+                        <input type="date" id="date_of_complete" name="date_of_complete" class="form-control" value="{{ service_request.date_of_due|date:'Y-m-d' }}">
+                    </div>
+                    <div class="mb-3">
+                        <label for="complete_content" class="form-label fw-bold">처리내용</label>
+                        <textarea id="complete_content" name="complete_content" class="form-control" rows="5" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                    <label for="complete_effort" class="form-label fw-bold" >작업시간(M/H) :</label>
+                        <input type="number" id="complete_effort" name="complete_effort" class="form-control" step="0.1" min="0.1" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="scl-btn scl-btn-outline scl-btn-sm">완료</button>
+                    <button type="button" class="scl-btn scl-btn-outline scl-btn-sm" data-bs-dismiss="modal">취소</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

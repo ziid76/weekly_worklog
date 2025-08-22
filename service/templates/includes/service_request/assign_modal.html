@@ -1,0 +1,31 @@
+<div class="modal fade" id="assignModal" tabindex="-1" aria-labelledby="assignModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" action="{% url 'service_request_assign' service_request.id %}">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title" id="assignModalLabel">담당자 변경</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                
+                <div class="modal-body">
+                    <div class="row mt-2">
+                    <label for="new_assignee" class="form-label col fw-bold"> 신규 담당자</label>
+                    <select id="new_assignee" name="new_assignee" class="form-select col">
+                        <option value="">선택</option>
+                        {% for assignee in assignees %}
+                            <option value="{{ assignee.pk }}">{{ assignee.profile.display_name }}</option>
+                        {% endfor %}
+                    </select>
+                    <input type="hidden" id="assignee" name="assignee" value="{{service_request.assignee.id}}">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="scl-btn scl-btn-sm">저장</button>
+                    <button type="button" class="scl-btn scl-btn-outline scl-btn-sm" data-bs-dismiss="modal">취소</button>
+                    
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

@@ -5,8 +5,8 @@
     <div class="row justify-content-center w-100">
         <div class="col-md-6 col-lg-4 col-xl-3">
             <div class="text-center mb-4">
-                <h2 class="fw-bold text-dark">삼천리 IT 관리시스템</h2>
-                <p class="text-muted">효율적인 업무 관리의 시작</p>
+                <h2 class="fw-bold text-dark">삼천리 ITMS</h2>
+                <p class="text-muted">IT Managemnet System</p>
             </div>
             
             <div class="card shadow-lg border-0">
@@ -39,25 +39,22 @@
                             {% endfor %}
                         </div>
                         
-                        <div class="mb-2">
-                            <label for="{{ form.password.id_for_label }}" class="form-label fw-medium">
-                            <div class="input-group">
+                        <div class="mb-2 position-relative">
+                            <input type="password"
+                                class="form-control pe-5"
+                                id="{{ form.password.id_for_label }}"
+                                name="{{ form.password.name }}"
+                                placeholder="Password"
+                                required>
 
-                                <input type="password" 
-                                       class="form-control" 
-                                       id="{{ form.password.id_for_label }}"
-                                       name="{{ form.password.name }}"
-                                       placeholder="Password"
-                                       required>
-                                <button class="btn btn-outline-search" type="button" id="togglePassword">
-                                    <i class="fas fa-eye"></i>
-                                </button>
-                            </div>
+                            <button class="btn btn-outline-search position-absolute end-0 top-50 translate-middle-y me-2"
+                                    type="button" id="togglePassword">
+                                <i class="fas fa-eye"></i>
+                            </button>
                             {% for error in form.password.errors %}
                                 <div class="invalid-feedback d-block">{{ error }}</div>
                             {% endfor %}
-                        </div>
-                        
+                        </div>                        
                         <div class="mb-3">
                             <div class="form-check">
                                 <input class="form-check-input" type="checkbox" id="rememberMe">

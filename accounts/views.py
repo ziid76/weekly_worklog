@@ -5,6 +5,7 @@ from django.contrib.auth.models import User, Group
 from django.core.paginator import Paginator
 from django.db.models import Q
 from django.http import JsonResponse
+from django.urls import reverse
 from django.utils import timezone
 from django.contrib.auth import login
 from django.contrib.auth.views import LoginView
@@ -70,9 +71,12 @@ def profile_edit(request):
     if request.method == 'POST':
         user_form = UserUpdateForm(request.POST, instance=user)
         profile_form = UserProfileForm(request.POST, instance=profile)
-        
+        print("1")
         if user_form.is_valid() and profile_form.is_valid():
+            print("2")
+            print(user_form)
             user_form.save()
+            print(profile_form)
             profile_form.save()
             messages.success(request, '프로필이 성공적으로 업데이트되었습니다.')
             return redirect('profile_view')
@@ -118,13 +122,14 @@ def user_create(request):
             profile.save()
             
             messages.success(request, f'사용자 "{user.username}"이 성공적으로 생성되었습니다.')
-
+            
+            link = request.build_absolute_uri(reverse('login'))
             send_kakao_message(
                 user.email, 
                 f'{profile.display_name}님의 ITMS계정이 성공적으로 생성되었습니다.\n\n ID: {user.username}\n 초기패스워드 : 123456!@ \n * 첫 로그인 후 비밀번호 변경 바랍니다.', 
                 "box", 
                 "바로가기", 
-                "http://example.com/details/999")
+                link)
 
             return redirect('user_list')
     else:

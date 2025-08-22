@@ -1,16 +1,12 @@
 {% extends 'base.html' %}
 
-{% block title %}대시보드 - 업무관리시스템{% endblock %}
+{% block page_name %}
+    업무현황
+{% endblock %}
 
 {% block content %}
-<!-- 페이지 헤더 -->
-<div class="page-header">
-    <div class="d-flex justify-content-between align-items-center">
-        <div>
-            <h1 class="page-title">
-                <i class="fas fa-tachometer-alt me-3"></i>업무현황
-            </h1>
-        </div>
+    <div class="d-flex justify-content-end align-items-center mb-4">
+
         <div class="page-actions">
             <a href="{% url 'task_create' %}" class="btn btn-primary">
                 <i class="fas fa-plus me-2"></i>새 업무
@@ -20,7 +16,6 @@
             </a>
         </div>
     </div>
-</div>
 
 <!-- 통계 카드 섹션 -->
 <div class="row g-4 mb-4">
@@ -93,46 +88,6 @@
     </div>
 </div>
 
-<!-- 추가 통계 섹션 -->
-<div class="row g-4">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="card-title mb-0">
-                    <i class="fas fa-calendar-week me-2"></i>이번 주 업무 현황
-                </h5>
-            </div>
-            <div class="card-body">
-                <div class="row text-center g-4">
-                    <div class="col-md-3">
-                        <div class="stat-widget">
-                            <div class="stat-number text-primary">{{ this_week_created.count|default:0 }}</div>
-                            <div class="stat-label">신규 등록</div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="stat-widget">
-                            <div class="stat-number text-info">{{ this_week_started|default:0 }}</div>
-                            <div class="stat-label">시작됨</div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="stat-widget">
-                            <div class="stat-number text-success">{{ this_week_completed.count|default:0 }}</div>
-                            <div class="stat-label">완료됨</div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="stat-widget">
-                            <div class="stat-number text-danger">{{ overdue_tasks.count|default:0 }}</div>
-                            <div class="stat-label">지연됨</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
 <!-- 메인 컨텐츠 영역 -->
 <div class="row g-4 mt-2">
     <!-- 최근 업무 -->
@@ -157,16 +112,14 @@
                                     <th class="border-0">제목</th>
                                     <th class="border-0">상태</th>
                                     <th class="border-0">마감일</th>
-                                    <th class="border-0">담당자</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for task in recent_tasks %}
                                 <tr>
                                     <td>
-                                        <div class="d-flex align-items-center">
-                                            <i class="fas fa-circle me-2 text-primary" style="font-size: 8px;"></i>
-                                            <a href="#" class="text-decoration-none fw-medium text-dark">
+                                        <div>
+                                            <a href="#" class=" fw-medium text-dark ">
                                                 {{ task.title|truncatechars:50 }}
                                             </a>
                                         </div>
@@ -189,16 +142,6 @@
                                             </span>
                                         {% else %}
                                             <span class="text-muted">-</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        {% if task.assigned_to %}
-                                            <div class="d-flex align-items-center">
-                                                <i class="fas fa-user-circle me-1 text-muted"></i>
-                                                <span class="text-sm">{{ task.assigned_to.username }}</span>
-                                            </div>
-                                        {% else %}
-                                            <span class="text-muted">미지정</span>
                                         {% endif %}
                                     </td>
                                 </tr>

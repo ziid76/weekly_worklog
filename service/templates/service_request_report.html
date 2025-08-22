@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+
+{% block page_name %}
+SR 리포트
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid border bg-white p-3">
+  <form class="row g-2 mb-3">
+    <div class="col-auto d-flex align-items-center gap-2">
+      <label for="start_date" class="fw-bold mb-0">시작일</label>
+      <input type="date" id="start_date" name="start_date" value="{{ start_date }}" class="form-control">
+    </div>
+    <div class="col-auto d-flex align-items-center gap-2">
+      <label for="end_date" class="fw-bold mb-0">종료일</label>
+      <input type="date" id="end_date" name="end_date" value="{{ end_date }}" class="form-control">
+    </div>
+    <div class="col-auto align-self-end">
+      <button type="submit" class="scl-btn scl-btn-sm rounded-pill">조회</button>
+    </div>
+  </form>
+
+  <!-- 차트 1 -->
+  <div class="mb-5 chart-container">
+    <canvas id="srCountChart"></canvas>
+  </div>
+
+  <!-- 차트 2 -->
+  <div class="mb-5 chart-container">
+    <canvas id="effortChart"></canvas>
+  </div>
+
+  <!-- 차트 3 -->
+  <div class="mb-5 chart-container">
+    <canvas id="delayChart"></canvas>
+  </div>
+
+  <!-- 차트 4 -->
+  <div class="mb-5 chart-container">
+    <canvas id="systemPieChart"></canvas>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>  
+{{ months|json_script:"months-data" }}
+{{ count_data|json_script:"count-data" }}
+{{ effort_data|json_script:"effort-data" }}
+{{ delay_data|json_script:"delay-data" }}
+{{ system_counts|json_script:"system-data" }}
+
+<style>s
+/* 공통 차트 container 스타일 (반응형 적용) */
+.chart-container {
+  max-width: 1200px;
+  width: 100%;
+  min-height: 400px;
+  height: 500px;
+  margin: 0 auto; /* 가운데 정렬 */
+  padding: 10px;
+  box-sizing: border-box;
+}
+</style>
+
+<script>
+const months = JSON.parse(document.getElementById('months-data').textContent);
+const countData = JSON.parse(document.getElementById('count-data').textContent);
+const effortData = JSON.parse(document.getElementById('effort-data').textContent);
+const delayData = JSON.parse(document.getElementById('delay-data').textContent);
+const systemData = JSON.parse(document.getElementById('system-data').textContent);
+
+const assignees = Object.keys(countData);
+const colors = ['#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b', '#8e44ad', '#2ecc71', '#2c3e50'];
+
+// 공통 옵션 함수
+function commonOptions(titleText) {
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      title: {
+        display: true,
+        text: titleText
+      },
+      legend: {
+        position: 'bottom'
+      }
+    },
+    layout: {
+      padding: 20
+    }
+  };
+}
+
+function createDatasets(dataObj) {
+  return assignees.map((a, idx) => ({
+    label: a,
+    backgroundColor: colors[idx % colors.length],
+    data: months.map(m => dataObj[a][m] || 0)
+  }));
+}
+
+// 차트 1 - SR 건수
+new Chart(document.getElementById('srCountChart'), {
+  type: 'bar',
+  data: {
+    labels: assignees,  // 담당자들을 세로축에 표시
+    datasets: [{
+      label: 'SR 건수',
+      backgroundColor: '#4e73df',
+      data: assignees.map(a => {
+        // 모든 월 데이터 합산
+        return months.reduce((sum, m) => sum + (countData[a][m] || 0), 0);
+      })
+    }]
+  },
+  options: {
+    ...commonOptions('담당자별 SR 총 건수'),
+    indexAxis: 'y'  // ★ 이 옵션이 중요! → 가로 Bar 차트로 만듦
+  }
+});
+
+// 차트 2 - 투입공수
+new Chart(document.getElementById('effortChart'), {
+  type: 'bar',
+  data: {
+    labels: months,
+    datasets: createDatasets(effortData)
+  },
+  options: commonOptions('월별 담당자별 투입공수')
+});
+
+// 차트 3 - 지연건수
+new Chart(document.getElementById('delayChart'), {
+  type: 'bar',
+  data: {
+    labels: months,
+    datasets: createDatasets(delayData)
+  },
+  options: commonOptions('월별 담당자별 지연 건수')
+});
+
+// 차트 4 - 시스템별 SR 현황 (Pie)
+const sysLabels = systemData.map(i => i.req_system || '미정');
+const sysCounts = systemData.map(i => i.count);
+
+new Chart(document.getElementById('systemPieChart'), {
+  type: 'pie',
+  data: {
+    labels: sysLabels,
+    datasets: [{
+      data: sysCounts,
+      backgroundColor: colors
+    }]
+  },
+    options: {
+    ...commonOptions('시스템별 SR 현황'),
+    plugins: {
+      datalabels: {
+        color: '#000', // 텍스트 색상
+        font: {
+          weight: 'bold',
+          size: 14
+        },
+        formatter: function(value, context) {
+          // → 원하는 텍스트 형식
+          return context.chart.data.labels[context.dataIndex];
+        }
+      }
+    }
+  },
+  plugins: [ChartDataLabels] // plugin 활성화
+});
+</script>
+{% endblock %}

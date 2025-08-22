@@ -1,0 +1,32 @@
+<div class="modal fade" id="acceptModal" tabindex="-1" aria-labelledby="acceptModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" action="{% url 'service_request_accept' service_request.id %}">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title" id="acceptModalLabel">(분할)SR접수</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- 완료 예정일자 입력 -->
+                    <div class="mb-3">
+                        <label for="accept_date_of_due" class="form-label fw-bold">완료예정일자</label>
+                        <input type="date" id="accept_date_of_due" name="accept_date_of_due" class="form-control" value="{{ service_request.date_of_due|date:'Y-m-d' }}">
+                    </div>
+                    <div class="mb-3">
+                        <label for="accept_content" class="form-label fw-bold">접수 내용</label>
+                        <textarea id="accept_content" name="accept_content" class="form-control" rows="5" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                    <label for="accept_effort_expected" class="form-label fw-bold" >예상작업시간(M/H) :</label>
+                        <input type="number" id="accept_effort_expected" name="accept_effort_expected" class="form-control" step="0.1" min="0.1" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="scl-btn scl-btn-outline scl-btn-sm">접수</button>
+                    <button type="button" class="scl-btn scl-btn-outline scl-btn-sm" data-bs-dismiss="modal">취소</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

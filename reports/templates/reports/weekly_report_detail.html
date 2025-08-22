@@ -1,18 +1,18 @@
 {% extends 'base.html' %}
 {% load markdown_extras %}
 
-{% block title %}{{ report.month_week_display}} 주간보고서{% endblock %}
+{% block page_name %}
+    {{ report.month_week_display}} {{report.team}} 주간보고서
+{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="h4">
-        <i class="fas fa-chart-line"></i> {{ report.month_week_display}} {{report.team}} 주간보고서
-    </h1>
-    <div class="btn-group">
+<div class="d-flex justify-content-end align-items-center mb-4">
+
+    <div class="btn-group ms-auto">
     {% if user.profile.team_role == 'leader' %}    
         {% if report.editable %}
         <button class="btn btn-primary"  onclick="close_report()">
-            <i class="fas fa-close"></i> 마감처리
+            <i class="fas fa-close me-2"></i> 마감처리
         </button>
         {% else %}
         <button class="btn btn-primary" disabled>

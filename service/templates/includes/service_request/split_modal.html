@@ -1,0 +1,66 @@
+<div class="modal fade" id="splitModal" tabindex="-1" aria-labelledby="splitModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <form method="post" action="{% url 'child_service_request_create' service_request.id %}">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title" id="splitModalLabel">SR 분할</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+<div class="modal-body">
+  <div class="row">
+    <!-- 시스템 -->
+    <div class="col-md-6 mb-3">
+      <label for="split_req_system" class="form-label fw-bold">시스템</label>
+      <select id="split_req_system" name="split_req_system" class="form-select" required>
+        <option value="">선택</option>
+        {% for system in systems %}
+          <option value="{{ system.name }}">{{ system.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <!-- 모듈 -->
+    <div class="col-md-6 mb-3">
+      <label for="split_req_module" class="form-label fw-bold">모듈</label>
+      <select id="split_req_module" name="split_req_module" class="form-select" required>
+        <option value="">선택</option>
+        {% for module in modules %}
+          <option value="{{ module.name }}">{{ module.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+<div class="row">
+  <!-- 담당자 -->
+  <div class="col-md-6 mb-3">
+    <label for="split_assignee" class="form-label fw-bold">담당자</label>
+    <select id="split_assignee" name="split_assignee" class="form-select" required>
+      <option value="">선택</option>
+      {% for assignee in assignees %}
+        <option value="{{ assignee.pk }}">{{ assignee.profile.display_name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <!-- 완료 예정일자 -->
+  <div class="col-md-6 mb-3">
+    <label for="new_date_of_due" class="form-label fw-bold">완료요청일자</label>
+    <input type="date" id="new_date_of_due" name="new_date_of_due" class="form-control"
+           value="{{ service_request.date_of_due|date:'Y-m-d' }}">
+  </div>
+</div>
+  <!-- 분할 내용 -->
+  <div class="mb-3">
+    <label for="split_content" class="form-label">분할 내용</label>
+    <textarea id="split_content" name="split_content" class="form-control" rows="5" required></textarea>
+  </div>
+</div>
+                <div class="modal-footer">
+                    <button type="submit" class="scl-btn scl-btn-sm">분할</button>
+                    <button type="button" class="scl-btn scl-btn-outline scl-btn-sm" data-bs-dismiss="modal">취소</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
