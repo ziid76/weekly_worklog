@@ -112,6 +112,48 @@ def operation_log_complete(request, pk):
     if request.method == 'POST':
         if log.finalize(request.user):
             messages.info(request, '완료 처리되었습니다.')
+            
+            # 팀장에게 카카오 알림 전송
+            try:
+                from common.message_views import send_kakao_message
+                from teams.models import TeamMembership
+                from django.conf import settings
+                
+                # 담당자의 팀장 찾기
+                team_leaders = TeamMembership.objects.filter(
+                    user=request.user,
+                    role='leader'
+                ).values_list('team__members', flat=True)
+                
+                # 또는 담당자가 속한 팀의 팀장들 찾기
+                user_teams = TeamMembership.objects.filter(user=request.user).values_list('team', flat=True)
+                team_leaders = TeamMembership.objects.filter(
+                    team__in=user_teams,
+                    role='leader'
+                ).exclude(user=request.user)
+                
+                for leader_membership in team_leaders:
+                    leader = leader_membership.user
+                    if leader.email:
+                        detail_url = f"{getattr(settings, 'SITE_URL', 'http://localhost:8000')}/monitor/ops/logs/{log.id}/detail"
+                        kakao_message = f"""📋 시스템 일일점검 승인요청
+                        
+날짜: {log.date.strftime('%Y-%m-%d')}
+담당자: {request.user.profile.display_name or request.user.username}
+팀: {leader_membership.team.name}
+
+점검이 완료되어 승인을 요청합니다."""
+                        
+                        send_kakao_message(
+                            email=leader.email,
+                            text=kakao_message,
+                            message_type="box",
+                            button_text="승인 처리하기",
+                            button_url=detail_url
+                        )
+            except Exception as e:
+                print(f"카카오 알림 전송 실패: {e}")
+                
         else:
             messages.error(request, '모든 항목을 등록해야 합니다.')
         return redirect('operation_log_detail', pk=pk)

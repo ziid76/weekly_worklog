@@ -7,7 +7,7 @@ class UserProfileInline(admin.StackedInline):
     model = UserProfile
     can_delete = False
     verbose_name_plural = '사용자 프로필'
-    fields = ('last_name_ko', 'first_name_ko', 'position', 'phone', 'is_first_login', 'password_changed_at')
+    fields = ('last_name_ko', 'first_name_ko', 'position', 'phone', 'default_display_order', 'is_first_login', 'password_changed_at')
     readonly_fields = ('password_changed_at',)
 
 class CustomUserAdmin(UserAdmin):
@@ -55,7 +55,7 @@ admin.site.register(User, CustomUserAdmin)
 
 @admin.register(UserProfile)
 class UserProfileAdmin(admin.ModelAdmin):
-    list_display = ['user', 'display_korean_name', 'primary_team_display', 'position', 'is_first_login', 'password_changed_at', 'created_at']
+    list_display = ['user', 'display_korean_name', 'primary_team_display', 'position', 'default_display_order', 'is_first_login', 'password_changed_at', 'created_at']
     list_filter = ['position', 'is_first_login', 'created_at']
     search_fields = ['user__username', 'last_name_ko', 'first_name_ko']
     readonly_fields = ['created_at', 'updated_at']
@@ -68,7 +68,7 @@ class UserProfileAdmin(admin.ModelAdmin):
             'fields': ('last_name_ko', 'first_name_ko')
         }),
         ('추가 정보', {
-            'fields': ('position', 'phone')
+            'fields': ('position', 'phone', 'default_display_order')
         }),
         ('보안 정보', {
             'fields': ('is_first_login', 'password_changed_at')

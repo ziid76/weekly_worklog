@@ -9,7 +9,7 @@
 <div class="d-flex justify-content-end align-items-center mb-4">
 
     <div class="btn-group ms-auto">
-    {% if user.profile.team_role == 'leader' %}    
+    {% if user.profile.current_team_role == 'leader' %}    
         {% if report.editable %}
         <button class="btn btn-primary"  onclick="close_report()">
             <i class="fas fa-close me-2"></i> 마감처리
@@ -29,7 +29,7 @@
         <button class="btn btn-outline-primary d-none d-md-block" onclick="openWorklogSummaryPopup()">
             <i class="fas fa-table"></i> 전체화면 보기
         </button>
-        <button class="btn btn-outline-primary d-none d-md-block" onclick="exportToExcel()">
+        <button class="btn btn-outline-primary d-none d-md-block" onclick="window.location.href='{% url 'export_weekly_report_excel' report.id %}'">
             <i class="fas fa-file-excel"></i> Excel
         </button>
     </div>

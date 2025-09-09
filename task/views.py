@@ -103,7 +103,7 @@ class TaskUpdateView(LoginRequiredMixin, UpdateView):
     success_url = reverse_lazy('task_list')
 
     def get_queryset(self):
-        # 작성자이거나 담당자로 지정된 업무들을 모두 조회 (수정은 작성자만 가능하도록 제한할 수도 있음)
+        # 작성자이거나 담당자로 지정된 업무들을 모두 조회하고 수정 가능
         return Task.objects.filter(
             Q(author=self.request.user) | Q(assigned_to=self.request.user)
         ).distinct()
@@ -114,9 +114,10 @@ class TaskUpdateView(LoginRequiredMixin, UpdateView):
         return kwargs
 
     def form_valid(self, form):
-        # 작성자만 수정 가능하도록 체크
-        if form.instance.author != self.request.user:
-            messages.error(self.request, '업무를 수정할 권한이 없습니다. 작성자만 수정할 수 있습니다.')
+        # 작성자이거나 담당자인 경우 수정 가능
+        if (form.instance.author != self.request.user and 
+            self.request.user not in form.instance.assigned_to.all()):
+            messages.error(self.request, '업무를 수정할 권한이 없습니다.')
             return redirect('task_detail', pk=form.instance.pk)
         
         messages.success(self.request, '업무가 성공적으로 수정되었습니다.')
@@ -128,10 +129,19 @@ class TaskDeleteView(LoginRequiredMixin, DeleteView):
     success_url = reverse_lazy('task_list')
 
     def get_queryset(self):
-        # 삭제는 작성자만 가능
-        return Task.objects.filter(author=self.request.user)
+        # 작성자이거나 담당자인 경우 삭제 가능
+        return Task.objects.filter(
+            Q(author=self.request.user) | Q(assigned_to=self.request.user)
+        ).distinct()
 
     def delete(self, request, *args, **kwargs):
+        # 권한 체크
+        task = self.get_object()
+        if (task.author != request.user and 
+            request.user not in task.assigned_to.all()):
+            messages.error(request, '업무를 삭제할 권한이 없습니다.')
+            return redirect('task_detail', pk=task.pk)
+            
         messages.success(request, '업무가 성공적으로 삭제되었습니다.')
         return super().delete(request, *args, **kwargs)
 
@@ -146,7 +156,7 @@ def add_comment(request, task_id):
         return redirect('task_detail', pk=task_id)
     
     if request.method == 'POST':
-        form = TaskCommentForm(request.POST)
+        form = TaskCommentForm(request.POST, request.FILES)
         if form.is_valid():
             comment = form.save(commit=False)
             comment.task = task
@@ -159,6 +169,32 @@ def add_comment(request, task_id):
             messages.success(request, '댓글이 추가되었습니다.')
     
     return redirect('task_detail', pk=task_id)
+
+@login_required
+def delete_file(request, file_id):
+    """업무 첨부파일 삭제"""
+    task_file = get_object_or_404(TaskFile, id=file_id)
+    task = task_file.task
+    
+    # 권한 확인 (작성자, 파일 업로드자, 또는 담당자가 삭제 가능)
+    has_permission = (
+        task.author == request.user or 
+        task_file.uploaded_by == request.user or
+        request.user in task.assigned_to.all()
+    )
+    
+    if not has_permission:
+        messages.error(request, '파일을 삭제할 권한이 없습니다.')
+        return redirect('task_detail', pk=task.id)
+    
+    try:
+        task_file.file.delete()  # 실제 파일 삭제
+        task_file.delete()  # DB 레코드 삭제
+        messages.success(request, '파일이 삭제되었습니다.')
+    except Exception as e:
+        messages.error(request, '파일 삭제 중 오류가 발생했습니다.')
+    
+    return redirect('task_detail', pk=task.id)
 
 @login_required
 def upload_file(request, task_id):
@@ -203,8 +239,20 @@ def download_file(request, file_id):
         return redirect('task_detail', pk=task.id)
     
     try:
-        response = HttpResponse(task_file.file.read(), content_type='application/octet-stream')
-        response['Content-Disposition'] = f'attachment; filename="{task_file.original_name}"'
+        import mimetypes
+        from urllib.parse import quote
+        
+        # MIME 타입 자동 감지
+        content_type, _ = mimetypes.guess_type(task_file.original_name)
+        if not content_type:
+            content_type = 'application/octet-stream'
+        
+        response = HttpResponse(task_file.file.read(), content_type=content_type)
+        
+        # 파일명 인코딩 처리 (한글 및 특수문자 지원)
+        encoded_filename = quote(task_file.original_name.encode('utf-8'))
+        response['Content-Disposition'] = f'attachment; filename*=UTF-8\'\'{encoded_filename}'
+        
         return response
     except Exception as e:
         messages.error(request, '파일 다운로드 중 오류가 발생했습니다.')

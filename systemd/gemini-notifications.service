@@ -1,0 +1,12 @@
+[Unit]
+Description=Gemini Notifications Check
+After=network.target
+
+[Service]
+Type=oneshot
+User=www-data
+WorkingDirectory=/mnt/d/16.Dev/gemini
+Environment=PATH=/mnt/d/16.Dev/gemini/venv/bin
+ExecStart=/mnt/d/16.Dev/gemini/venv/bin/python manage.py check_notifications
+StandardOutput=journal
+StandardError=journal

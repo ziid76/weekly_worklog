@@ -57,9 +57,12 @@ class WeeklyReportAdmin(admin.ModelAdmin):
     def export_to_csv(self, request, queryset):
         import csv
         from django.http import HttpResponse
+        from urllib.parse import quote
         
         response = HttpResponse(content_type='text/csv')
-        response['Content-Disposition'] = 'attachment; filename="weekly_reports.csv"'
+        filename = 'weekly_reports.csv'
+        encoded_filename = quote(filename.encode('utf-8'))
+        response['Content-Disposition'] = f'attachment; filename*=UTF-8\'\'{encoded_filename}'
         response.write('\ufeff')  # UTF-8 BOM for Excel
         
         writer = csv.writer(response)

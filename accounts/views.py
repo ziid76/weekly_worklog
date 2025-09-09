@@ -63,36 +63,60 @@ def first_login_password_change(request):
 @login_required
 def profile_edit(request):
     """사용자 프로필 편집"""
-    user = request.user
+    import logging
+    logger = logging.getLogger(__name__)
     
-    # UserProfile이 없으면 생성
-    profile, created = UserProfile.objects.get_or_create(user=user)
-    
-    if request.method == 'POST':
-        user_form = UserUpdateForm(request.POST, instance=user)
-        profile_form = UserProfileForm(request.POST, instance=profile)
-        print("1")
-        if user_form.is_valid() and profile_form.is_valid():
-            print("2")
-            print(user_form)
-            user_form.save()
-            print(profile_form)
-            profile_form.save()
-            messages.success(request, '프로필이 성공적으로 업데이트되었습니다.')
-            return redirect('profile_view')
+    try:
+        user = request.user
+        logger.info(f"Profile edit started for user: {user.username}")
+        
+        # UserProfile이 없으면 생성
+        profile, created = UserProfile.objects.get_or_create(user=user)
+        logger.info(f"Profile {'created' if created else 'found'} for user: {user.username}")
+        
+        if request.method == 'POST':
+            logger.info("Processing POST request")
+            logger.info(f"POST data: {request.POST}")
+            
+            user_form = UserUpdateForm(request.POST, instance=user)
+            profile_form = UserProfileForm(request.POST, instance=profile)
+            
+            logger.info(f"User form valid: {user_form.is_valid()}")
+            logger.info(f"Profile form valid: {profile_form.is_valid()}")
+            
+            if not user_form.is_valid():
+                logger.error(f"User form errors: {user_form.errors}")
+            if not profile_form.is_valid():
+                logger.error(f"Profile form errors: {profile_form.errors}")
+            
+            if user_form.is_valid() and profile_form.is_valid():
+                logger.info("Both forms valid, saving...")
+                user_form.save()
+                logger.info("User form saved")
+                profile_form.save()
+                logger.info("Profile form saved")
+                messages.success(request, '프로필이 성공적으로 업데이트되었습니다.')
+                return redirect('profile_edit')
+            else:
+                messages.error(request, '입력된 정보를 다시 확인해주세요.')
+                logger.error("Form validation failed")
         else:
-            messages.error(request, '입력된 정보를 다시 확인해주세요.')
-    else:
-        user_form = UserUpdateForm(instance=user)
-        profile_form = UserProfileForm(instance=profile)
-    
-    context = {
-        'user_form': user_form,
-        'profile_form': profile_form,
-        'profile': profile,
-    }
-    
-    return render(request, 'accounts/profile_edit.html', context)
+            logger.info("Processing GET request")
+            user_form = UserUpdateForm(instance=user)
+            profile_form = UserProfileForm(instance=profile)
+        
+        context = {
+            'user_form': user_form,
+            'profile_form': profile_form,
+            'profile': profile,
+        }
+        
+        return render(request, 'accounts/profile_edit.html', context)
+        
+    except Exception as e:
+        logger.error(f"Exception in profile_edit: {str(e)}", exc_info=True)
+        messages.error(request, f'오류가 발생했습니다: {str(e)}')
+        return redirect('dashboard')
 
 @login_required
 def profile_view(request):

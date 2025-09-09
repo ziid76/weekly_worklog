@@ -18,17 +18,37 @@ def create_notification(user, notification_type, title, message, task=None):
 
 def notify_task_assigned(task, assigned_users, assigner):
     """
-    업무 할당 알림
+    업무 할당 알림 (웹 + 카카오톡)
     """
+    from common.message_views import send_kakao_message
+    from django.conf import settings
+    
     for user in assigned_users:
         if user != assigner:
+            # 웹 알림 생성
             create_notification(
                 user=user,
                 notification_type='task_assigned',
                 title='새 업무가 할당되었습니다',
-                message=f'"{task.title}" 업무가 {assigner.get_full_name() or assigner.username}님에 의해 할당되었습니다.',
+                message=f'"{task.title}" 업무가 {assigner.profile.display_name or assigner.username}님에 의해 할당되었습니다.',
                 task=task
             )
+            
+            # 카카오톡 알림 전송
+            if user.email:
+                try:
+                    task_url = f"{getattr(settings, 'SITE_URL', 'http://localhost:8000')}/task/{task.id}/"
+                    kakao_message = f"📋 새 업무가 할당되었습니다\n\n제목: {task.title}\n할당자: {assigner.profile.display_name or assigner.username}\n우선순위: {task.get_priority_display()}"
+                    
+                    send_kakao_message(
+                        email=user.email,
+                        text=kakao_message,
+                        message_type="box",
+                        button_text="업무 확인하기",
+                        button_url=task_url
+                    )
+                except Exception as e:
+                    print(f"카카오톡 알림 전송 실패: {e}")
 
 def notify_comment_added(task, comment_author):
     """
@@ -40,7 +60,7 @@ def notify_comment_added(task, comment_author):
             user=task.author,
             notification_type='comment_added',
             title='새 댓글이 추가되었습니다',
-            message=f'"{task.title}" 업무에 {comment_author.get_full_name() or comment_author.username}님이 댓글을 추가했습니다.',
+            message=f'"{task.title}" 업무에 {comment_author.profile.display_name or comment_author.username}님이 댓글을 추가했습니다.',
             task=task
         )
     
@@ -204,8 +224,8 @@ def check_worklog_reminders():
             create_notification(
                 user=user,
                 notification_type='worklog_reminder',
-                title='워크로그 작성 알림',
-                message=f'{year}년 {week_number}주차 워크로그를 아직 작성하지 않으셨습니다. 이번 주 업무 내용을 기록해주세요.'
+                title='주간보고 작성 알림',
+                message=f'금주 주간보고를 아직 작성하지 않으셨습니다. 이번 주 업무 내용을 기록해주세요.'
             )
 
 def mark_notifications_as_read(user, notification_ids=None):

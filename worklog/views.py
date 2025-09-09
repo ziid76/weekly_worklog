@@ -70,16 +70,41 @@ class WorklogCreateView(LoginRequiredMixin, CreateView):
     template_name = 'worklog/worklog_form.html'
 
     def get(self, request, *args, **kwargs):
+        import logging
+        logger = logging.getLogger(__name__)
+        
         year = self.kwargs.get('year')
         week_number = self.kwargs.get('week_number')
         
+        logger.info(f"WorklogCreateView GET: user={request.user.username}, year={year}, week={week_number}")
+        
         # 해당 주차에 이미 주간업무가 있는지 확인
         if Worklog.objects.filter(author=request.user, year=year, week_number=week_number).exists():
+            logger.info(f"Worklog already exists for {request.user.username} {year}-{week_number}")
             messages.warning(request, f"{year}년 {week_number}주차의 주간업무는 이미 존재합니다. 수정 화면으로 이동합니다.")
             existing_worklog = Worklog.objects.get(author=request.user, year=year, week_number=week_number)
             return redirect('worklog_update', pk=existing_worklog.pk)
             
         return super().get(request, *args, **kwargs)
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['user'] = self.request.user
+        return kwargs
+
+    def post(self, request, *args, **kwargs):
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        logger.info(f"WorklogCreateView POST: user={request.user.username}")
+        logger.info(f"POST data: {request.POST}")
+        
+        try:
+            return super().post(request, *args, **kwargs)
+        except Exception as e:
+            logger.error(f"WorklogCreateView POST error: {str(e)}", exc_info=True)
+            messages.error(request, f'워크로그 생성 중 오류가 발생했습니다: {str(e)}')
+            return self.get(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -123,11 +148,44 @@ class WorklogCreateView(LoginRequiredMixin, CreateView):
         return context
 
     def form_valid(self, form):
-        form.instance.author = self.request.user
-        form.instance.year = self.kwargs.get('year')
-        form.instance.week_number = self.kwargs.get('week_number')
-        messages.success(self.request, '주간업무가 성공적으로 생성되었습니다.')
-        return super().form_valid(form)
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        try:
+            logger.info(f"form_valid called for user: {self.request.user.username}")
+            
+            form.instance.author = self.request.user
+            form.instance.year = self.kwargs.get('year')
+            form.instance.week_number = self.kwargs.get('week_number')
+            
+            logger.info(f"Setting year={form.instance.year}, week={form.instance.week_number}")
+            
+            # 기본 표시 순서 설정
+            if not form.cleaned_data.get('display_order'):
+                try:
+                    if hasattr(self.request.user, 'profile') and self.request.user.profile:
+                        form.instance.display_order = self.request.user.profile.default_display_order
+                        logger.info(f"Set display_order from profile: {form.instance.display_order}")
+                    else:
+                        logger.warning("User has no profile, using default display_order=0")
+                        form.instance.display_order = 0
+                except Exception as e:
+                    logger.error(f"Error setting display_order: {str(e)}")
+                    form.instance.display_order = 0
+            else:
+                logger.info(f"Using form display_order: {form.cleaned_data.get('display_order')}")
+                
+            logger.info("Calling super().form_valid()")
+            result = super().form_valid(form)
+            
+            messages.success(self.request, '주간업무가 성공적으로 생성되었습니다.')
+            logger.info("Worklog created successfully")
+            return result
+            
+        except Exception as e:
+            logger.error(f"Error in form_valid: {str(e)}", exc_info=True)
+            messages.error(self.request, f'워크로그 저장 중 오류가 발생했습니다: {str(e)}')
+            return self.form_invalid(form)
 
     def get_success_url(self):
         return reverse('worklog_list')
@@ -266,8 +324,6 @@ class WorklogUpdateView(LoginRequiredMixin, UpdateView):
     def get_queryset(self):
         return Worklog.objects.filter(author=self.request.user)
 
-    
-
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         
@@ -349,8 +405,20 @@ def download_worklog_file(request, file_id):
     worklog_file = get_object_or_404(WorklogFile, id=file_id, worklog__author=request.user)
     
     try:
-        response = HttpResponse(worklog_file.file.read(), content_type='application/octet-stream')
-        response['Content-Disposition'] = f'attachment; filename="{worklog_file.original_name}"'
+        import mimetypes
+        from urllib.parse import quote
+        
+        # MIME 타입 자동 감지
+        content_type, _ = mimetypes.guess_type(worklog_file.original_name)
+        if not content_type:
+            content_type = 'application/octet-stream'
+        
+        response = HttpResponse(worklog_file.file.read(), content_type=content_type)
+        
+        # 파일명 인코딩 처리 (한글 및 특수문자 지원)
+        encoded_filename = quote(worklog_file.original_name.encode('utf-8'))
+        response['Content-Disposition'] = f'attachment; filename*=UTF-8\'\'{encoded_filename}'
+        
         return response
     except Exception as e:
         messages.error(request, '파일 다운로드 중 오류가 발생했습니다.')

@@ -20,71 +20,79 @@
 <!-- 통계 카드 섹션 -->
 <div class="row g-4 mb-4">
     <div class="col-lg-3 col-md-6">
-        <div class="stat-card">
-            <div class="d-flex justify-content-between align-items-center">
-                <div class="stat-content">
-                    <h3 class="stat-number">{{ total_tasks|default:0 }}</h3>
-                    <p class="stat-label">전체 업무</p>
+        <a href="{% url 'task_list' %}" class="text-decoration-none">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="stat-content">
+                        <h3 class="stat-number">{{ total_tasks|default:0 }}</h3>
+                        <p class="stat-label">전체 업무</p>
+                    </div>
+                    <div class="stat-icon">
+                        <i class="fas fa-clipboard-list fa-2x"></i>
+                    </div>
                 </div>
-                <div class="stat-icon">
-                    <i class="fas fa-clipboard-list fa-2x"></i>
+                <div class="stat-footer">
+                    <small><i class="fas fa-info-circle me-1"></i>전체 등록된 업무</small>
                 </div>
             </div>
-            <div class="stat-footer">
-                <small><i class="fas fa-info-circle me-1"></i>전체 등록된 업무</small>
-            </div>
-        </div>
+        </a>
     </div>
     
     <div class="col-lg-3 col-md-6">
-        <div class="stat-card warning">
-            <div class="d-flex justify-content-between align-items-center">
-                <div class="stat-content">
-                    <h3 class="stat-number">{{ todo_tasks|default:0 }}</h3>
-                    <p class="stat-label">대기중 업무</p>
+        <a href="{% url 'task_list' %}?status=todo" class="text-decoration-none">
+            <div class="stat-card warning">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="stat-content">
+                        <h3 class="stat-number">{{ todo_tasks|default:0 }}</h3>
+                        <p class="stat-label">대기중 업무</p>
+                    </div>
+                    <div class="stat-icon">
+                        <i class="fas fa-clock fa-2x"></i>
+                    </div>
                 </div>
-                <div class="stat-icon">
-                    <i class="fas fa-clock fa-2x"></i>
+                <div class="stat-footer">
+                    <small><i class="fas fa-hourglass-start me-1"></i>시작 대기중인 업무</small>
                 </div>
             </div>
-            <div class="stat-footer">
-                <small><i class="fas fa-hourglass-start me-1"></i>시작 대기중인 업무</small>
-            </div>
-        </div>
+        </a>
     </div>
     
     <div class="col-lg-3 col-md-6">
-        <div class="stat-card info">
-            <div class="d-flex justify-content-between align-items-center">
-                <div class="stat-content">
-                    <h3 class="stat-number">{{ in_progress_tasks|default:0 }}</h3>
-                    <p class="stat-label">진행중 업무</p>
+        <a href="{% url 'task_list' %}?status=in_progress" class="text-decoration-none">
+            <div class="stat-card info">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="stat-content">
+                        <h3 class="stat-number">{{ in_progress_tasks|default:0 }}</h3>
+                        <p class="stat-label">진행중 업무</p>
+                    </div>
+                    <div class="stat-icon">
+                        <i class="fas fa-spinner fa-2x"></i>
+                    </div>
                 </div>
-                <div class="stat-icon">
-                    <i class="fas fa-spinner fa-2x"></i>
+                <div class="stat-footer">
+                    <small><i class="fas fa-play me-1"></i>현재 진행중인 업무</small>
                 </div>
             </div>
-            <div class="stat-footer">
-                <small><i class="fas fa-play me-1"></i>현재 진행중인 업무</small>
-            </div>
-        </div>
+        </a>
     </div>
     
     <div class="col-lg-3 col-md-6">
-        <div class="stat-card success">
-            <div class="d-flex justify-content-between align-items-center">
-                <div class="stat-content">
-                    <h3 class="stat-number">{{ done_tasks|default:0 }}</h3>
-                    <p class="stat-label">완료된 업무</p>
+        <a href="{% url 'task_list' %}?status=done" class="text-decoration-none">
+            <div class="stat-card success">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="stat-content">
+                        <h3 class="stat-number">{{ done_tasks|default:0 }}</h3>
+                        <p class="stat-label">완료된 업무</p>
+                    </div>
+                    <div class="stat-icon">
+                        <i class="fas fa-check-circle fa-2x"></i>
+                    </div>
                 </div>
-                <div class="stat-icon">
-                    <i class="fas fa-check-circle fa-2x"></i>
+                <div class="stat-footer">
+                    <small><i class="fas fa-trophy me-1"></i>성공적으로 완료된 업무</small>
                 </div>
             </div>
-            <div class="stat-footer">
-                <small><i class="fas fa-trophy me-1"></i>성공적으로 완료된 업무</small>
-            </div>
-        </div>
+        </a>
     </div>
 </div>
 
@@ -119,7 +127,7 @@
                                 <tr>
                                     <td>
                                         <div>
-                                            <a href="#" class=" fw-medium text-dark ">
+                                            <a href="{% url 'task_detail' task.pk %}" class=" text-decoration-none fw-medium text-dark ">
                                                 {{ task.title|truncatechars:50 }}
                                             </a>
                                         </div>
@@ -181,28 +189,28 @@
                             <i class="fas fa-circle text-danger me-2"></i>
                             <span>긴급</span>
                         </div>
-                        <span class="badge bg-danger">{{ urgent_tasks.count|default:0 }}</span>
+                        <span class="badge bg-danger">{{ urgent_tasks|default:0 }}</span>
                     </div>
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <div class="d-flex align-items-center">
                             <i class="fas fa-circle text-warning me-2"></i>
                             <span>높음</span>
                         </div>
-                        <span class="badge bg-warning">{{ high_tasks.count|default:0 }}</span>
+                        <span class="badge bg-warning">{{ high_tasks|default:0 }}</span>
                     </div>
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <div class="d-flex align-items-center">
                             <i class="fas fa-circle text-info me-2"></i>
                             <span>보통</span>
                         </div>
-                        <span class="badge bg-info">{{ medium_tasks.count|default:0 }}</span>
+                        <span class="badge bg-info">{{ medium_tasks|default:0 }}</span>
                     </div>
                     <div class="d-flex justify-content-between align-items-center">
                         <div class="d-flex align-items-center">
                             <i class="fas fa-circle text-success me-2"></i>
                             <span>낮음</span>
                         </div>
-                        <span class="badge bg-success">{{ low_tasks.count|default:0 }}</span>
+                        <span class="badge bg-success">{{ low_tasks|default:0 }}</span>
                     </div>
                 </div>
             </div>
@@ -212,19 +220,32 @@
         <div class="card mb-4">
             <div class="card-header">
                 <h5 class="card-title mb-0">
-                    <i class="fas fa-history me-2"></i>최근 활동
+                    <i class="fas fa-history me-2"></i>최근 알림
                 </h5>
             </div>
             <div class="card-body">
-                {% if recent_activities %}
+                {% if recent_notifications %}
                     <div class="timeline">
-                        {% for activity in recent_activities %}
+                        {% for notification in recent_notifications %}
                         <div class="timeline-item">
                             <div class="timeline-content">
-                                <p class="mb-1">{{ activity.description }}</p>
+                                {% if notification.task %}
+                                    <a href="{% url 'notifications:mark_read' notification.id %}" class="text-decoration-none">
+                                        <p class="mb-1 {% if not notification.is_read %}fw-bold{% endif %}">
+                                            <i class="fas fa-bell me-1"></i>{{ notification.title }}
+                                        </p>
+                                        <small class="text-muted">{{ notification.message|truncatechars:50 }}</small>
+                                    </a>
+                                {% else %}
+                                    <p class="mb-1 {% if not notification.is_read %}fw-bold{% endif %}">
+                                        <i class="fas fa-bell me-1"></i>{{ notification.title }}
+                                    </p>
+                                    <small class="text-muted">{{ notification.message|truncatechars:50 }}</small>
+                                {% endif %}
+                                <br>
                                 <small class="text-muted">
                                     <i class="fas fa-clock me-1"></i>
-                                    {{ activity.created_at|timesince }} 전
+                                    {{ notification.created_at|timesince }} 전
                                 </small>
                             </div>
                         </div>
@@ -233,9 +254,9 @@
                 {% else %}
                     <div class="empty-state py-3">
                         <div class="empty-icon">
-                            <i class="fas fa-clock"></i>
+                            <i class="fas fa-bell-slash"></i>
                         </div>
-                        <p class="empty-description mb-0">최근 활동이 없습니다.</p>
+                        <p class="empty-description mb-0">최근 알림이 없습니다.</p>
                     </div>
                 {% endif %}
             </div>

@@ -67,6 +67,7 @@ class TaskComment(models.Model):
     task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name='comments')
     author = models.ForeignKey(User, on_delete=models.CASCADE)
     content = models.TextField("댓글 내용")
+    file = models.FileField("첨부파일", upload_to='comment_files/', blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

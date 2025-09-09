@@ -1,0 +1,11 @@
+[Unit]
+Description=Run Gemini Notifications Check
+Requires=gemini-notifications.service
+
+[Timer]
+# 매일 오전 9시에 실행
+OnCalendar=*-*-* 09:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

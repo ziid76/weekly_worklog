@@ -35,49 +35,35 @@ class FirstLoginPasswordChangeForm(PasswordChangeForm):
         self.fields['old_password'].widget.attrs.update({'autofocus': True})
 
 class UserProfileForm(forms.ModelForm):
-    team_role = forms.ChoiceField(
-        choices=TeamMembership.ROLE_CHOICES,
-        initial='member',
-        label='팀 내 역할',
-        widget=forms.RadioSelect
-    )
-
     class Meta:
         model = UserProfile
-        fields = ['last_name_ko', 'first_name_ko', 'position', 'phone', 'team_role']
+        fields = ['last_name_ko', 'first_name_ko', 'position', 'phone', 'default_display_order']
         widgets = {
             'last_name_ko': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '홍'}),
             'first_name_ko': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '길동'}),
             'position': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '대리'}),
             'phone': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '010-1234-5678'}),
-            'team_role': forms.RadioSelect(attrs={'class': 'form-check-input'})
+            'default_display_order': forms.NumberInput(attrs={'class': 'form-control', 'min': 0, 'placeholder': '기본 표시 순서'}),
         }
         labels = {
             'last_name_ko': '성',
             'first_name_ko': '이름',
             'position': '직급',
             'phone': '전화번호',
-            'team_role': '팀 내 역할'
+            'default_display_order': '기본 표시 순서',
         }
 
 class UserUpdateForm(forms.ModelForm):
-    username = forms.CharField(required=True,
-        label='사용자 ID',
-        widget=forms.TextInput(attrs={'class': 'form-control', 'readonly': 'readonly'})
-    )
-
     class Meta:
         model = User
-        fields = ['username', 'first_name', 'last_name', 'email']
+        fields = ['first_name', 'last_name']
         widgets = {
             'first_name': forms.TextInput(attrs={'class': 'form-control'}),
             'last_name': forms.TextInput(attrs={'class': 'form-control'}),
-            'email': forms.EmailInput(attrs={'class': 'form-control'}),
         }
         labels = {
             'first_name': '이름 (영문)',
             'last_name': '성 (영문)',
-            'email': '이메일',
         }
 
 class UserCreationFormWithProfile(UserCreationForm):

@@ -8,12 +8,13 @@ class Worklog(models.Model):
     week_number = models.IntegerField("주차")
     this_week_work = models.TextField("이번 주 수행 업무", blank=True)
     next_week_plan = models.TextField("다음 주 계획", blank=True)
+    display_order = models.IntegerField("표시 순서", default=0, help_text="주간보고서에서의 표시 순서 (낮은 숫자가 먼저 표시)")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         unique_together = ('author', 'year', 'week_number')
-        ordering = ['-year', '-week_number']
+        ordering = ['display_order', 'author__profile__last_name_ko', 'author__username']
 
     def __str__(self):
         return f'{self.author.username} - {self.year}년 {self.week_number}주차'

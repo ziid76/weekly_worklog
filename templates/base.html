@@ -46,13 +46,26 @@
                         <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="notificationDropdown">
                             <li><h6 class="dropdown-header">최근 알림</h6></li>
                             {% for notification in recent_notifications %}
-                                <li><a class="dropdown-item" href="#"><i class="fas fa-info-circle me-2"></i>{{ notification.title }}</a></li>
+                                <li>
+                                    <a class="dropdown-item {% if not notification.is_read %}fw-bold{% endif %}" 
+                                       href="{% url 'notifications:mark_read' notification.id %}">
+                                        <i class="fas fa-info-circle me-2"></i>
+                                        {{ notification.title }}
+                                        {% if not notification.is_read %}
+                                            <span class="badge bg-primary ms-2">new</span>
+                                        {% endif %}
+                                    </a>
+                                </li>
                             {% empty %}
                                 <li><span class="dropdown-item text-muted">새로운 알림이 없습니다</span></li>
                             {% endfor %}
                             {% if recent_notifications %}
                                 <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item text-center" href="#">모든 알림 보기</a></li>
+                                <li>
+                                    <a class="dropdown-item text-center" href="#" onclick="markAllNotificationsRead()">
+                                        모든 알림 읽음으로 표시
+                                    </a>
+                                </li>
                             {% endif %}
                         </ul>
                     </div>
@@ -105,6 +118,9 @@
                         <li class="nav-item">
                             <a class="nav-link {% if 'task' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'task_list' %}">
                                 <i class="fas fa-tasks"></i>업무관리
+                                {% if in_progress_tasks_count > 0 %}
+                                    <span class="badge bg-success ms-1" style="font-size: 0.65em;">{{ in_progress_tasks_count }}</span>
+                                {% endif %}
                             </a>
                         </li>
                         <li class="nav-item">
@@ -159,7 +175,7 @@
                             </a>
                         </li>
 
-                        {% if user.profile.team_role == 'leader' or user.profile.team_role == 'admin' %}
+                        {% if user.profile.current_team_role == 'leader' or user.profile.current_team_role == 'admin' %}
                         <!-- 관리자 메뉴 -->
                         <li class="nav-item mt-3">
                             <h6 class="nav-header text-muted px-3 mb-2">
@@ -236,6 +252,43 @@
     <script src="{% static 'js/app.js' %}"></script>
 
 
+
+    <!-- CSRF 토큰 설정 -->
+    <script>
+        window.csrfToken = '{{ csrf_token }}';
+        $(document).ready(function() {
+            $.ajaxSetup({
+                beforeSend: function(xhr, settings) {
+                    if (!(/^http:.*/.test(settings.url) || /^https:.*/.test(settings.url))) {
+                        xhr.setRequestHeader("X-CSRFToken", $('[name=csrfmiddlewaretoken]').val() || window.csrfToken);
+                    }
+                }
+            });
+        });
+    </script>
+
+    <script>
+        // 모든 알림을 읽음으로 표시하는 함수
+        function markAllNotificationsRead() {
+            fetch('{% url "notifications:mark_all_read" %}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value || window.csrfToken,
+                    'Content-Type': 'application/json',
+                },
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // 페이지 새로고침하여 알림 카운트 업데이트
+                    location.reload();
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        }
+    </script>
 
     {% block extra_js %}{% endblock %}
 </body>

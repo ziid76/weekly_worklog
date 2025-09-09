@@ -21,7 +21,8 @@ urlpatterns = [
     path('reports/', include('reports.urls')),
     path('monitor/', include('monitor.urls')),
     path('service/', include('service.urls')),
-    # path('summernote/', include('django_summernote.urls')),  # 임시 비활성화
+    path('notifications/', include('notifications.urls')),
+    path('summernote/', include('django_summernote.urls')),
 ]
 
 # Media files serving in development

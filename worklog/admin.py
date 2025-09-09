@@ -19,7 +19,7 @@ class WorklogFileInline(admin.TabularInline):
 @admin.register(Worklog)
 class WorklogAdmin(admin.ModelAdmin):
     list_display = [
-        'week_display', 'author', 'month_week_display', 
+        'week_display', 'author', 'month_week_display', 'display_order',
         'content_preview', 'task_count', 'file_count', 'created_at'
     ]
     list_filter = ['year', 'week_number', 'created_at', 'author']
@@ -33,7 +33,7 @@ class WorklogAdmin(admin.ModelAdmin):
             'fields': ('year', 'week_number', 'author')
         }),
         ('워크로그 내용', {
-            'fields': ('this_week_work', 'next_week_plan')
+            'fields': ('this_week_work', 'next_week_plan', 'display_order')
         }),
         ('시간 정보', {
             'fields': ('created_at', 'updated_at'),
@@ -85,9 +85,12 @@ class WorklogAdmin(admin.ModelAdmin):
     def export_to_csv(self, request, queryset):
         import csv
         from django.http import HttpResponse
+        from urllib.parse import quote
         
         response = HttpResponse(content_type='text/csv')
-        response['Content-Disposition'] = 'attachment; filename="worklogs.csv"'
+        filename = 'worklogs.csv'
+        encoded_filename = quote(filename.encode('utf-8'))
+        response['Content-Disposition'] = f'attachment; filename*=UTF-8\'\'{encoded_filename}'
         response.write('\ufeff')  # UTF-8 BOM for Excel
         
         writer = csv.writer(response)

@@ -57,9 +57,10 @@ class CategoryForm(forms.ModelForm):
 class TaskCommentForm(forms.ModelForm):
     class Meta:
         model = TaskComment
-        fields = ['content']
+        fields = ['content', 'file']
         widgets = {
             'content': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': '댓글을 입력하세요'}),
+            'file': forms.FileInput(attrs={'class': 'form-control'}),
         }
 
 class TaskFileForm(forms.ModelForm):

@@ -2,15 +2,21 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from teams.models import TeamMembership
 
 class UserProfile(models.Model):
+    ROLE_CHOICES = [
+        ('member', '팀원'),
+        ('leader', '팀장'),
+        ('admin', '관리자'),
+    ]
+    
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     last_name_ko = models.CharField("성", max_length=10, blank=True)
     first_name_ko = models.CharField("이름", max_length=20, blank=True)
     position = models.CharField("직급", max_length=30, blank=True)
     phone = models.CharField("전화번호", max_length=20, blank=True)
-    team_role = models.CharField("팀 내 역할", max_length=20, choices=TeamMembership.ROLE_CHOICES, default='member', blank=True)
+    team_role = models.CharField("팀 내 역할", max_length=20, choices=ROLE_CHOICES, default='member', blank=True)
+    default_display_order = models.IntegerField("기본 표시 순서", default=0, help_text="주간보고서에서의 기본 표시 순서")
     is_first_login = models.BooleanField("첫 로그인 여부", default=True)
     password_changed_at = models.DateTimeField("패스워드 변경일", null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -77,7 +83,9 @@ class UserProfile(models.Model):
     
 
     @property
-    def team_role(self):
+    def current_team_role(self):
+        """현재 주요 팀에서의 역할 반환"""
+        from teams.models import TeamMembership
         team = TeamMembership.objects.filter(
             user=self.user, 
             team=self.primary_team
@@ -85,6 +93,7 @@ class UserProfile(models.Model):
         
         if team:
             return team.role
+        return self.team_role  # 기본값으로 모델 필드 값 반환
 
 
     @property

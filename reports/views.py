@@ -5,13 +5,18 @@ from django.views.generic import ListView, DetailView
 from django.contrib import messages
 from django.db.models import Q
 from django.core.paginator import Paginator
+from django.http import JsonResponse, HttpResponse
 from collections import defaultdict
 import datetime
-from django.http import JsonResponse
+import re
+from openpyxl import Workbook
+from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from .models import WeeklyReport, WeeklyReportComment, TeamWeeklyReport
 from worklog.models import Worklog
 from teams.models import Team, TeamMembership
 from .forms import WeeklyReportCommentForm, TeamWeeklyReportForm
+import html
+from django.utils.html import strip_tags
 
 class WeeklyReportListView(LoginRequiredMixin, ListView, ):
     model = WeeklyReport
@@ -39,12 +44,15 @@ def weekly_report_detail(request, id):
             year=report.year, 
             week_number=report.week_number,
             author__in=team_members
-        ).select_related('author')
+        ).select_related('author', 'author__profile').order_by('display_order', 'author__profile__last_name_ko', 'author__username')
         
 
     else:
         # 전체 워크로그
-        worklogs = Worklog.objects.filter(year=report.year, week_number=report.week_number).select_related('author')
+        worklogs = Worklog.objects.filter(
+            year=report.year, 
+            week_number=report.week_number
+        ).select_related('author', 'author__profile').order_by('display_order', 'author__profile__last_name_ko', 'author__username')
 
     
     # 댓글 처리
@@ -245,12 +253,15 @@ def worklog_summary_popup(request, year, week_number):
             year=year, 
             week_number=week_number,
             author__in=team_members
-        ).select_related('author')
+        ).select_related('author', 'author__profile').order_by('display_order', 'author__profile__last_name_ko', 'author__username')
         
         report = get_object_or_404(WeeklyReport, year=year, week_number=week_number, team=team)
     else:
         # 전체 워크로그
-        worklogs = Worklog.objects.filter(year=year, week_number=week_number).select_related('author')
+        worklogs = Worklog.objects.filter(
+            year=year, 
+            week_number=week_number
+        ).select_related('author', 'author__profile').order_by('display_order', 'author__profile__last_name_ko', 'author__username')
         report = get_object_or_404(WeeklyReport, year=year, week_number=week_number, team=None)
     
     # 작성자별 워크로그 그룹화
@@ -287,3 +298,119 @@ def confirm_closing_api(request):
             'success': False,
             'error': str(e)
         })
+
+@login_required
+def export_weekly_report_excel(request, id):
+    """주간 리포트 Excel 내보내기"""
+    report = get_object_or_404(WeeklyReport, id=id)
+    
+    # 워크로그 데이터 가져오기
+    worklogs = Worklog.objects.filter(
+        year=report.year,
+        week_number=report.week_number,
+        author__teams=report.team
+    ).select_related('author', 'author__profile').order_by('display_order', 'author__profile__last_name_ko', 'author__username')
+    
+    worklog_by_author = {}
+    for worklog in worklogs:
+        author_name = worklog.author.profile.display_name if worklog.author.profile else worklog.author.username
+        worklog_by_author[author_name] = worklog
+    
+    # Excel 워크북 생성
+    wb = Workbook()
+    ws = wb.active
+    ws.title = f"{report.year}년 {report.week_number}주차 주간보고서"
+    
+    # 스타일 정의
+    header_font = Font(bold=True, color="FFFFFF")
+    header_fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
+    border = Border(
+        left=Side(style='thin'),
+        right=Side(style='thin'),
+        top=Side(style='thin'),
+        bottom=Side(style='thin')
+    )
+    
+    # 헤더 작성
+    ws['A1'] = "담당자"
+    ws['B1'] = f"금주 실적 ({report.week_start_date.strftime('%m월 %d일')} ~ {report.week_end_date.strftime('%m월 %d일')})"
+    ws['C1'] = f"차주 계획 ({report.next_week_start_date.strftime('%m월 %d일')} ~ {report.next_week_end_date.strftime('%m월 %d일')})"
+    
+    # 헤더 스타일 적용
+    for col in ['A1', 'B1', 'C1']:
+        ws[col].font = header_font
+        ws[col].fill = header_fill
+        ws[col].alignment = Alignment(horizontal='center', vertical='center')
+        ws[col].border = border
+    
+    # 컬럼 너비 설정
+    ws.column_dimensions['A'].width = 15
+    ws.column_dimensions['B'].width = 50
+    ws.column_dimensions['C'].width = 50
+    
+    # 데이터 작성
+    row = 2
+    for author_name, worklog in worklog_by_author.items():
+        ws[f'A{row}'] = author_name
+        
+        # 마크다운 텍스트를 일반 텍스트로 변환
+        this_week_text = clean_markdown_text(worklog.this_week_work) if worklog.this_week_work else "작성된 내용이 없습니다."
+        next_week_text = clean_markdown_text(worklog.next_week_plan) if worklog.next_week_plan else "작성된 계획이 없습니다."
+        
+        ws[f'B{row}'] = this_week_text
+        ws[f'C{row}'] = next_week_text
+        
+        # 셀 스타일 적용
+        for col in ['A', 'B', 'C']:
+            cell = ws[f'{col}{row}']
+            cell.border = border
+            cell.alignment = Alignment(horizontal='left', vertical='top', wrap_text=True)
+        
+        row += 1
+    
+    # HTTP 응답 생성
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    
+    # 팀명과 월/주차 정보로 파일명 생성
+    team_name = report.team.name if report.team else "전체"
+    month = report.week_start_date.month
+    week_in_month = ((report.week_start_date.day - 1) // 7) + 1
+    filename = f"{team_name}_주간보고서_{month}월_{week_in_month}주차.xlsx"
+    
+    # 파일명 인코딩 처리 (한글 및 특수문자 지원)
+    from urllib.parse import quote
+    encoded_filename = quote(filename.encode('utf-8'))
+    response['Content-Disposition'] = f'attachment; filename*=UTF-8\'\'{encoded_filename}'
+    
+    wb.save(response)
+    return response
+
+def clean_markdown_text(text):
+    """마크다운 및 HTML 텍스트를 일반 텍스트로 변환"""
+    if not text:
+        return ""
+
+    text = text.replace("<br>", "\n").replace("<br/>", "\n").replace("<br />", "\n")
+    text = re.sub(r'</p\s*>', '\n', text, flags=re.IGNORECASE)
+
+    # HTML 태그 제거
+    text = strip_tags(text)
+    
+    # HTML 엔티티 디코딩
+    text = html.unescape(text)
+    
+    # 마크다운 문법 제거
+    text = re.sub(r'#{1,6}\s*', '', text)  # 헤더
+    text = re.sub(r'\*\*(.*?)\*\*', r'\1', text)  # 굵은 글씨
+    text = re.sub(r'\*(.*?)\*', r'\1', text)  # 기울임
+    text = re.sub(r'`(.*?)`', r'\1', text)  # 인라인 코드
+    text = re.sub(r'^\s*[-*+]\s+', '• ', text, flags=re.MULTILINE)  # 리스트
+    text = re.sub(r'^\s*\d+\.\s+', '• ', text, flags=re.MULTILINE)  # 번호 리스트
+    
+    # 연속된 공백과 줄바꿈 정리
+    text = re.sub(r'\n\s*\n', '\n', text)  # 빈 줄 제거
+    text = re.sub(r' +', ' ', text)  # 연속 공백 제거
+    
+    return text.strip()
