@@ -20,7 +20,7 @@
           <tr><th>검토자</th><td>{{ log.completed_by.profile.display_name}}</td><th>검토일시</th><td>{{ log.completed_at|date:'Y-m-d H:i' }}</td></tr>
           {% endif %}
           {% if log.approved %}
-          <tr><th>승인자</th><td>{{ log.approved_by.profile.display_name }}</td><th>승인일시</th><td>{{ log.completed_at|date:'Y-m-d H:i' }}</td></tr>
+          <tr><th>승인자</th><td>{{ log.approved_by.profile.display_name }}</td><th>승인일시</th><td>{{ log.approved_at|date:'Y-m-d H:i' }}</td></tr>
           {% endif %}
       </table>
     </div>
@@ -124,7 +124,7 @@
         {% if user == log.duty_user and not log.completed and ready %}
             <button type="button" class="scl-btn scl-btn-sm" data-bs-toggle="modal" data-bs-target="#completeModal">검토완료/승인요청</button>
         {% endif %}
-        {% if user.profile.team_role == 'leader' and log.completed and not log.approved %}    
+        {% if user.profile.current_team_role == 'leader' and log.completed and not log.approved %}    
             <button type="button" class="scl-btn scl-btn-sm" data-bs-toggle="modal" data-bs-target="#approveModal">승인</button>
         {% endif %}
     </div>
@@ -172,7 +172,7 @@
 
 <!-- 점검결과 Modal -->
 <div class="modal fade" id="dynamicResultModal" tabindex="-1" aria-labelledby="dynamicResultModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-lg modal-dialog-centered">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
     <div class="modal-content custom-modal">
       <div class="modal-header">
         <h5 class="modal-title fw-semibold" id="dynamicResultModalLabel">점검결과</h5>

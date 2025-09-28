@@ -129,10 +129,17 @@
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link {% if 'report' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'weekly_report_list' %}">
+                            <a class="nav-link {% if 'weekly' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'weekly_report_list' %}">
                                 <i class="fas fa-chart-line"></i>팀 주간보고
                             </a>
                         </li>
+                        {% if user.profile.current_team_role == 'leader' or user.profile.current_team_role == 'admin' %}
+                        <li class="nav-item">
+                            <a class="nav-link {% if 'history' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'personal_report_history' %}">
+                                <i class="fas fa-pen-to-square"></i>주간보고 이력조회
+                            </a>
+                        </li>
+                        {% endif %}
                         <li class="nav-item mt-3">
                             <h6 class="nav-header text-muted px-3 mb-2">
                                 <i class="fas fa-cog me-2"></i>Monitoring
@@ -156,7 +163,7 @@
                         </li>
                         <li class="nav-item">
                             <a class="nav-link {% if 'service_request_type_list' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'service_request_type_list' %}">
-                                <i class="fas fa-tasks"></i>SR 등록
+                                <i class="fas fa-keyboard"></i>SR 등록
                             </a>
                         </li>
                         <li class="nav-item">
@@ -166,12 +173,12 @@
                         </li>
                         <li class="nav-item">
                             <a class="nav-link {% if 'service_request_search' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'service_request_search' %}">
-                                <i class="fas fa-calendar-week"></i>SR 조회
+                                <i class="fas fa-font-awesome"></i>SR 조회
                             </a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link {% if 'service_request_report' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'service_request_report' %}">
-                                <i class="fas fa-calendar-week"></i>SR 리포트
+                                <i class="fas fa-newspaper"></i>SR 리포트
                             </a>
                         </li>
 

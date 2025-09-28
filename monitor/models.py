@@ -53,12 +53,12 @@ class OperationLog(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
-        verbose_name = "운영 로그"
-        verbose_name_plural = "운영 로그"
+        verbose_name = "시스템점검일지"
+        verbose_name_plural = "시스템점검일지"
         ordering = ['-date']
     
     def __str__(self):
-        return f"운영 로그 {self.date}"
+        return f"시스템점검일지 {self.date}"
     
     def check_complete(self):
         # Get all active categories

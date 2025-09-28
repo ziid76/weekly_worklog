@@ -1,0 +1,297 @@
+{% extends "base.html" %}
+{% load static %}
+{% load markdown_extras %}
+
+
+{% block page_name %}
+    주간업무 개인별 조회
+{% endblock %}
+{% block content %}
+<div class="container-fluid">
+    <h1 class="h3 mb-4 text-gray-800"></h1>
+
+    <!-- Filter Form -->
+    <div class="container-fluid border bg-white p-3 mb-4">
+        <form method="get" action="{% url 'personal_report_history' %}" class="row g-2 align-items-center w-100">
+            <div class="col-md-2 d-flex align-items-center gap-2">
+                <label for="user_id" class="fw-bold mb-0" style="white-space: nowrap; min-width: 50px;">팀원:</label>
+                <select name="user_id" id="user_id" class="form-select">
+                    <option value="">담당자선택</option>
+                    {% for member in team_members %}
+                    <option value="{{ member.id }}" {% if selected_user_id|stringformat:"s" == member.id|stringformat:"s" %}selected{% endif %}>
+                        {{ member.profile.display_name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-md-8 d-flex align-items-center gap-2">
+                <label for="start_year" class="fw-bold mb-0" style="white-space: nowrap; min-width: 50px;">기간:</label>
+                <select name="start_year" id="start_year" class="form-select">
+                    {% for year in year_choices %}
+                    <option value="{{ year }}" {% if start_year|stringformat:"s" == year|stringformat:"s" %}selected{% endif %}>{{ year }}년</option>
+                    {% endfor %}
+                </select>
+                <select name="start_week" id="start_week" class="form-select">
+                    {% for week in week_choices %}
+                    <option value="{{ week }}" {% if start_week|stringformat:"s" == week|stringformat:"s" %}selected{% endif %}>{{ week }}주차</option>
+                    {% endfor %}
+                </select>
+                
+                <span class="mx-1">~</span>
+                
+                <select name="end_year" id="end_year" class="form-select">
+                    {% for year in year_choices %}
+                    <option value="{{ year }}" {% if end_year|stringformat:"s" == year|stringformat:"s" %}selected{% endif %}>{{ year }}년</option>
+                    {% endfor %}
+                </select>
+                <select name="end_week" id="end_week" class="form-select">
+                    {% for week in week_choices %}
+                    <option value="{{ week }}" {% if end_week|stringformat:"s" == week|stringformat:"s" %}selected{% endif %}>{{ week }}주차</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-md-2 d-flex justify-content-end">
+                <button type="submit" class="btn btn-primary" style="min-width: 80px;">조회</button>
+            </div>
+        </form>
+    </div>
+
+    {% if selected_user_id and worklogs_data %}
+    <!-- Report Content -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+            <h6 class="m-0 font-weight-bold text-primary">조회 결과</h6>
+            <div>
+                <button id="btn-format1" class="btn btn-sm btn-primary active">금주/차주</button>
+                <button id="btn-format2" class="btn btn-sm btn-secondary">전주/금주</button>
+            </div>
+        </div>
+        <div class="card-body">
+            <!-- Format 1: This Week / Next Week -->
+            <div id="format1-table">
+                <div class="table-3-wrapper">
+                    <div class="cell cell-2 p-3 col-2 border bg-light text-center fw-bold">주차</div>
+                    <div class="cell cell-5 p-3 col-5 border bg-light text-center fw-bold">금주 실적</div>
+                    <div class="cell cell-default p-3 col-5 border bg-light text-center fw-bold">차주 계획</div>
+                    {% for data in worklogs_data %}
+                        <div class="cell cell-2 p-3 col-2 border">{{ data.worklog.year }}년 {{ data.worklog.week_number }}주차</div>
+                        <div class="cell cell-5 p-3 col-5 border">
+                            <div class="markdown-content">
+                                {% if data.worklog.this_week_work %}
+                                    {{ data.worklog.this_week_work|markdown }}
+                                {% else %}
+                                    <p class="text-muted">작성된 내용이 없습니다.</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="cell cell-default p-3 col-5 border">
+                            <div class="markdown-content">
+                                {% if data.worklog.next_week_plan %}
+                                    {{ data.worklog.next_week_plan|markdown }}
+                                {% else %}
+                                    <p class="text-muted">작성된 계획이 없습니다.</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Format 2: Previous Week Plan / This Week -->
+            <div id="format2-table" style="display: none;">
+                <div class="table-3-wrapper">
+                    <div class="cell cell-2 p-3 col-2 border bg-light text-center fw-bold">주차</div>
+                    <div class="cell cell-5 p-3 col-5 border bg-light text-center fw-bold">전주 계획</div>
+                    <div class="cell cell-default p-3 col-5 border bg-light text-center fw-bold">금주 실적</div>
+                     {% for data in worklogs_data %}
+                        <div class="cell cell-2 p-3 col-2 border">{{ data.worklog.year }}년 {{ data.worklog.week_number }}주차</div>
+                        <div class="cell cell-5 p-3 col-5 border">
+                            <div class="markdown-content">
+                                {% if data.previous_week_plan %}
+                                    {{ data.previous_week_plan|markdown }}
+                                {% else %}
+                                    <p class="text-muted">작성된 내용이 없습니다.</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="cell cell-default p-3 col-5 border">
+                            <div class="markdown-content">
+                                {% if data.worklog.this_week_work %}
+                                    {{ data.worklog.this_week_work|markdown }}
+                                {% else %}
+                                    <p class="text-muted">작성된 계획이 없습니다.</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% elif selected_user_id %}
+    <div class="alert alert-warning">선택된 기간에 해당하는 주간업무 데이터가 없습니다.</div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Format toggle buttons
+    const btnFormat1 = document.getElementById('btn-format1');
+    const btnFormat2 = document.getElementById('btn-format2');
+    const tableFormat1 = document.getElementById('format1-table');
+    const tableFormat2 = document.getElementById('format2-table');
+
+    if (btnFormat1 && btnFormat2 && tableFormat1 && tableFormat2) {
+        btnFormat1.addEventListener('click', function() {
+            tableFormat1.style.display = 'block';
+            tableFormat2.style.display = 'none';
+            btnFormat1.classList.add('active', 'btn-primary');
+            btnFormat1.classList.remove('btn-secondary');
+            btnFormat2.classList.remove('active', 'btn-primary');
+            btnFormat2.classList.add('btn-secondary');
+        });
+
+        btnFormat2.addEventListener('click', function() {
+            tableFormat1.style.display = 'none';
+            tableFormat2.style.display = 'block';
+            btnFormat2.classList.add('active', 'btn-primary');
+            btnFormat2.classList.remove('btn-secondary');
+            btnFormat1.classList.remove('active', 'btn-primary');
+            btnFormat1.classList.add('btn-secondary');
+        });
+    }
+
+    // Dynamic week dropdowns
+    const weekData = JSON.parse('{{ week_data_json|escapejs }}');
+    const startYearSelect = document.getElementById('start_year');
+    const startWeekSelect = document.getElementById('start_week');
+    const endYearSelect = document.getElementById('end_year');
+    const endWeekSelect = document.getElementById('end_week');
+
+    const selectedStartWeek = '{{ start_week }}';
+    const selectedEndWeek = '{{ end_week }}';
+
+    function updateWeekOptions(yearSelect, weekSelect, selectedWeek) {
+        const selectedYear = yearSelect.value;
+        const weeks = weekData[selectedYear] || [];
+        
+        // Clear existing options
+        weekSelect.innerHTML = '';
+
+        // Populate with new options
+        weeks.forEach(function(weekInfo) {
+            const option = document.createElement('option');
+            option.value = weekInfo.week;
+            option.textContent = weekInfo.display;
+            if (String(weekInfo.week) === selectedWeek) {
+                option.selected = true;
+            }
+            weekSelect.appendChild(option);
+        });
+    }
+
+    // Add event listeners
+    startYearSelect.addEventListener('change', function() {
+        updateWeekOptions(startYearSelect, startWeekSelect, null);
+    });
+
+    endYearSelect.addEventListener('change', function() {
+        updateWeekOptions(endYearSelect, endWeekSelect, null);
+    });
+
+    // Initial population on page load
+    updateWeekOptions(startYearSelect, startWeekSelect, selectedStartWeek);
+    updateWeekOptions(endYearSelect, endWeekSelect, selectedEndWeek);
+});
+</script>
+
+<style>
+.markdown-content {
+    line-height: 1.5;
+}
+
+.markdown-content h1, .markdown-content h2, .markdown-content h3 {
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.markdown-content h1 {
+    font-size: 1.25rem;
+    border-bottom: 2px solid #eee;
+    padding-bottom: 0.25rem;
+}
+
+.markdown-content h2 {
+    font-size: 1.1rem;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 0.2rem;
+}
+
+.markdown-content h3 {
+    font-size: 1rem;
+}
+
+.markdown-content ul, .markdown-content ol {
+    padding-left: 1.5rem;
+    margin: 0.5rem 0;
+}
+
+.markdown-content li {
+    margin-bottom: 0.25rem;
+}
+
+.markdown-content p {
+    margin-bottom: 0.5rem;
+}
+
+.markdown-content blockquote {
+    border-left: 4px solid #ddd;
+    padding-left: 0.75rem;
+    margin: 0.5rem 0;
+    color: #666;
+    font-style: italic;
+}
+
+.markdown-content code {
+    background-color: #f8f9fa;
+    padding: 0.1rem 0.3rem;
+    border-radius: 0.2rem;
+    font-size: 0.875em;
+}
+
+.markdown-content pre {
+    background-color: #f8f9fa;
+    padding: 0.75rem;
+    border-radius: 0.375rem;
+    overflow-x: auto;
+    font-size: 0.875em;
+}
+
+.markdown-content table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 0.5rem 0;
+    font-size: 0.875em;
+}
+
+.markdown-content table th,
+.markdown-content table td {
+    border: 1px solid #ddd;
+    padding: 0.375rem;
+    text-align: left;
+}
+
+.markdown-content table th {
+    background-color: #f8f9fa;
+    font-weight: bold;
+}
+
+.markdown-content input[type="checkbox"] {
+    margin-right: 0.375rem;
+}
+</style>
+{% endblock %}

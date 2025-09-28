@@ -14,6 +14,8 @@ from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from .models import WeeklyReport, WeeklyReportComment, TeamWeeklyReport
 from worklog.models import Worklog
 from teams.models import Team, TeamMembership
+from accounts.models import UserProfile
+from django.contrib.auth.models import User
 from .forms import WeeklyReportCommentForm, TeamWeeklyReportForm
 import html
 from django.utils.html import strip_tags
@@ -414,3 +416,98 @@ def clean_markdown_text(text):
     text = re.sub(r' +', ' ', text)  # 연속 공백 제거
     
     return text.strip()
+
+import json
+
+@login_required
+def personal_report_history(request):
+    """ 개인별 주간업무 이력 조회 """
+    # 현재 로그인한 유저의 팀 정보 가져오기
+    try:
+        primary_team = request.user.profile.primary_team
+        team_members = User.objects.filter(teams=primary_team).select_related('profile').order_by('profile__last_name_ko', 'profile__first_name_ko')
+    except AttributeError:
+        # 팀 정보가 없는 경우 (예: 관리자)
+        primary_team = None
+        team_members = User.objects.all().select_related('profile').order_by('profile__last_name_ko', 'profile__first_name_ko')
+
+    # 필터링 파라미터
+    selected_user_id = request.GET.get('user_id')
+    
+    # 날짜 기본값 설정 (최근 5주)
+    today = datetime.date.today()
+    end_year_default, end_week_default, _ = today.isocalendar()
+    start_date_default = today - datetime.timedelta(weeks=4)
+    start_year_default, start_week_default, _ = start_date_default.isocalendar()
+
+    start_year = request.GET.get('start_year', str(start_year_default))
+    start_week = request.GET.get('start_week', str(start_week_default))
+    end_year = request.GET.get('end_year', str(end_year_default))
+    end_week = request.GET.get('end_week', str(end_week_default))
+
+    # 연도 선택 옵션
+    current_year = datetime.date.today().year
+    year_choices = list(range(current_year - 3, current_year + 1))
+
+    # 연도별 주차 정보 생성 (for JavaScript)
+    week_data = {}
+    for year in year_choices:
+        week_data[year] = []
+        for week_num in range(1, 54):
+            try:
+                week_start = datetime.date.fromisocalendar(year, week_num, 1)
+                # 주차의 마지막 날이 다음 해로 넘어가는 경우 방지
+                if week_start.year != year and week_num > 1:
+                    continue
+                week_end = week_start + datetime.timedelta(days=4)
+                display_text = f"{week_num}주차 ({week_start.strftime('%m.%d')}~{week_end.strftime('%m.%d')})"
+                week_data[year].append({'week': week_num, 'display': display_text})
+            except ValueError:
+                # 53주차가 없는 해 처리
+                break
+
+    worklogs_data = []
+    if selected_user_id:
+        # worklog 쿼리
+        worklogs = Worklog.objects.filter(
+            author_id=selected_user_id,
+        ).order_by('-year', '-week_number')
+
+        # 기간 필터링
+        worklogs = worklogs.filter(
+            Q(year__gt=int(start_year)) |
+            Q(year=int(start_year), week_number__gte=int(start_week))
+        )
+        worklogs = worklogs.filter(
+            Q(year__lt=int(end_year)) |
+            Q(year=int(end_year), week_number__lte=int(end_week))
+        )
+
+        for log in worklogs:
+            # 전주 계획을 가져오기
+            prev_week_date = log.week_start_date - datetime.timedelta(days=7)
+            prev_year, prev_week, _ = prev_week_date.isocalendar()
+            
+            previous_worklog = Worklog.objects.filter(
+                author_id=selected_user_id,
+                year=prev_year,
+                week_number=prev_week
+            ).first()
+            
+            worklogs_data.append({
+                'worklog': log,
+                'previous_week_plan': previous_worklog.next_week_plan if previous_worklog else ''
+            })
+
+    context = {
+        'team_members': team_members,
+        'year_choices': year_choices,
+        'week_data_json': json.dumps(week_data),
+        'selected_user_id': selected_user_id,
+        'start_year': start_year,
+        'start_week': start_week,
+        'end_year': end_year,
+        'end_week': end_week,
+        'worklogs_data': worklogs_data,
+    }
+    return render(request, 'reports/personal_report_history.html', context)

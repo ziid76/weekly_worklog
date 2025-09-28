@@ -228,6 +228,44 @@ def check_worklog_reminders():
                 message=f'금주 주간보고를 아직 작성하지 않으셨습니다. 이번 주 업무 내용을 기록해주세요.'
             )
 
+def check_monitor_reminders():
+    """
+    시스템점검일지 미작성 알림
+    (매일 오전 9시에 실행)
+    """
+    from monitor.models import OperationLog
+    from django.utils import timezone
+    from common.message_views import send_kakao_message
+    from django.conf import settings
+
+    today = timezone.localdate()
+    start_date = today - timedelta(days=30)  
+    end_date = today - timedelta(days=1) 
+    qs = (
+        OperationLog.objects
+        .filter(completed=False, date__range=(start_date, end_date))
+        .select_related("duty_user")
+        .order_by("-date", "-created_at")
+    )
+    
+    for row in qs:
+            # 카카오톡 알림 전송
+            if row.duty_user.email:
+                try:
+                    task_url = f"{getattr(settings, 'SITE_URL', 'http://localhost:8000')}/monitor/ops/logs/{row.id}/detail"
+                    kakao_message = f"📋시스템 점검일지 작성이 필요합니다.\n\n점검일자: {row.date.strftime('%Y-%m-%d')}\n\n담당자 : {row.duty_user.profile.display_name or row.duty_user.username}"
+                    
+                    send_kakao_message(
+                        email=row.duty_user.email,
+                        text=kakao_message,
+                        message_type="box",
+                        button_text="점검일지 바로가기",
+                        button_url=task_url
+                    )
+                except Exception as e:
+                    print(f"카카오톡 알림 전송 실패: {e}")
+
+
 def mark_notifications_as_read(user, notification_ids=None):
     """
     알림을 읽음으로 표시

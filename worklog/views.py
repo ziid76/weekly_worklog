@@ -13,6 +13,82 @@ from .forms import WorklogForm, WorklogFileForm, WorklogTaskForm
 from task.models import Task
 import json
 
+@login_required
+def my_worklog_history(request):
+    """ 로그인한 사용자의 주간업무 이력 조회 """
+    # 날짜 기본값 설정 (최근 5주)
+    today = datetime.date.today()
+    end_year_default, end_week_default, _ = today.isocalendar()
+    start_date_default = today - datetime.timedelta(weeks=4)
+    start_year_default, start_week_default, _ = start_date_default.isocalendar()
+
+    start_year = request.GET.get('start_year', str(start_year_default))
+    start_week = request.GET.get('start_week', str(start_week_default))
+    end_year = request.GET.get('end_year', str(end_year_default))
+    end_week = request.GET.get('end_week', str(end_week_default))
+
+    # 연도 선택 옵션
+    current_year = datetime.date.today().year
+    year_choices = list(range(current_year - 3, current_year + 1))
+
+    # 연도별 주차 정보 생성 (for JavaScript)
+    week_data = {}
+    for year in year_choices:
+        week_data[year] = []
+        for week_num in range(1, 54):
+            try:
+                week_start = datetime.date.fromisocalendar(year, week_num, 1)
+                if week_start.year != year and week_num > 1:
+                    continue
+                week_end = week_start + datetime.timedelta(days=4)
+                display_text = f"{week_num}주차 ({week_start.strftime('%m.%d')}~{week_end.strftime('%m.%d')})"
+                week_data[year].append({'week': week_num, 'display': display_text})
+            except ValueError:
+                break
+
+    worklogs_data = []
+    worklogs = Worklog.objects.filter(
+        author=request.user
+    ).order_by('-year', '-week_number')
+
+    # 기간 필터링
+    worklogs = worklogs.filter(
+        Q(year__gt=int(start_year)) |
+        Q(year=int(start_year), week_number__gte=int(start_week))
+    )
+    worklogs = worklogs.filter(
+        Q(year__lt=int(end_year)) |
+        Q(year=int(end_year), week_number__lte=int(end_week))
+    )
+
+    for log in worklogs:
+        prev_week_date = log.week_start_date - datetime.timedelta(days=7)
+        prev_year, prev_week, _ = prev_week_date.isocalendar()
+        
+        previous_worklog = Worklog.objects.filter(
+            author=request.user,
+            year=prev_year,
+            week_number=prev_week
+        ).first()
+        
+        worklogs_data.append({
+            'worklog': log,
+            'previous_week_plan': previous_worklog.next_week_plan if previous_worklog else ''
+        })
+
+    context = {
+        'year_choices': year_choices,
+        'week_data_json': json.dumps(week_data),
+        'start_year': start_year,
+        'start_week': start_week,
+        'end_year': end_year,
+        'end_week': end_week,
+        'worklogs_data': worklogs_data,
+    }
+    return render(request, 'worklog/my_worklog_history.html', context)
+
+
+
 class WorklogListView(LoginRequiredMixin, ListView):
     template_name = 'worklog/worklog_list.html'
     context_object_name = 'weeks_data'

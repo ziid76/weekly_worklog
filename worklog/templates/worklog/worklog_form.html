@@ -168,8 +168,8 @@
                         </a>
                         <small class="text-muted d-block">{{ worklog.created_at|date:"m/d" }}</small>
                     </div>
-                    <a href="{% url 'worklog_update' worklog.pk %}" class="btn btn-sm btn-outline-secondary">
-                        <i class="fas fa-edit"></i>
+                    <a href="{% url 'worklog_detail' worklog.pk %}" class="btn btn-sm btn-outline-secondary">
+                        <i class="fas fa-arrow-up-right-from-square"></i>
                     </a>
                 </div>
                 {% endfor %}
