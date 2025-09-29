@@ -102,6 +102,22 @@ class WeeklyReportComment(models.Model):
     def __str__(self):
         return f"{self.report} - {self.author.username}"
 
+
+class WeeklyReportPersonalComment(models.Model):
+    """담당자별 업무 코멘트"""
+    report = models.ForeignKey(WeeklyReport, on_delete=models.CASCADE, related_name='personal_comments')
+    target_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='personal_report_comments')
+    content = models.TextField("업무 코멘트")
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='created_personal_report_comments')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f"{self.report} - {self.target_user.username}"
+
+
 class TeamWeeklyReport(models.Model):
     """팀별 주간 리포트"""
     team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name='team_weekly_reports')

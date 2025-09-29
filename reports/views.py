@@ -11,14 +11,15 @@ import datetime
 import re
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
-from .models import WeeklyReport, WeeklyReportComment, TeamWeeklyReport
+from .models import WeeklyReport, WeeklyReportComment, TeamWeeklyReport, WeeklyReportPersonalComment
 from worklog.models import Worklog
 from teams.models import Team, TeamMembership
 from accounts.models import UserProfile
 from django.contrib.auth.models import User
-from .forms import WeeklyReportCommentForm, TeamWeeklyReportForm
+from .forms import WeeklyReportCommentForm, TeamWeeklyReportForm, WeeklyReportPersonalCommentForm
 import html
 from django.utils.html import strip_tags
+from django.template.loader import render_to_string
 
 class WeeklyReportListView(LoginRequiredMixin, ListView, ):
     model = WeeklyReport
@@ -32,8 +33,6 @@ class WeeklyReportListView(LoginRequiredMixin, ListView, ):
 @login_required
 def weekly_report_detail(request, id):
     """주간 리포트 상세 보기"""
-    team_id = request.user.profile.primary_team.id
-    print(team_id)
     report = get_object_or_404(WeeklyReport, id=id)
     
     
@@ -69,31 +68,106 @@ def weekly_report_detail(request, id):
             return redirect('weekly_report_detail', id=report.id)
     else:
         form = WeeklyReportCommentForm()
-    
-    # 작성자별 워크로그 그룹화
-    worklog_by_author = {}
+
+    personal_comment_form = WeeklyReportPersonalCommentForm()
+
+    # 작성자별 워크로그 및 업무 코멘트 그룹화
+    personal_comments = report.personal_comments.select_related(
+        'target_user__profile',
+        'created_by__profile'
+    ).order_by('created_at')
+
+    comments_by_user = defaultdict(list)
+    for comment in personal_comments:
+        comments_by_user[comment.target_user_id].append(comment)
+
+    worklog_entries = []
     for worklog in worklogs:
-        # UserProfile이 있으면 한국식 이름 사용, 없으면 username 사용
-        try:
-            author_name = worklog.author.profile.get_korean_name
-        except:
-            author_name = worklog.author.username
-        
-        worklog_by_author[author_name] = worklog
-    
+        author_profile = getattr(worklog.author, 'profile', None)
+        author_name = author_profile.get_korean_name if author_profile else worklog.author.username
+
+        worklog_entries.append({
+            'author': worklog.author,
+            'author_id': worklog.author_id,
+            'author_name': author_name,
+            'worklog': worklog,
+            'personal_comments': comments_by_user.get(worklog.author_id, []),
+        })
+
+    user_role = None
+    if hasattr(request.user, 'profile'):
+        user_role = request.user.profile.current_team_role
+
+    can_manage_personal_comments = request.user.is_staff or request.user.is_superuser or user_role in ('leader', 'admin')
+
     context = {
         'report': report,
         'worklogs': worklogs,
-        'worklog_by_author': worklog_by_author,
+        'worklog_entries': worklog_entries,
+        'worklog_count': len(worklog_entries),
         'form': form,
-        'comments': report.comments.all(),
+        'comments': report.comments.select_related('author__profile').all(),
+        'personal_comment_form': personal_comment_form,
+        'can_manage_personal_comments': can_manage_personal_comments,
         'year': report.year,
         'week_number': report.week_number,
         'selected_team': report.team,
     }
-    print(report.team)
-    
     return render(request, 'reports/weekly_report_detail.html', context)
+
+
+@login_required
+def add_personal_comment(request, report_id):
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': '잘못된 요청입니다.'}, status=405)
+
+    report = get_object_or_404(WeeklyReport, id=report_id)
+
+    user_role = None
+    if hasattr(request.user, 'profile'):
+        user_role = request.user.profile.current_team_role
+
+    if not (request.user.is_staff or request.user.is_superuser or user_role in ('leader', 'admin')):
+        return JsonResponse({'success': False, 'error': '업무 코멘트를 작성할 권한이 없습니다.'}, status=403)
+
+    target_user_id = request.POST.get('target_user_id')
+    if not target_user_id:
+        return JsonResponse({'success': False, 'error': '대상 사용자가 지정되지 않았습니다.'}, status=400)
+
+    target_user = get_object_or_404(User, id=target_user_id)
+
+    if not Worklog.objects.filter(
+        year=report.year,
+        week_number=report.week_number,
+        author=target_user
+    ).exists():
+        return JsonResponse({'success': False, 'error': '해당 사용자의 주간업무가 존재하지 않습니다.'}, status=400)
+
+    form = WeeklyReportPersonalCommentForm(request.POST)
+    if not form.is_valid():
+        return JsonResponse({'success': False, 'error': '코멘트 내용을 입력해주세요.'}, status=400)
+
+    personal_comment = form.save(commit=False)
+    personal_comment.report = report
+    personal_comment.target_user = target_user
+    personal_comment.created_by = request.user
+    personal_comment.save()
+
+    updated_comments = report.personal_comments.filter(
+        target_user=target_user
+    ).select_related('created_by__profile').order_by('created_at')
+
+    comments_html = render_to_string(
+        'reports/partials/personal_comment_list.html',
+        {'comments': updated_comments},
+        request=request
+    )
+
+    return JsonResponse({
+        'success': True,
+        'html': comments_html,
+        'target_user_id': target_user_id,
+    })
 
 @login_required
 def generate_weekly_report(request):
