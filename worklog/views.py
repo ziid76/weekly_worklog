@@ -8,10 +8,46 @@ from django.contrib import messages
 from django.http import HttpResponse, JsonResponse
 from django.db.models import Q
 from .models import Worklog, WorklogFile, WorklogTask
-from reports.models import WeeklyReport
+from reports.models import WeeklyReport, WeeklyReportPersonalComment
 from .forms import WorklogForm, WorklogFileForm, WorklogTaskForm
 from task.models import Task
 import json
+
+
+def get_previous_personal_comment_data(user, year, week_number):
+    """지정된 주차의 전 주에 작성된 개인 업무 코멘트 정보를 반환"""
+    try:
+        current_week_start = datetime.date.fromisocalendar(year, week_number, 1)
+    except ValueError:
+        return None, WeeklyReportPersonalComment.objects.none()
+
+    previous_week_start = current_week_start - datetime.timedelta(days=7)
+    prev_year, prev_week, _ = previous_week_start.isocalendar()
+
+    report_qs = WeeklyReport.objects.filter(year=prev_year, week_number=prev_week)
+
+    primary_team = None
+    if hasattr(user, 'profile'):
+        primary_team = user.profile.primary_team
+
+    report = None
+    if primary_team:
+        report = report_qs.filter(team=primary_team).first()
+
+    if not report:
+        report = report_qs.filter(team__isnull=True).first()
+
+    if not report:
+        report = report_qs.first()
+
+    if not report:
+        return None, WeeklyReportPersonalComment.objects.none()
+
+    comments = report.personal_comments.filter(
+        target_user=user
+    ).select_related('created_by__profile').order_by('-created_at')
+
+    return report, comments
 
 @login_required
 def my_worklog_history(request):
@@ -217,9 +253,17 @@ class WorklogCreateView(LoginRequiredMixin, CreateView):
         context['title'] = month_week_display
         context['start_date'] = start_date
         context['end_date'] = end_date
-        
+
         # 최근 3개의 worklog 추출
         context['recent_worklogs'] = Worklog.objects.filter(author=self.request.user).order_by('-year', '-week_number')[:3]
+
+        previous_report, previous_comments = get_previous_personal_comment_data(
+            self.request.user,
+            self.kwargs.get('year'),
+            self.kwargs.get('week_number')
+        )
+        context['previous_comment_report'] = previous_report
+        context['previous_personal_comments'] = previous_comments
 
         return context
 
@@ -416,7 +460,15 @@ class WorklogUpdateView(LoginRequiredMixin, UpdateView):
         context['recent_worklogs'] = Worklog.objects.filter(
             author=self.request.user
         ).exclude(pk=self.object.pk).order_by('-year', '-week_number')[:5]
-        
+
+        previous_report, previous_comments = get_previous_personal_comment_data(
+            self.request.user,
+            self.object.year,
+            self.object.week_number
+        )
+        context['previous_comment_report'] = previous_report
+        context['previous_personal_comments'] = previous_comments
+
         return context
 
     def form_valid(self, form):

@@ -10,6 +10,7 @@ urlpatterns = [
     path('create/', views.generate_weekly_report, name='weekly_report_create'),
     path('generate/', views.generate_weekly_report, name='generate_weekly_report'),
     path('weekly/<int:id>/', views.weekly_report_detail, name='weekly_report_detail'),
+    path('weekly/<int:report_id>/personal-comments/', views.add_personal_comment, name='add_personal_comment'),
     path('weekly/<int:id>/excel/', views.export_weekly_report_excel, name='export_weekly_report_excel'),
     path('confirm-closing/', views.confirm_closing_api, name='confirm_closing_api'),
     path('team-summary/', views.team_worklog_summary, name='team_worklog_summary'),

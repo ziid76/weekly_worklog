@@ -44,7 +44,7 @@
                         <strong>기간:</strong> {{ report.week_start_date|date:"Y년 m월 d일" }} ~ {{ report.week_end_date|date:"Y년 m월 d일" }}
                     </div>
                     <div class="col-md-4">
-                        <strong>작성자 수:</strong> {{ worklog_by_author|length }}명
+                        <strong>작성자 수:</strong> {{ worklog_count }}명
                     </div>
                     <div class="col-md-4">
                         <strong>생성일:</strong> {{ report.created_at|date:"Y-m-d H:i" }}
@@ -69,58 +69,84 @@
                         <div class="cell cell-5 p-3 col-5 border bg-light text-center fw-bold">금주 실적 ({{ report.week_start_date|date:"m월 d일" }} ~ {{ report.week_end_date|date:"m월 d일" }})</div>
                         <div class="cell cell-default p-3 col-5 border bg-light text-center fw-bold">차주 계획 ({{ report.next_week_start_date|date:"m월 d일" }} ~ {{ report.next_week_end_date|date:"m월 d일" }})</div>
 
-        {% if worklog_by_author %}
-            {% for author_name, worklog in worklog_by_author.items %}        
-                        <div class="cell cell-2 p-3 col-2 border ">
-                            <div id="this-week-rendered" class="markdown-content ">
-                                <i class="fas fa-user"></i> {{ author_name }}
+        {% if worklog_entries %}
+            {% for entry in worklog_entries %}
+                        <div class="cell cell-2 p-3 col-2 border">
+                            <div class="d-flex flex-column gap-1">
+                                <span class="fw-semibold"><i class="fas fa-user me-1"></i>{{ entry.author_name }}</span>
+                                {% if entry.author.profile.position %}
+                                    <small class="text-muted">{{ entry.author.profile.position }}</small>
+                                {% endif %}
+                                {% if entry.author.profile.department_display %}
+                                    <small class="text-muted">{{ entry.author.profile.department_display }}</small>
+                                {% endif %}
                             </div>
                         </div>
-                        <div class="cell cell-5 p-3 col-5 border ">
-                            <div id="this-week-rendered" class="markdown-content rendered-content">
-                            {% if worklog.this_week_work %}
-                                {{ worklog.this_week_work|markdown }}
+                        <div class="cell cell-5 p-3 col-5 border">
+                            <div class="markdown-content rendered-content">
+                            {% if entry.worklog.this_week_work %}
+                                {{ entry.worklog.this_week_work|markdown }}
                             {% else %}
                                 <p class="text-muted">작성된 내용이 없습니다.</p>
                             {% endif %}
                             </div>
-                            <pre id="this-week-raw" class="d-none">{% if worklog.this_week_work %}{{ worklog.this_week_work }}{% endif %}</pre>
-                        </div>                    
-                        <div class="cell cell-default p-3 col-5 border ">                                        
-                            <div id="next-week-rendered" class="markdown-content">
-                            {% if worklog.next_week_plan %}
-                                {{ worklog.next_week_plan|markdown }}
+                            <pre class="d-none">{% if entry.worklog.this_week_work %}{{ entry.worklog.this_week_work }}{% endif %}</pre>
+                        </div>
+                        <div class="cell cell-default p-3 col-5 border">
+                            <div class="markdown-content">
+                            {% if entry.worklog.next_week_plan %}
+                                {{ entry.worklog.next_week_plan|markdown }}
                             {% else %}
                                 <p class="text-muted">작성된 계획이 없습니다.</p>
                             {% endif %}
                             </div>
-                            <pre id="next-week-raw" class="d-none">{% if worklog.next_week_plan %}{{ worklog.next_week_plan }}{% endif %}</pre>
+                            <pre class="d-none">{% if entry.worklog.next_week_plan %}{{ entry.worklog.next_week_plan }}{% endif %}</pre>
                         </div>
-                    
+                        <div class="cell cell-12 p-3 col-12 border-top-0 border">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="fw-semibold"><i class="fas fa-comment-dots me-2"></i>업무 코멘트</span>
+                                {% if can_manage_personal_comments %}
+                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="openPersonalCommentModal({{ entry.author_id }}, '{{ entry.author_name|escapejs }}')">
+                                    <i class="fas fa-plus me-1"></i>코멘트 추가
+                                </button>
+                                {% endif %}
+                            </div>
+                            <div class="mt-2 personal-comment-list" id="personal-comments-{{ entry.author_id }}">
+                                {% include 'reports/partials/personal_comment_list.html' with comments=entry.personal_comments %}
+                            </div>
+                        </div>
+
             {% endfor %}
+        {% else %}
+                        <div class="cell cell-12 p-5 col-12 border text-center text-muted">
+                            작성된 워크로그가 없습니다.
+                        </div>
         {% endif %}
                     </div>
             </div>
             <div class="d-block d-md-none">
-        {% if worklog_by_author %}
-            {% for author_name, worklog in worklog_by_author.items %}
+        {% if worklog_entries %}
+            {% for entry in worklog_entries %}
                 <div class="border rounded p-3 mb-3 table-3-mobile">
                     <div class="row">
                         <div class="col-md-2">
                             <h6 class="text-primary">
-                                <i class="fas fa-user"></i> {{ author_name }}
+                                <i class="fas fa-user"></i> {{ entry.author_name }}
                             </h6>
-                            {% if worklog.author.profile.department %}
-                                <small class="text-muted">{{ worklog.author.profile.department }}</small>
+                            {% if entry.author.profile.position %}
+                                <small class="text-muted d-block">{{ entry.author.profile.position }}</small>
+                            {% endif %}
+                            {% if entry.author.profile.department_display %}
+                                <small class="text-muted">{{ entry.author.profile.department_display }}</small>
                             {% endif %}
                         </div>
                         <div class="col-md-5">
                             <strong class="text-success">금주 실적:</strong>
                             <!-- 마크다운 렌더링 뷰 -->
                             <div class="mt-2 p-2 bg-light rounded rendered-content">
-                                {% if worklog.this_week_work %}
+                                {% if entry.worklog.this_week_work %}
                                     <div class="markdown-content">
-                                        {{ worklog.this_week_work|markdown }}
+                                        {{ entry.worklog.this_week_work|markdown }}
                                     </div>
                                 {% else %}
                                     <span class="text-muted">작성된 내용이 없습니다.</span>
@@ -128,16 +154,16 @@
                             </div>
                             <!-- 원본 텍스트 뷰 (숨김) -->
                             <div class="mt-2 p-2 bg-light rounded raw-content d-none">
-                                <pre class="mb-0"><code>{{ worklog.this_week_work|default:"작성된 내용이 없습니다." }}</code></pre>
+                                <pre class="mb-0"><code>{{ entry.worklog.this_week_work|default:"작성된 내용이 없습니다." }}</code></pre>
                             </div>
                         </div>
                         <div class="col-md-5">
                             <strong class="text-success">차주 계획:</strong>
                             <!-- 마크다운 렌더링 뷰 -->
                             <div class="mt-2 p-2 bg-light rounded rendered-content">
-                                {% if worklog.next_week_plan %}
+                                {% if entry.worklog.next_week_plan %}
                                     <div class="markdown-content">
-                                        {{ worklog.next_week_plan|markdown }}
+                                        {{ entry.worklog.next_week_plan|markdown }}
                                     </div>
                                 {% else %}
                                     <span class="text-muted">작성된 계획이 없습니다.</span>
@@ -145,7 +171,20 @@
                             </div>
                             <!-- 원본 텍스트 뷰 (숨김) -->
                             <div class="mt-2 p-2 bg-light rounded raw-content d-none">
-                                <pre class="mb-0"><code>{{ worklog.next_week_plan|default:"작성된 계획이 없습니다." }}</code></pre>
+                                <pre class="mb-0"><code>{{ entry.worklog.next_week_plan|default:"작성된 계획이 없습니다." }}</code></pre>
+                            </div>
+                        </div>
+                        <div class="col-12 mt-3">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <strong><i class="fas fa-comment-dots me-2"></i>업무 코멘트</strong>
+                                {% if can_manage_personal_comments %}
+                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="openPersonalCommentModal({{ entry.author_id }}, '{{ entry.author_name|escapejs }}')">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                                {% endif %}
+                            </div>
+                            <div class="mt-2 personal-comment-list" id="personal-comments-{{ entry.author_id }}">
+                                {% include 'reports/partials/personal_comment_list.html' with comments=entry.personal_comments %}
                             </div>
                         </div>
                     </div>
@@ -204,6 +243,40 @@
     </div>
 </div>
 
+{% if can_manage_personal_comments %}
+<div class="modal fade" id="personalCommentModal" tabindex="-1" aria-labelledby="personalCommentModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form id="personalCommentForm" method="post">
+                {% csrf_token %}
+                <input type="hidden" name="target_user_id" id="personalCommentTargetInput">
+                <div class="modal-header">
+                    <div>
+                        <h5 class="modal-title" id="personalCommentModalLabel">
+                            <i class="fas fa-comment-dots me-2"></i>업무 코멘트 작성
+                        </h5>
+                        <small class="text-muted" id="personalCommentModalLabelName"></small>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-danger d-none" id="personalCommentError"></div>
+                    <div class="alert alert-success d-none" id="personalCommentSuccess"></div>
+                    <div class="mb-3">
+                        {{ personal_comment_form.content }}
+                    </div>
+                    <small class="text-muted"><i class="fas fa-info-circle me-1"></i>등록된 코멘트는 다음 주 담당자의 주간업무 작성 시 안내로 표시됩니다.</small>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">취소</button>
+                    <button type="submit" class="btn btn-primary">저장</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <div class="mt-4">
     <a href="{% url 'weekly_report_list' %}" class="btn btn-secondary">
         <i class="fas fa-arrow-left"></i> 목록으로
@@ -214,6 +287,124 @@
 {% block extra_js %}
 <script>
 let isRawView = false;
+
+{% if can_manage_personal_comments %}
+let personalCommentModal = null;
+const personalCommentModalElement = document.getElementById('personalCommentModal');
+const personalCommentForm = document.getElementById('personalCommentForm');
+const personalCommentError = document.getElementById('personalCommentError');
+const personalCommentSuccess = document.getElementById('personalCommentSuccess');
+const personalCommentTargetInput = document.getElementById('personalCommentTargetInput');
+const personalCommentContent = document.getElementById('personalCommentContent');
+
+function resetPersonalCommentFeedback() {
+    if (personalCommentError) {
+        personalCommentError.classList.add('d-none');
+        personalCommentError.textContent = '';
+    }
+    if (personalCommentSuccess) {
+        personalCommentSuccess.classList.add('d-none');
+        personalCommentSuccess.textContent = '';
+    }
+}
+
+function showPersonalCommentFeedback(type, message) {
+    if (type === 'error' && personalCommentError) {
+        personalCommentError.textContent = message;
+        personalCommentError.classList.remove('d-none');
+    }
+    if (type === 'success' && personalCommentSuccess) {
+        personalCommentSuccess.textContent = message;
+        personalCommentSuccess.classList.remove('d-none');
+    }
+}
+
+function openPersonalCommentModal(userId, authorName) {
+    if (!personalCommentModalElement || !personalCommentForm) {
+        return;
+    }
+
+    if (!personalCommentModal) {
+        personalCommentModal = new bootstrap.Modal(personalCommentModalElement);
+    }
+
+    resetPersonalCommentFeedback();
+    const labelName = document.getElementById('personalCommentModalLabelName');
+    if (labelName) {
+        labelName.textContent = authorName;
+    }
+    if (personalCommentTargetInput) {
+        personalCommentTargetInput.value = userId;
+    }
+    if (personalCommentContent) {
+        personalCommentContent.value = '';
+    }
+
+    personalCommentModal.show();
+}
+
+if (personalCommentModalElement) {
+    personalCommentModalElement.addEventListener('hidden.bs.modal', () => {
+        if (personalCommentForm) {
+            personalCommentForm.reset();
+        }
+        resetPersonalCommentFeedback();
+    });
+}
+
+if (personalCommentForm) {
+    personalCommentForm.addEventListener('submit', function (event) {
+        event.preventDefault();
+        resetPersonalCommentFeedback();
+
+        const submitButton = personalCommentForm.querySelector('button[type="submit"]');
+        const originalText = submitButton ? submitButton.innerHTML : '';
+        if (submitButton) {
+            submitButton.disabled = true;
+            submitButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>저장 중';
+        }
+
+        const formData = new FormData(personalCommentForm);
+
+        fetch('{% url "add_personal_comment" report.id %}', {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': personalCommentForm.querySelector('input[name="csrfmiddlewaretoken"]').value
+            },
+            body: formData
+        })
+            .then(response => response.json().then(data => ({ ok: response.ok, data })))
+            .then(({ ok, data }) => {
+                if (!ok || !data.success) {
+                    showPersonalCommentFeedback('error', data && data.error ? data.error : '코멘트 저장 중 오류가 발생했습니다.');
+                    return;
+                }
+
+                const container = document.getElementById(`personal-comments-${data.target_user_id}`);
+                if (container) {
+                    container.innerHTML = data.html;
+                }
+
+                showPersonalCommentFeedback('success', '업무 코멘트가 저장되었습니다.');
+                setTimeout(() => {
+                    if (personalCommentModal) {
+                        personalCommentModal.hide();
+                    }
+                }, 600);
+            })
+            .catch(() => {
+                showPersonalCommentFeedback('error', '코멘트 저장 중 오류가 발생했습니다.');
+            })
+            .finally(() => {
+                if (submitButton) {
+                    submitButton.disabled = false;
+                    submitButton.innerHTML = originalText;
+                }
+            });
+    });
+}
+{% endif %}
 
 function toggleRawView() {
     const renderedContents = document.querySelectorAll('.rendered-content');
@@ -239,10 +430,10 @@ function exportToExcel() {
     // 간단한 CSV 형태로 내보내기
     let csvContent = "작성자,이번주업무,다음주계획\n";
     
-    {% for author_name, worklog in worklog_by_author.items %}
-        csvContent += "{{ author_name|escapejs }}," + 
-                     "{{ worklog.this_week_work|escapejs|linebreaksbr|striptags }}" + "," +
-                     "{{ worklog.next_week_plan|escapejs|linebreaksbr|striptags }}" + "\n";
+    {% for entry in worklog_entries %}
+        csvContent += "{{ entry.author_name|escapejs }}," +
+                     "{{ entry.worklog.this_week_work|escapejs|linebreaksbr|striptags }}" + "," +
+                     "{{ entry.worklog.next_week_plan|escapejs|linebreaksbr|striptags }}" + "\n";
     {% endfor %}
     
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });

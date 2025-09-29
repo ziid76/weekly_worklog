@@ -1,5 +1,5 @@
 from django import forms
-from .models import WeeklyReportComment, TeamWeeklyReport
+from .models import WeeklyReportComment, TeamWeeklyReport, WeeklyReportPersonalComment
 from teams.models import Team
 import datetime
 
@@ -16,6 +16,23 @@ class WeeklyReportCommentForm(forms.ModelForm):
         }
         labels = {
             'content': '코멘트'
+        }
+
+
+class WeeklyReportPersonalCommentForm(forms.ModelForm):
+    class Meta:
+        model = WeeklyReportPersonalComment
+        fields = ['content']
+        widgets = {
+            'content': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 4,
+                'placeholder': '담당자에게 전달할 업무 코멘트를 입력하세요.',
+                'id': 'personalCommentContent'
+            }),
+        }
+        labels = {
+            'content': '업무 코멘트'
         }
 
 class TeamWeeklyReportForm(forms.ModelForm):

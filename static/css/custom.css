@@ -599,6 +599,10 @@ body {
   width: 40%; /* 나머지 셀 */
 }
 
+.cell-12 {
+  width: 100%;
+}
+
 /* 페이지 헤더 일관성 */
 .page-header {
     background-color: white;
