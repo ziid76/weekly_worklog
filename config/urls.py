@@ -14,15 +14,17 @@ urlpatterns = [
     path('accounts/', include('django.contrib.auth.urls')),
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),
     path('useraccounts/', include('accounts.urls')),
-    path('main/', dashboard, name='dashboard'),
+    path('dashboard/', dashboard, name='dashboard'),
     path('search/', search, name='search'),
     path('worklog/', include('worklog.urls')),
     path('task/', include('task.urls')),
     path('reports/', include('reports.urls')),
     path('monitor/', include('monitor.urls')),
     path('service/', include('service.urls')),
+    path("notifications/", include("notifications.urls")),
     path('summernote/', include('django_summernote.urls')), 
 ]
+
 
 # Media files serving in development
 if settings.DEBUG:
