@@ -159,23 +159,28 @@
     
     <!-- 사이드바 -->
     <div class="col-lg-4">
-        <!-- 도움말 -->
+        <!-- AI 작성 추천 -->
         <div class="card mb-4">
             <div class="card-header">
                 <h5 class="card-title mb-0">
-                    <i class="fas fa-question-circle me-2"></i>작성 도움말
+                    <i class="fas fa-robot me-2"></i>AI 작성 가이드
                 </h5>
             </div>
             <div class="card-body">
-          
-                <div class="help-section">
-                    <h6><i class="fas fa-lightbulb me-1"></i>작성 팁</h6>
-                    <ul class="list-unstyled small">
-                        <li>• 구체적인 성과와 결과 기록</li>
-                        <li>• 발생한 이슈와 해결방안 명시</li>
-                        <li>• 다음 주 계획은 실행 가능하게</li>
-                        <li>• 정량적 지표 포함 권장</li>
-                    </ul>
+                <p class="card-text small text-muted">
+                    최근 4개의 주간보고를 기반으로 작성할 내용을 추천받을 수 있습니다.
+                </p>
+                <button type="button" id="ai-guide-btn" class="btn btn-info w-100">
+                    <i class="fas fa-magic me-2"></i>AI 추천받기
+                </button>
+                <div id="ai-guide-loading" class="text-center mt-3" style="display: none;">
+                    <div class="spinner-border spinner-border-sm" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="small mt-2 mb-0">AI가 이전 주간보고를 분석 중입니다...</p>
+                </div>
+                <div id="ai-guide-result" class="mt-3">
+                    <!-- AI-generated guide will be displayed here -->
                 </div>
             </div>
         </div>
@@ -550,5 +555,113 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
+</script>
+<script>
+// AI Writing Guide Script
+document.addEventListener('DOMContentLoaded', function() {
+    const guideBtn = document.getElementById('ai-guide-btn');
+    const loadingDiv = document.getElementById('ai-guide-loading');
+    const resultDiv = document.getElementById('ai-guide-result');
+
+    if (guideBtn) {
+        guideBtn.addEventListener('click', function() {
+            loadingDiv.style.display = 'block';
+            resultDiv.innerHTML = '';
+            guideBtn.disabled = true;
+
+            fetch("{% url 'writing_guide' %}")
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(err => { throw new Error(err.error || '서버 오류가 발생했습니다.') });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    loadingDiv.style.display = 'none';
+                    guideBtn.disabled = false;
+                    renderWritingGuide(data);
+                })
+                .catch(error => {
+                    loadingDiv.style.display = 'none';
+                    guideBtn.disabled = false;
+                    resultDiv.innerHTML = `<div class="alert alert-danger small p-2">${error.message}</div>`;
+                });
+        });
+    }
+
+    function renderWritingGuide(data) {
+        resultDiv.innerHTML = ''; // Clear previous results
+        if (data.error) {
+            resultDiv.innerHTML = `<div class="alert alert-warning small p-2">${data.error}</div>`;
+            return;
+        }
+
+        let hasContent = false;
+
+        if (data.suggested_this_week_work && data.suggested_this_week_work.length > 0) {
+            hasContent = true;
+            const thisWeekHeader = document.createElement('h6');
+            thisWeekHeader.innerHTML = '<i class="fas fa-tasks me-1"></i>금주 실적 추천';
+            resultDiv.appendChild(thisWeekHeader);
+
+            const thisWeekList = document.createElement('ul');
+            thisWeekList.className = 'list-group list-group-flush mb-3';
+            data.suggested_this_week_work.forEach(item => {
+                thisWeekList.appendChild(createSuggestionItem(item, 'this_week_work'));
+            });
+            resultDiv.appendChild(thisWeekList);
+        }
+
+        if (data.suggested_next_week_plan && data.suggested_next_week_plan.length > 0) {
+            hasContent = true;
+            const nextWeekHeader = document.createElement('h6');
+            nextWeekHeader.innerHTML = '<i class="fas fa-calendar-plus me-1"></i>차주 계획 추천';
+            resultDiv.appendChild(nextWeekHeader);
+            
+            const nextWeekList = document.createElement('ul');
+            nextWeekList.className = 'list-group list-group-flush';
+            data.suggested_next_week_plan.forEach(item => {
+                nextWeekList.appendChild(createSuggestionItem(item, 'next_week_plan'));
+            });
+            resultDiv.appendChild(nextWeekList);
+        }
+
+        if (!hasContent) {
+            resultDiv.innerHTML = '<div class="alert alert-secondary small p-2">특별히 추천할 항목을 찾지 못했습니다.</div>';
+        }
+    }
+
+    function createSuggestionItem(item, editorId) { // Changed 'text' to 'item'
+        const listItem = document.createElement('li');
+        listItem.className = 'list-group-item d-flex justify-content-between align-items-center p-2';
+
+        const textSpan = document.createElement('span');
+        textSpan.className = 'small';
+        // Display title in bold with "◆" and content on a new line
+        textSpan.innerHTML = `<strong>◆ ${item.title}</strong><br>${item.content}`;
+        
+        const addButton = document.createElement('button');
+        addButton.type = 'button';
+        addButton.className = 'btn btn-sm btn-outline-primary';
+        addButton.textContent = '추가';
+        addButton.onclick = function() {
+            addSuggestionToEditor(editorId, item.title, item.content); // Pass title and content
+        };
+
+        listItem.appendChild(textSpan);
+        listItem.appendChild(addButton);
+        return listItem;
+    }
+    
+    function addSuggestionToEditor(editorId, title, content) { // Changed 'text' to 'title, content'
+        const editor = (editorId === 'this_week_work') ? $('#{{ form.this_week_work.id_for_label }}') : $('#{{ form.next_week_plan.id_for_label }}');
+        // Insert formatted HTML with title, content, and extra line breaks
+        const formattedHtml = `<strong>◆ ${title}</strong><br>${content}<br><br>`;
+        editor.summernote('pasteHTML', formattedHtml);
+        if (typeof showToast === 'function') {
+            showToast(`"${title}" 항목이 추가되었습니다.`, 'success'); // Use title in toast
+        }
+    }
+});
 </script>
 {% endblock %}

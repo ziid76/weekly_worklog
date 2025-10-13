@@ -32,6 +32,9 @@
         <button class="btn btn-outline-primary d-none d-md-block" onclick="window.location.href='{% url 'export_weekly_report_excel' report.id %}'">
             <i class="fas fa-file-excel"></i> Excel
         </button>
+        <button class="btn btn-outline-primary d-none d-md-block" onclick="window.location.href='{% url 'export_weekly_report_pptx' report.id %}'">
+            <i class="fas fa-file-powerpoint"></i> PPT
+        </button>
     </div>
 </div>
 
@@ -73,7 +76,14 @@
             {% for entry in worklog_entries %}
                         <div class="cell cell-2 p-3 col-2 border">
                             <div class="d-flex flex-column gap-1">
-                                <span class="fw-semibold"><i class="fas fa-user me-1"></i>{{ entry.author_name }}</span>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="fw-semibold mb-0"><i class="fas fa-user me-1"></i>{{ entry.author_name }}</span>
+                                    {% if can_manage_personal_comments %}
+                                    <button type="button" class="btn btn-sm btn-outline-primary rounded-circle d-inline-flex align-items-center justify-content-center personal-comment-trigger" onclick="openPersonalCommentModal({{ entry.author_id }}, '{{ entry.author_name|escapejs }}')" title="업무 코멘트 추가" aria-label="업무 코멘트 추가">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                    {% endif %}
+                                </div>
                                 {% if entry.author.profile.position %}
                                     <small class="text-muted">{{ entry.author.profile.position }}</small>
                                 {% endif %}
@@ -102,16 +112,12 @@
                             </div>
                             <pre class="d-none">{% if entry.worklog.next_week_plan %}{{ entry.worklog.next_week_plan }}{% endif %}</pre>
                         </div>
-                        <div class="cell cell-12 p-3 col-12 border-top-0 border">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <span class="fw-semibold"><i class="fas fa-comment-dots me-2"></i>업무 코멘트</span>
-                                {% if can_manage_personal_comments %}
-                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="openPersonalCommentModal({{ entry.author_id }}, '{{ entry.author_name|escapejs }}')">
-                                    <i class="fas fa-plus me-1"></i>코멘트 추가
-                                </button>
-                                {% endif %}
+                        <div class="cell cell-12 p-3 col-12 border-top-0 border personal-comment-cell {% if not entry.personal_comments %}d-none{% endif %}" data-personal-comment-wrapper="{{ entry.author_id }}">
+                            <div class="d-flex align-items-center text-muted small mb-2">
+                                <i class="fas fa-comment-dots me-2"></i>
+                                <span>업무 코멘트</span>
                             </div>
-                            <div class="mt-2 personal-comment-list" id="personal-comments-{{ entry.author_id }}">
+                            <div class="personal-comment-list mt-2" id="personal-comments-{{ entry.author_id }}">
                                 {% include 'reports/partials/personal_comment_list.html' with comments=entry.personal_comments %}
                             </div>
                         </div>
@@ -130,14 +136,21 @@
                 <div class="border rounded p-3 mb-3 table-3-mobile">
                     <div class="row">
                         <div class="col-md-2">
-                            <h6 class="text-primary">
-                                <i class="fas fa-user"></i> {{ entry.author_name }}
-                            </h6>
+                            <div class="d-flex align-items-center justify-content-between">
+                                <h6 class="text-primary mb-0">
+                                    <i class="fas fa-user"></i> {{ entry.author_name }}
+                                </h6>
+                                {% if can_manage_personal_comments %}
+                                <button type="button" class="btn btn-sm btn-outline-primary rounded-circle d-inline-flex align-items-center justify-content-center personal-comment-trigger" onclick="openPersonalCommentModal({{ entry.author_id }}, '{{ entry.author_name|escapejs }}')" title="업무 코멘트 추가" aria-label="업무 코멘트 추가">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                                {% endif %}
+                            </div>
                             {% if entry.author.profile.position %}
                                 <small class="text-muted d-block">{{ entry.author.profile.position }}</small>
                             {% endif %}
                             {% if entry.author.profile.department_display %}
-                                <small class="text-muted">{{ entry.author.profile.department_display }}</small>
+                                <small class="text-muted d-block">{{ entry.author.profile.department_display }}</small>
                             {% endif %}
                         </div>
                         <div class="col-md-5">
@@ -174,16 +187,12 @@
                                 <pre class="mb-0"><code>{{ entry.worklog.next_week_plan|default:"작성된 계획이 없습니다." }}</code></pre>
                             </div>
                         </div>
-                        <div class="col-12 mt-3">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <strong><i class="fas fa-comment-dots me-2"></i>업무 코멘트</strong>
-                                {% if can_manage_personal_comments %}
-                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="openPersonalCommentModal({{ entry.author_id }}, '{{ entry.author_name|escapejs }}')">
-                                    <i class="fas fa-plus"></i>
-                                </button>
-                                {% endif %}
+                        <div class="col-12 mt-3 personal-comment-cell {% if not entry.personal_comments %}d-none{% endif %}" data-personal-comment-wrapper="{{ entry.author_id }}">
+                            <div class="d-flex align-items-center text-muted small mb-2">
+                                <i class="fas fa-comment-dots me-2"></i>
+                                <span>업무 코멘트</span>
                             </div>
-                            <div class="mt-2 personal-comment-list" id="personal-comments-{{ entry.author_id }}">
+                            <div class="personal-comment-list mt-2" id="personal-comments-{{ entry.author_id }}">
                                 {% include 'reports/partials/personal_comment_list.html' with comments=entry.personal_comments %}
                             </div>
                         </div>
@@ -384,6 +393,10 @@ if (personalCommentForm) {
                 const container = document.getElementById(`personal-comments-${data.target_user_id}`);
                 if (container) {
                     container.innerHTML = data.html;
+                    const commentCell = container.closest('.personal-comment-cell');
+                    if (commentCell) {
+                        commentCell.classList.remove('d-none');
+                    }
                 }
 
                 showPersonalCommentFeedback('success', '업무 코멘트가 저장되었습니다.');
@@ -575,6 +588,16 @@ function close_report() {
     margin-right: 0.375rem;
 }
 
+.personal-comment-trigger {
+    width: 28px;
+    height: 28px;
+    padding: 0;
+}
+
+.personal-comment-trigger i {
+    font-size: 0.75rem;
+    line-height: 1;
+}
 @media print {
     .btn-group {
         display: none !important;

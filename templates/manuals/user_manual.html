@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}
+사용자 매뉴얼
+{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'css/manual_styles.css' %}">
+    <link rel="stylesheet" href="{% static 'css/code_styles.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid my-4">
+    <div class="manual-container">
+        <aside class="manual-toc">
+            <div class="sticky-top">
+                <h5>목차</h5>
+                <div class="toc">
+                    {{ toc_html|safe }}
+                </div>
+            </div>
+        </aside>
+        <main class="manual-content">
+            {{ user_manual_html|safe }}
+        </main>
+    </div>
+</div>
+{% endblock %}

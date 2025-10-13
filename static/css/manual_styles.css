@@ -1,0 +1,115 @@
+
+/* manual_styles.css */
+
+.manual-container {
+    display: flex;
+    flex-direction: row;
+    gap: 2rem;
+}
+
+.manual-toc {
+    flex: 0 0 250px;
+    position: sticky;
+    top: 2rem;
+    align-self: flex-start;
+    border-left: 4px solid #e9ecef;
+    padding-left: 1rem;
+}
+
+.manual-toc .toc {
+    padding-left: 0;
+    list-style: none;
+}
+
+.manual-toc .toc ul {
+    padding-left: 1.5rem;
+    list-style: none;
+}
+
+.manual-toc .toc a {
+    text-decoration: none;
+    color: #6c757d;
+    display: block;
+    padding: 0.25rem 0;
+    transition: all 0.2s ease-in-out;
+}
+
+.manual-toc .toc a:hover,
+.manual-toc .toc .active {
+    color: #0d6efd;
+    transform: translateX(5px);
+}
+
+.manual-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.manual-content h1, .manual-content h2, .manual-content h3 {
+    border-bottom: 1px solid #dee2e6;
+    padding-bottom: 0.5rem;
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+    font-weight: 600;
+}
+
+.manual-content h1 {
+    font-size: 2.5rem;
+}
+
+.manual-content h2 {
+    font-size: 2rem;
+}
+
+.manual-content h3 {
+    font-size: 1.75rem;
+}
+
+.manual-content table {
+    width: 100%;
+    margin-bottom: 1rem;
+    border-collapse: collapse;
+}
+
+.manual-content th, .manual-content td {
+    padding: 0.75rem;
+    vertical-align: top;
+    border: 1px solid #dee2e6;
+}
+
+.manual-content thead th {
+    vertical-align: bottom;
+    border-bottom: 2px solid #dee2e6;
+    background-color: #f8f9fa;
+}
+
+.manual-content tbody tr:nth-of-type(odd) {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.manual-content pre {
+    background-color: #282c34;
+    color: #abb2bf;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    overflow-x: auto;
+    margin-bottom: 1rem;
+}
+
+.manual-content code {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+    font-size: 0.875em;
+}
+
+.manual-content blockquote {
+    border-left: 5px solid #0d6efd;
+    padding-left: 1rem;
+    margin-left: 0;
+    color: #6c757d;
+    font-style: italic;
+}
+
+.manual-content hr {
+    margin-top: 2rem;
+    margin-bottom: 2rem;
+}

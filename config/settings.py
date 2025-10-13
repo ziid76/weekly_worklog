@@ -32,6 +32,10 @@ CSRF_TRUSTED_ORIGINS = os.environ.get(
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 
+GEMINI_MODEL_NAME = os.getenv("GEMINI_MODEL_NAME", "gemini-1.5-pro")
+GEMINI_TIMEOUT = int(os.getenv("GEMINI_TIMEOUT", "30"))
+
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -41,6 +45,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'app',
     'accounts',
     'worklog',
     'task',

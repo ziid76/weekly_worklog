@@ -88,7 +88,7 @@ def dashboard(request):
         'newly_start_tasks':newly_start_tasks,
     }
     
-    return render(request, 'dashboard/dashboard.html', context)
+    return render(request, 'dashboard.html', context)
 
 @login_required
 def search(request):
@@ -114,4 +114,4 @@ def search(request):
             author=request.user
         )
     
-    return render(request, 'dashboard/search_results.html', results)
+    return render(request, 'search_results.html', results)

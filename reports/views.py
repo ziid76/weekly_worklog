@@ -6,11 +6,18 @@ from django.contrib import messages
 from django.db.models import Q
 from django.core.paginator import Paginator
 from django.http import JsonResponse, HttpResponse
+from django.conf import settings
 from collections import defaultdict
+from copy import deepcopy
 import datetime
 import re
 from openpyxl import Workbook
+from pptx import Presentation
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+from pptx.util import Pt
+from pptx.enum.text import MSO_VERTICAL_ANCHOR
+from pptx.enum.shapes import MSO_SHAPE_TYPE
+from pptx.opc.constants import RELATIONSHIP_TYPE as RT
 from .models import WeeklyReport, WeeklyReportComment, TeamWeeklyReport, WeeklyReportPersonalComment
 from worklog.models import Worklog
 from teams.models import Team, TeamMembership
@@ -462,6 +469,199 @@ def export_weekly_report_excel(request, id):
     
     wb.save(response)
     return response
+
+
+
+@login_required
+def export_weekly_report_pptx(request, id):
+    """주간 리포트를 PowerPoint 파일로 내보냅니다."""
+    report = get_object_or_404(WeeklyReport, id=id)
+
+    if report.team:
+        team_members = report.team.members.all()
+        worklogs = (
+            Worklog.objects.filter(
+                year=report.year,
+                week_number=report.week_number,
+                author__in=team_members,
+            )
+            .select_related('author', 'author__profile')
+            .order_by('display_order', 'author__profile__last_name_ko', 'author__username')
+        )
+    else:
+        worklogs = (
+            Worklog.objects.filter(
+                year=report.year,
+                week_number=report.week_number,
+            )
+            .select_related('author', 'author__profile')
+            .order_by('display_order', 'author__profile__last_name_ko', 'author__username')
+        )
+
+    entries = []
+    for worklog in worklogs:
+        profile = getattr(worklog.author, 'profile', None)
+        author_name = profile.get_korean_name if profile else worklog.author.username
+        meta_parts = []
+        if profile and getattr(profile, 'position', None):
+            meta_parts.append(profile.position)
+        if profile and getattr(profile, 'department_display', None):
+            meta_parts.append(profile.department_display)
+        meta_text = " / ".join(meta_parts)
+
+        this_week = (
+            clean_markdown_text(worklog.this_week_work)
+            if worklog.this_week_work
+            else "작성된 내용이 없습니다."
+        )
+        next_week = (
+            clean_markdown_text(worklog.next_week_plan)
+            if worklog.next_week_plan
+            else "작성된 계획이 없습니다."
+        )
+
+        entries.append(
+            {
+                "author": author_name,
+                "meta": meta_text,
+                "this_week": this_week,
+                "next_week": next_week,
+            }
+        )
+
+    if not entries:
+        entries.append(
+            {
+                "author": "작성자 없음",
+                "meta": "",
+                "this_week": "작성된 내용이 없습니다.",
+                "next_week": "작성된 계획이 없습니다.",
+            }
+        )
+
+    month_week_display = getattr(report, "month_week_display", None)
+    if not month_week_display:
+        week_in_month = ((report.week_start_date.day - 1) // 7) + 1
+        month_week_display = f"{report.week_start_date.month}월 {week_in_month}주차"
+    team_name = report.team.name if report.team else "전체"
+
+    template_path = settings.BASE_DIR / "templates.pptx"
+    prs = Presentation(str(template_path))
+    base_slide = prs.slides[0]
+
+    def get_table(target_slide):
+        for shape in target_slide.shapes:
+            if shape.has_table:
+                return shape.table
+        return None
+
+    base_table = get_table(base_slide)
+    if base_table is None:
+        return HttpResponse("템플릿에 표가 없습니다.", status=500)
+
+    if len(base_table.rows) < 2:
+        return HttpResponse("템플릿에 데이터 행이 필요합니다.", status=500)
+
+    template_row_xml = deepcopy(base_table._tbl.tr_lst[1])
+    capacity = max(len(base_table.rows) - 1, 1)
+
+    template_shapes_xml = [deepcopy(shape._element) for shape in base_slide.shapes]
+    template_relationships = [
+        (rel.reltype, rel.target_part, rel.rId)
+        for rel in base_slide.part.rels.values()
+        if rel.reltype != RT.SLIDE_LAYOUT
+    ]
+
+    next_week_start = getattr(report, "next_week_start_date", None)
+    next_week_end = getattr(report, "next_week_end_date", None)
+    if not next_week_start or not next_week_end:
+        next_week_start = report.week_end_date + datetime.timedelta(days=3)
+        next_week_end = next_week_start + datetime.timedelta(days=4)
+
+    header_labels = [
+        "담당",
+        "직책/부서",
+        f"금주 실적 ({report.week_start_date:%m월 %d일} ~ {report.week_end_date:%m월 %d일})",
+        f"차주 계획 ({next_week_start:%m월 %d일} ~ {next_week_end:%m월 %d일})",
+    ]
+
+    def clone_template_slide():
+        new_slide = prs.slides.add_slide(base_slide.slide_layout)
+        for shape in list(new_slide.shapes):
+            sp = shape._element
+            sp.getparent().remove(sp)
+        for r_id, rel in list(new_slide.part.rels.items()):
+            if rel.reltype != RT.SLIDE_LAYOUT:
+                del new_slide.part.rels[r_id]
+        for shape_xml in template_shapes_xml:
+            new_slide.shapes._spTree.insert_element_before(deepcopy(shape_xml), "p:extLst")
+        for reltype, target_part, r_id in template_relationships:
+            if r_id in new_slide.part.rels:
+                del new_slide.part.rels[r_id]
+            new_slide.part.rels.add_relationship(reltype, target_part, r_id)
+        return new_slide
+
+    def set_cell_text(cell, text, *, bold=False, size=12):
+        text_frame = cell.text_frame
+        text_frame.clear()
+        paragraph = text_frame.paragraphs[0]
+        paragraph.text = text or ""
+        paragraph.font.bold = bold
+        paragraph.font.size = Pt(size)
+        cell.vertical_anchor = MSO_VERTICAL_ANCHOR.TOP
+        return max(paragraph.text.count("\n") + 1, 1)
+
+    def populate_table(target_slide, chunk):
+        table = get_table(target_slide)
+        if table is None:
+            return
+        while len(table.rows) > 1:
+            table._tbl.remove(table._tbl.tr_lst[-1])
+        for _ in chunk:
+            table._tbl.append(deepcopy(template_row_xml))
+        for cell, label in zip(table.rows[0].cells, header_labels):
+            set_cell_text(cell, label, bold=True, size=14)
+        table.rows[0].height = Pt(38)
+        for row_idx, entry in enumerate(chunk, start=1):
+            row = table.rows[row_idx]
+            line_counts = []
+            line_counts.append(set_cell_text(row.cells[0], entry["author"], bold=True, size=13))
+            line_counts.append(set_cell_text(row.cells[1], entry["meta"], size=12))
+            line_counts.append(set_cell_text(row.cells[2], entry["this_week"], size=12))
+            line_counts.append(set_cell_text(row.cells[3], entry["next_week"], size=12))
+            max_lines = max(line_counts) if line_counts else 1
+            row.height = Pt(28 + (max_lines - 1) * 16)
+
+    chunks = [entries[i : i + capacity] for i in range(0, len(entries), capacity)]
+    template_slide = base_slide
+    for index, chunk in enumerate(chunks):
+        slide = template_slide if index == 0 else clone_template_slide()
+        populate_table(slide, chunk)
+        title_shape = slide.shapes.title
+        if title_shape is not None:
+            title_shape.text = f"{month_week_display} {team_name} 주간보고"
+        
+        for shape in slide.shapes:
+            if shape.shape_type == MSO_SHAPE_TYPE.AUTO_SHAPE and shape.has_text_frame:
+                existing = shape.text.replace(" ", "").strip()
+                if not existing:
+                    text_frame = shape.text_frame
+                    text_frame.clear()
+                    paragraph = text_frame.paragraphs[0]
+                    paragraph.font.size = Pt(12)
+                    break
+
+    response = HttpResponse(
+        content_type="application/vnd.openxmlformats-officedocument.presentationml.presentation"
+    )
+    from urllib.parse import quote
+
+    filename = f"{team_name}_주간보고_{report.year}년_{report.week_number}주차.pptx"
+    encoded_filename = quote(filename.encode("utf-8"))
+    response['Content-Disposition'] = f"attachment; filename*=UTF-8''{encoded_filename}"
+    prs.save(response)
+    return response
+
 
 def clean_markdown_text(text):
     """마크다운 및 HTML 텍스트를 일반 텍스트로 변환"""

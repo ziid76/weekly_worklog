@@ -22,6 +22,7 @@ urlpatterns = [
     path('monitor/', include('monitor.urls')),
     path('service/', include('service.urls')),
     path("notifications/", include("notifications.urls")),
+    path('', include('app.urls')),
     path('summernote/', include('django_summernote.urls')), 
 ]
 

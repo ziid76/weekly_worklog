@@ -189,7 +189,11 @@
     </div>
   </div>
 </div>
-<div class="mt-3"><input type="button " class="scl-btn scl-btn-outline scl-btn-sm float-end" value="뒤로" onclick="back()"></div>
+          <div class="mt-3">
+            <a href="{% url 'operation_log_list' %}" class="scl-btn  scl-btn-sm scl-btn-outline me-2">
+                <i class="fas fa-arrow-left me-2"></i>목록으로
+            </a>
+          </div>
 {% endblock %}
 {% block extra_js %}
 <script>

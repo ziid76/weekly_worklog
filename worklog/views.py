@@ -11,6 +11,7 @@ from .models import Worklog, WorklogFile, WorklogTask
 from reports.models import WeeklyReport, WeeklyReportPersonalComment
 from .forms import WorklogForm, WorklogFileForm, WorklogTaskForm
 from task.models import Task
+from app.services import generate_writing_guide
 import json
 
 
@@ -123,6 +124,18 @@ def my_worklog_history(request):
     }
     return render(request, 'worklog/my_worklog_history.html', context)
 
+
+@login_required
+def writing_guide(request):
+    """Generate AI-based writing guide for the user's new worklog."""
+    if request.method != "GET":
+        return JsonResponse({"error": "method_not_allowed"}, status=405)
+
+    try:
+        payload = generate_writing_guide(request.user)
+        return JsonResponse(payload, json_dumps_params={"ensure_ascii": False})
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
 
 
 class WorklogListView(LoginRequiredMixin, ListView):

@@ -3,7 +3,7 @@ from .views import (
     WorklogListView, WorklogCreateView, WorklogUpdateView, 
     WorklogDeleteView, WorklogDetailView, upload_worklog_file, download_worklog_file,
     get_user_tasks_api, worklog_add_task, worklog_remove_task, worklog_update_task, copy_worklog_api,
-    my_worklog_history
+    my_worklog_history, writing_guide
 )
 
 urlpatterns = [
@@ -26,4 +26,5 @@ urlpatterns = [
     # API 엔드포인트
     path('api/tasks/', get_user_tasks_api, name='get_user_tasks_api'),
     path('api/copy/<int:worklog_id>/', copy_worklog_api, name='copy_worklog_api'),
+    path('api/writing_guide/', writing_guide, name='writing_guide'),
 ]

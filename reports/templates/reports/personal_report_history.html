@@ -25,7 +25,7 @@
                 </select>
             </div>
 
-            <div class="col-md-8 d-flex align-items-center gap-2">
+            <div class="col-md-7 d-flex align-items-center gap-2">
                 <label for="start_year" class="fw-bold mb-0" style="white-space: nowrap; min-width: 50px;">기간:</label>
                 <select name="start_year" id="start_year" class="form-select">
                     {% for year in year_choices %}
@@ -33,9 +33,6 @@
                     {% endfor %}
                 </select>
                 <select name="start_week" id="start_week" class="form-select">
-                    {% for week in week_choices %}
-                    <option value="{{ week }}" {% if start_week|stringformat:"s" == week|stringformat:"s" %}selected{% endif %}>{{ week }}주차</option>
-                    {% endfor %}
                 </select>
                 
                 <span class="mx-1">~</span>
@@ -46,14 +43,12 @@
                     {% endfor %}
                 </select>
                 <select name="end_week" id="end_week" class="form-select">
-                    {% for week in week_choices %}
-                    <option value="{{ week }}" {% if end_week|stringformat:"s" == week|stringformat:"s" %}selected{% endif %}>{{ week }}주차</option>
-                    {% endfor %}
                 </select>
             </div>
 
-            <div class="col-md-2 d-flex justify-content-end">
+            <div class="col-md-3 d-flex justify-content-end gap-2">
                 <button type="submit" class="btn btn-primary" style="min-width: 80px;">조회</button>
+                <button type="button" id="ai-analysis-btn" class="btn btn-info" style="min-width: 80px;" {% if not selected_user_id %}disabled{% endif %}>AI 분석</button>
             </div>
         </form>
     </div>
@@ -134,6 +129,32 @@
     <div class="alert alert-warning">선택된 기간에 해당하는 주간업무 데이터가 없습니다.</div>
     {% endif %}
 </div>
+
+<!-- AI Analysis Modal -->
+<div class="modal fade" id="ai-analysis-modal" tabindex="-1" aria-labelledby="aiAnalysisModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="aiAnalysisModalLabel">AI 주간업무 분석 결과</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div id="ai-analysis-loading" class="text-center">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Gemini가 주간업무를 분석하고 있습니다. 잠시만 기다려주세요...</p>
+        </div>
+        <div id="ai-analysis-result" style="display: none;">
+            <!-- Results will be populated here by JavaScript -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -179,10 +200,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const selectedYear = yearSelect.value;
         const weeks = weekData[selectedYear] || [];
         
-        // Clear existing options
         weekSelect.innerHTML = '';
 
-        // Populate with new options
         weeks.forEach(function(weekInfo) {
             const option = document.createElement('option');
             option.value = weekInfo.week;
@@ -194,104 +213,166 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Add event listeners
-    startYearSelect.addEventListener('change', function() {
-        updateWeekOptions(startYearSelect, startWeekSelect, null);
-    });
+    startYearSelect.addEventListener('change', function() { updateWeekOptions(startYearSelect, startWeekSelect, null); });
+    endYearSelect.addEventListener('change', function() { updateWeekOptions(endYearSelect, endWeekSelect, null); });
 
-    endYearSelect.addEventListener('change', function() {
-        updateWeekOptions(endYearSelect, endWeekSelect, null);
-    });
-
-    // Initial population on page load
     updateWeekOptions(startYearSelect, startWeekSelect, selectedStartWeek);
     updateWeekOptions(endYearSelect, endWeekSelect, selectedEndWeek);
+
+    // AI Analysis
+    const aiAnalysisBtn = document.getElementById('ai-analysis-btn');
+    const aiAnalysisModal = new bootstrap.Modal(document.getElementById('ai-analysis-modal'));
+    const analysisResultDiv = document.getElementById('ai-analysis-result');
+    const analysisLoadingDiv = document.getElementById('ai-analysis-loading');
+
+    function getIsoWeekDate(y, w, d) {
+        var simple = new Date(Date.UTC(y, 0, 1 + (w - 1) * 7));
+        var dow = simple.getUTCDay();
+        var ISOweekStart = simple;
+        if (dow <= 4)
+            ISOweekStart.setUTCDate(simple.getUTCDate() - simple.getUTCDay() + 1);
+        else
+            ISOweekStart.setUTCDate(simple.getUTCDate() + 8 - simple.getUTCDay());
+        ISOweekStart.setUTCDate(ISOweekStart.getUTCDate() + d - 1);
+        return ISOweekStart;
+    }
+
+    if (aiAnalysisBtn) {
+        aiAnalysisBtn.addEventListener('click', function() {
+            const selectedUserId = document.getElementById('user_id').value;
+            if (!selectedUserId) {
+                alert('분석할 팀원을 선택해주세요.');
+                return;
+            }
+
+            const endYear = document.getElementById('end_year').value;
+            const endWeek = document.getElementById('end_week').value;
+
+            analysisResultDiv.style.display = 'none';
+            analysisLoadingDiv.style.display = 'block';
+            aiAnalysisModal.show();
+
+            const asOfDate = getIsoWeekDate(parseInt(endYear), parseInt(endWeek), 7); // Get Sunday of the week
+            const asOfDateString = asOfDate.toISOString().split('T')[0];
+
+            fetch(`/me/review?user_id=${selectedUserId}&as_of=${asOfDateString}`)
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(err => { throw new Error(err.error || `HTTP error! status: ${response.status}`) });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    analysisLoadingDiv.style.display = 'none';
+                    analysisResultDiv.innerHTML = formatAnalysisResult(data);
+                    analysisResultDiv.style.display = 'block';
+
+                    // Initialize tooltips for the new content
+                    const tooltipTriggerList = analysisResultDiv.querySelectorAll('[data-bs-toggle="tooltip"]');
+                    [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl, { html: true }));
+                })
+                .catch(error => {
+                    analysisLoadingDiv.style.display = 'none';
+                    analysisResultDiv.innerHTML = `<div class="alert alert-danger">분석 중 오류가 발생했습니다: ${error.message}</div>`;
+                    analysisResultDiv.style.display = 'block';
+                });
+        });
+    }
+
+    function formatMonthWeek(isoDate) {
+        if (!isoDate) return '';
+        try {
+            // AI가 반환하는 날짜 문자열(예: '2025-10-06')을 파싱합니다.
+            const d = new Date(isoDate);
+            // UTC 기준 월/일을 사용하여 시간대 문제를 방지합니다.
+            const month = d.getUTCMonth() + 1;
+            const date = d.getUTCDate();
+            const weekOfMonth = Math.ceil(date / 7);
+            return `${month}월 ${weekOfMonth}주차`;
+        } catch (e) {
+            return isoDate; // 오류 발생 시 원본 문자열 반환
+        }
+    }
+
+    function formatAnalysisResult(data) {
+        if (data.error) {
+            return `<div class="alert alert-warning"><strong>AI 분석 실패</strong><br>${data.error}</div>`;
+        }
+
+        let html = `<h4 class="mb-3">${data.summary}</h4><hr>`;
+
+        // Metrics
+        html += '<h5>주요 지표</h5><div class="row text-center mb-3">';
+        const metrics = data.metrics;
+
+        const createMetricCard = (title, metric) => {
+            const detailsHtml = (metric && metric.details && metric.details.length > 0) ? `<ul class="list-unstyled mb-0 text-start">${metric.details.map(d => `<li>- ${d}</li>`).join('')}</ul>` : '상세 내역 없음';
+            const metricValue = (metric && metric.value !== undefined) ? metric.value : 0;
+            const safeDetailsHtml = detailsHtml.replace(/"/g, '&quot;');
+
+            return `
+                <div class="col">
+                    <div class="card p-2" data-bs-toggle="tooltip" title="${safeDetailsHtml}">
+                        <h6>${title}</h6>
+                        <h3>${metricValue}</h3>
+                    </div>
+                </div>
+            `;
+        };
+        
+        const createRateMetricCard = (title, metric) => {
+            const detailsHtml = (metric && metric.details && metric.details.length > 0) ? `<ul class="list-unstyled mb-0 text-start">${metric.details.map(d => `<li>- ${d}</li>`).join('')}</ul>` : '상세 내역 없음';
+            const metricValue = (metric && metric.value !== undefined) ? metric.value : 0;
+            const safeDetailsHtml = detailsHtml.replace(/"/g, '&quot;');
+
+            return `
+                <div class="col">
+                    <div class="card p-2" data-bs-toggle="tooltip" title="${safeDetailsHtml}">
+                        <h6>${title}</h6>
+                        <h3>${(metricValue).toFixed(0)}%</h3>
+                    </div>
+                </div>
+            `;
+        };
+
+        html += createMetricCard('계획', metrics.planned_count);
+        html += createMetricCard('실행', metrics.done_count);
+        html += createRateMetricCard('완료율', metrics.completion_rate);
+        html += createMetricCard('이월', metrics.carryover_count);
+        html += createMetricCard('증빙부족', metrics.missing_evidence_count);
+        html += '</div><hr>';
+
+        // Mismatches
+        if (data.mismatches && data.mismatches.length > 0) {
+            html += '<h5 class="mt-4">계획-실적 불일치</h5><ul class="list-group list-group-flush">';
+            data.mismatches.forEach(item => {
+                html += `<li class="list-group-item"><strong>${formatMonthWeek(item.week)}:</strong> ${item.plan_item} <br> <span class="ps-3 text-danger">-> ${item.issue}</span></li>`;
+            });
+            html += '</ul><hr>';
+        }
+
+        // Risks
+        if (data.risks && data.risks.length > 0) {
+            html += '<h5 class="mt-4">리스크 및 우려사항</h5><div class="table-responsive"><table class="table table-sm table-bordered"><thead><tr><th>내용</th><th>상태</th><th>담당</th><th>조치</th><th>기한</th></tr></thead><tbody>';
+            data.risks.forEach(risk => {
+                html += `<tr><td>${risk.description}</td><td>${risk.status}</td><td>${risk.owner}</td><td>${risk.next_action}</td><td>${risk.due}</td></tr>`;
+            });
+            html += '</tbody></table></div><hr>';
+        }
+
+        // Recommendations
+        if (data.recommendations && data.recommendations.length > 0) {
+            html += '<h5 class="mt-4">개선 권고 사항</h5><ul class="list-group">';
+            data.recommendations.forEach(rec => {
+                html += `<li class="list-group-item">${rec}</li>`;
+            });
+            html += '</ul>';
+        }
+
+        return html;
+    }
 });
 </script>
 
-<style>
-.markdown-content {
-    line-height: 1.5;
-}
 
-.markdown-content h1, .markdown-content h2, .markdown-content h3 {
-    margin-top: 1rem;
-    margin-bottom: 0.5rem;
-}
-
-.markdown-content h1 {
-    font-size: 1.25rem;
-    border-bottom: 2px solid #eee;
-    padding-bottom: 0.25rem;
-}
-
-.markdown-content h2 {
-    font-size: 1.1rem;
-    border-bottom: 1px solid #eee;
-    padding-bottom: 0.2rem;
-}
-
-.markdown-content h3 {
-    font-size: 1rem;
-}
-
-.markdown-content ul, .markdown-content ol {
-    padding-left: 1.5rem;
-    margin: 0.5rem 0;
-}
-
-.markdown-content li {
-    margin-bottom: 0.25rem;
-}
-
-.markdown-content p {
-    margin-bottom: 0.5rem;
-}
-
-.markdown-content blockquote {
-    border-left: 4px solid #ddd;
-    padding-left: 0.75rem;
-    margin: 0.5rem 0;
-    color: #666;
-    font-style: italic;
-}
-
-.markdown-content code {
-    background-color: #f8f9fa;
-    padding: 0.1rem 0.3rem;
-    border-radius: 0.2rem;
-    font-size: 0.875em;
-}
-
-.markdown-content pre {
-    background-color: #f8f9fa;
-    padding: 0.75rem;
-    border-radius: 0.375rem;
-    overflow-x: auto;
-    font-size: 0.875em;
-}
-
-.markdown-content table {
-    border-collapse: collapse;
-    width: 100%;
-    margin: 0.5rem 0;
-    font-size: 0.875em;
-}
-
-.markdown-content table th,
-.markdown-content table td {
-    border: 1px solid #ddd;
-    padding: 0.375rem;
-    text-align: left;
-}
-
-.markdown-content table th {
-    background-color: #f8f9fa;
-    font-weight: bold;
-}
-
-.markdown-content input[type="checkbox"] {
-    margin-right: 0.375rem;
-}
-</style>
 {% endblock %}
