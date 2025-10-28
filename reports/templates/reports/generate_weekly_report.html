@@ -27,7 +27,7 @@
                         </div>
                         <div class="d-flex align-items-center mt-2 mt-md-0">
                             {% if week.report %}
-                                <a href="{% url 'weekly_report_detail' week.report.id %}" class="btn btn-outline-primary btn-sm">
+                                <a href="{% url 'weekly_report_detail' week.report.id %}" class="scl-btn-outline scl-btn-sm">
                                     <i class="fas fa-eye me-2"></i> 상세조회
                                 </a>
                             {% else %}
@@ -36,12 +36,12 @@
                                     {% csrf_token %}
                                     <input type="hidden" name="year" value="{{ week.year }}">
                                     <input type="hidden" name="week_number" value="{{ week.week_number }}">
-                                    <button type="submit" class="btn btn-primary btn-sm">
+                                    <button type="submit" class="scl-btn scl-btn-sm">
                                         <i class="fas fa-plus me-2"></i> 생성
                                     </button>
                                 </form>
                                 {% else %}
-                                <button type="button" class="btn btn-secondary btn-sm" disabled>
+                                <button type="button" class="scl-btn-outline scl-btn-sm" disabled>
                                     대상 없음
                                 </button>
                                 {% endif %}
@@ -56,7 +56,7 @@
                 </div>
 
                 <div class="d-flex justify-content-end mt-4">
-                    <a href="{% url 'weekly_report_list' %}" class="btn btn-secondary">
+                    <a href="{% url 'weekly_report_list' %}" class="scl-btn-outline">
                         <i class="fas fa-list"></i> 전체 리포트 목록
                     </a>
                 </div>

@@ -28,6 +28,7 @@ CSRF_TRUSTED_ORIGINS = os.environ.get(
     "https://itms.samchully.co.kr"
 ).split(",")
 
+SITE_URL ="https://itms.samchully.co.kr"
 
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True

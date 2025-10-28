@@ -49,10 +49,10 @@
                 <form method="post">
                     {% csrf_token %}
                     <div class="d-flex justify-content-between">
-                        <a href="{% url 'worklog_detail' object.pk %}" class="btn btn-secondary">
+                        <a href="{% url 'worklog_detail' object.pk %}" class="scl-btn-outline">
                             <i class="fas fa-arrow-left"></i> 취소
                         </a>
-                        <button type="submit" class="btn btn-danger">
+                        <button type="submit" class="scl-btn btn-danger">
                             <i class="fas fa-trash"></i> 삭제 확인
                         </button>
                     </div>

@@ -112,63 +112,71 @@ def check_due_date_notifications():
     마감일 임박 및 초과 업무 알림 체크
     (이 함수는 주기적으로 실행되어야 함 - 예: 매일 오전 9시)
     """
-    now = timezone.now()
-    tomorrow = now + timedelta(days=1)
-    three_days_later = now + timedelta(days=3)
-    
-    # 마감일 임박 알림 (1일 전, 3일 전)
+    today = timezone.localdate()
+    three_days_later = today + timedelta(days=3)
+
+    # 마감일 임박 알림 (오늘, 1일 전, 3일 전)
     upcoming_tasks = Task.objects.filter(
-        due_date__gte=now,
+        due_date__gte=today,
         due_date__lte=three_days_later,
         status__in=['todo', 'in_progress']
     )
-    
+
     for task in upcoming_tasks:
-        days_left = (task.due_date - now).days
-        
+        # due_date가 None이 아닌지 확인
+        if not task.due_date:
+            continue
+
+        days_left = (task.due_date - today).days
+
         # 중복 알림 방지를 위해 오늘 이미 알림을 보냈는지 확인
         today_notifications = Notification.objects.filter(
             task=task,
             notification_type='task_due',
-            created_at__date=now.date()
+            created_at__date=today
         )
-        
+
         if not today_notifications.exists():
-            # 업무 작성자에게 알림
-            create_notification(
-                user=task.author,
-                notification_type='task_due',
-                title=f'업무 마감일이 {days_left}일 남았습니다',
-                message=f'"{task.title}" 업무의 마감일이 {days_left}일 남았습니다. ({task.due_date.strftime("%Y-%m-%d %H:%M")})',
-                task=task
-            )
-            
-            # 담당자들에게 알림
-            for assigned_user in task.assigned_to.all():
+            if days_left <= 3: # 3일 이하로 남은 경우에만 알림
+                # 업무 작성자에게 알림
                 create_notification(
-                    user=assigned_user,
+                    user=task.author,
                     notification_type='task_due',
-                    title=f'담당 업무 마감일이 {days_left}일 남았습니다',
-                    message=f'담당하고 있는 "{task.title}" 업무의 마감일이 {days_left}일 남았습니다.',
+                    title=f'업무 마감일이 {days_left}일 남았습니다',
+                    message=f'"{task.title}" 업무의 마감일이 {days_left}일 남았습니다. ({task.due_date.strftime("%Y-%m-%d")})',
                     task=task
                 )
-    
+
+                # 담당자들에게 알림
+                for assigned_user in task.assigned_to.all():
+                    create_notification(
+                        user=assigned_user,
+                        notification_type='task_due',
+                        title=f'담당 업무 마감일이 {days_left}일 남았습니다',
+                        message=f'담당하고 있는 "{task.title}" 업무의 마감일이 {days_left}일 남았습니다.',
+                        task=task
+                    )
+
     # 마감일 초과 알림
     overdue_tasks = Task.objects.filter(
-        due_date__lt=now,
+        due_date__lt=today,
         status__in=['todo', 'in_progress']
     )
-    
+
     for task in overdue_tasks:
-        days_overdue = (now - task.due_date).days
-        
+        # due_date가 None이 아닌지 확인
+        if not task.due_date:
+            continue
+
+        days_overdue = (today - task.due_date).days
+
         # 중복 알림 방지
         today_overdue_notifications = Notification.objects.filter(
             task=task,
             notification_type='task_overdue',
-            created_at__date=now.date()
+            created_at__date=today
         )
-        
+
         if not today_overdue_notifications.exists():
             # 업무 작성자에게 알림
             create_notification(
@@ -178,7 +186,7 @@ def check_due_date_notifications():
                 message=f'"{task.title}" 업무의 마감일이 {days_overdue}일 지났습니다. 빠른 처리가 필요합니다.',
                 task=task
             )
-            
+
             # 담당자들에게 알림
             for assigned_user in task.assigned_to.all():
                 create_notification(

@@ -7,7 +7,7 @@
 <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
                 <h4 class="card-title mb-0"><i class="fas fa-tags me-2"></i>카테고리 관리</h4>
-                <a href="{% url 'category_create' %}" class="btn btn-primary"><i class="fas fa-plus"></i>새 카테고리 추가</a>
+                <a href="{% url 'category_create' %}" class="scl-btn"><i class="fas fa-plus"></i>새 카테고리 추가</a>
             </div>
     <div class="card-body">
         <div class="table-responsive">
@@ -34,10 +34,10 @@
                             <td>{{ category.created_at|date:"Y-m-d" }}</td>
                             <td>
                                 <div class="btn-group btn-group-sm">
-                                    <button class="btn btn-primary btn-sm" onclick="editCategory({{ category.id }}, '{{ category.name }}', '{{ category.color }}')">
+                                    <button class="scl-btn scl-btn-sm" onclick="editCategory({{ category.id }}, '{{ category.name }}', '{{ category.color }}')">
                                         <i class="fas fa-edit"></i>
                                     </button>
-                                    <button class="btn btn-outline-primary btn-sm" onclick="deleteCategory({{ category.id }}, '{{ category.name }}')">
+                                    <button class="scl-btn-outline scl-btn-sm" onclick="deleteCategory({{ category.id }}, '{{ category.name }}')">
                                         <i class="fas fa-trash"></i>
                                     </button>
                                 </div>
@@ -78,8 +78,8 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
-                    <button type="submit" class="btn btn-primary">저장</button>
+                    <button type="button" class="scl-btn-outline" data-bs-dismiss="modal">취소</button>
+                    <button type="submit" class="scl-btn">저장</button>
                 </div>
             </form>
         </div>

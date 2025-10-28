@@ -10,17 +10,17 @@
     <div class="col-md-12">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h4 class="card-title mb-0">
+                <h5 class="card-title mb-0">
                     <i class="fas fa-calendar-week me-2"></i> 
                     {{ worklog.month_week_display }} 주간업무
                     <small class="text-muted ms-2 d-none d-md-block">({{ worklog.year }}년 {{ worklog.week_number }}주차)</small>
-                </h4>
+                </h5>
                 <div class="btn-group">
                     {% if editable %}
-                    <a href="{% url 'worklog_update' worklog.pk %}" class="btn btn-outline-primary btn-sm">
+                    <a href="{% url 'worklog_update' worklog.pk %}" class="scl-btn scl-btn-outline scl-btn-sm">
                         <i class="fas fa-edit"></i> 수정
                     </a>
-                    <a href="{% url 'worklog_delete' worklog.pk %}" class="btn btn-outline-primary btn-sm">
+                    <a href="{% url 'worklog_delete' worklog.pk %}" class="scl-btn scl-btn-outline scl-btn-sm">
                         <i class="fas fa-trash"></i> 삭제
                     </a>
                     {% else %}
@@ -72,7 +72,7 @@
                     {% for file in files %}
                         <div class="d-flex justify-content-between align-items-center mb-2">
                             <span>{{ file.original_name }}</span>
-                            <a href="{% url 'download_worklog_file' file.id %}" class="btn btn-outline-primary btn-sm">
+                            <a href="{% url 'download_worklog_file' file.id %}" class="scl-btn scl-btn-outline scl-btn-sm">
                                 <i class="fas fa-download"></i>
                             </a>
                         </div>
@@ -146,8 +146,8 @@
 
 </div>
 
-<div class="mt-4">
-    <a href="{% url 'worklog_list' %}" class="btn btn-secondary">
+<div class="mt-2">
+    <a href="{% url 'worklog_list' %}" class="scl-btn scl-btn-outline scl-btn-sm">
         <i class="fas fa-arrow-left"></i> 목록으로
     </a>
 </div>

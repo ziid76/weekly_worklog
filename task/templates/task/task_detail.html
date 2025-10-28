@@ -8,11 +8,8 @@
     <div class="d-flex justify-content-end align-items-center mb-4">
 
         <div class="page-group">
-            <a href="{% url 'task_list' %}" class="btn  btn-sm btn-outline-primary me-2">
-                <i class="fas fa-arrow-left me-2"></i>목록으로
-            </a>
             {% if task.author == user or user in task.assigned_to.all %}
-                <button class="btn btn-sm btn-primary dropdown-toggle me-2" type="button" data-bs-toggle="dropdown">
+                <button class="scl-btn scl-btn-sm dropdown-toggle me-2" type="button" data-bs-toggle="dropdown">
                     상태 변경
                 </button>
                                     <ul class="dropdown-menu">
@@ -29,10 +26,10 @@
                                             <li><a class="dropdown-item" href="#" onclick="updateTaskStatus('dropped')">중단</a></li>
                                         {% endif %}
                                     </ul>
-                <a href="{% url 'task_update' task.pk %}" class="btn   btn-sm btn-outline-primary me-2">
+                <a href="{% url 'task_update' task.pk %}" class="scl-btn scl-btn-outline scl-btn-sm me-2">
                     <i class="fas fa-edit me-2"></i>수정
                 </a>
-                <a href="{% url 'task_delete' task.pk %}" class="btn  btn-sm btn-outline-primary" onclick="return confirm('정말로 삭제하시겠습니까?')">
+                <a href="{% url 'task_delete' task.pk %}" class="scl-btn scl-btn-outline scl-btn-sm" onclick="return confirm('정말로 삭제하시겠습니까?')">
                     <i class="fas fa-trash me-2"></i>삭제
                 </a>
 
@@ -265,7 +262,7 @@
                             <label for="comment-file" class="form-label"><small>첨부파일 (선택사항)</small></label>
                             <input type="file" class="form-control" id="comment-file" name="file">
                         </div>
-                        <button type="submit" class="btn btn-primary">
+                        <button type="submit" class="scl-btn">
                             <i class="fas fa-paper-plane me-2"></i>댓글 작성
                         </button>
                     </form>
@@ -327,7 +324,7 @@
                             </div>
 
                                 {% if file.uploaded_by == user or task.author == user or user in task.assigned_to.all %}
-                                <a href="{% url 'delete_file' file.id %}" class="btn btn-outline-primary btn-sm me-3" 
+                                <a href="{% url 'delete_file' file.id %}" class="scl-btn scl-btn-outline scl-btn-sm me-3" 
                                    onclick="return confirm('{{file.original_name}} 파일을 삭제하시겠습니까?')">
                                     <i class="fas fa-trash"></i>
                                 </a>
@@ -345,7 +342,7 @@
                     <div class="mb-3">
                         {{ file_form.file }}
                     </div>
-                    <button type="submit" class="btn btn-primary btn-sm">
+                    <button type="submit" class="scl-btn scl-btn-sm">
                         <i class="fas fa-upload me-2"></i> 파일 업로드
                     </button>
                 </form>
@@ -388,6 +385,11 @@
         </div>
 
 
+    </div>
+    <div>
+    <a href="{% url 'task_list' %}" class="scl-btn scl-btn-outline scl-btn-sm me-2">
+                <i class="fas fa-arrow-left me-2"></i>목록으로
+    </a>
     </div>
 </div>
 {% endblock %}

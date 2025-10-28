@@ -47,8 +47,8 @@
             </div>
 
             <div class="col-md-3 d-flex justify-content-end gap-2">
-                <button type="submit" class="btn btn-primary" style="min-width: 80px;">조회</button>
-                <button type="button" id="ai-analysis-btn" class="btn btn-info" style="min-width: 80px;" {% if not selected_user_id %}disabled{% endif %}>AI 분석</button>
+                <button type="submit" class="scl-btn" style="min-width: 80px;">조회</button>
+                <button type="button" id="ai-analysis-btn" class="scl-btn scl-btn--warning" style="min-width: 80px;" {% if not selected_user_id %}disabled{% endif %}>AI 분석</button>
             </div>
         </form>
     </div>
@@ -59,8 +59,8 @@
         <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
             <h6 class="m-0 font-weight-bold text-primary">조회 결과</h6>
             <div>
-                <button id="btn-format1" class="btn btn-sm btn-primary active">금주/차주</button>
-                <button id="btn-format2" class="btn btn-sm btn-secondary">전주/금주</button>
+                <button id="btn-format1" class="scl-btn scl-btn-sm active">금주/차주</button>
+                <button id="btn-format2" class="scl-btn scl-btn-sm scl-btn-outline">전주/금주</button>
             </div>
         </div>
         <div class="card-body">
@@ -150,7 +150,7 @@
         </div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+        <button type="button" class="scl-btn scl-btn-sm scl-btn-outline" data-bs-dismiss="modal">닫기</button>
       </div>
     </div>
   </div>
@@ -170,19 +170,19 @@ document.addEventListener('DOMContentLoaded', function() {
         btnFormat1.addEventListener('click', function() {
             tableFormat1.style.display = 'block';
             tableFormat2.style.display = 'none';
-            btnFormat1.classList.add('active', 'btn-primary');
-            btnFormat1.classList.remove('btn-secondary');
-            btnFormat2.classList.remove('active', 'btn-primary');
-            btnFormat2.classList.add('btn-secondary');
+            btnFormat1.classList.add('active');
+            btnFormat1.classList.remove('scl-btn-outline');
+            btnFormat2.classList.remove('active');
+            btnFormat2.classList.add('scl-btn-outline');
         });
 
         btnFormat2.addEventListener('click', function() {
             tableFormat1.style.display = 'none';
             tableFormat2.style.display = 'block';
-            btnFormat2.classList.add('active', 'btn-primary');
-            btnFormat2.classList.remove('btn-secondary');
-            btnFormat1.classList.remove('active', 'btn-primary');
-            btnFormat1.classList.add('btn-secondary');
+            btnFormat2.classList.add('active');
+            btnFormat2.classList.remove('scl-btn-outline');
+            btnFormat1.classList.remove('active');
+            btnFormat1.classList.add('scl-btn-outline');
         });
     }
 
@@ -299,7 +299,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return `<div class="alert alert-warning"><strong>AI 분석 실패</strong><br>${data.error}</div>`;
         }
 
-        let html = `<h4 class="mb-3">${data.summary}</h4><hr>`;
+        let html = `<h6 class="m-0 font-weight-bold text-primary">${data.summary}</h6><hr>`;
 
         // Metrics
         html += '<h5>주요 지표</h5><div class="row text-center mb-3">';

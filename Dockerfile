@@ -2,11 +2,18 @@ FROM python:3.11-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
+ENV DEBIAN_FRONTEND=noninteractive
+# 타임존 설정
+ENV TZ=Asia/Seoul
+
+
 WORKDIR /app
 COPY requirements.txt ./
 RUN pip install --upgrade pip
 RUN pip install --no-cache-dir -r requirements.txt
-RUN apt-get update && apt-get install -y vim && apt-get install -y cron && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y vim tzdata cron 
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone && dpkg-reconfigure -f noninteractive tzdata
+RUN rm -rf /var/lib/apt/lists/*
 COPY . .
 
 # crontab 파일 복사

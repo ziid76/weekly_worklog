@@ -15,9 +15,10 @@ from openpyxl import Workbook
 from pptx import Presentation
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from pptx.util import Pt
-from pptx.enum.text import MSO_VERTICAL_ANCHOR
+from pptx.enum.text import MSO_VERTICAL_ANCHOR, MSO_AUTO_SIZE
 from pptx.enum.shapes import MSO_SHAPE_TYPE
 from pptx.opc.constants import RELATIONSHIP_TYPE as RT
+from pptx.dml.color import RGBColor
 from .models import WeeklyReport, WeeklyReportComment, TeamWeeklyReport, WeeklyReportPersonalComment
 from worklog.models import Worklog
 from teams.models import Team, TeamMembership
@@ -27,6 +28,8 @@ from .forms import WeeklyReportCommentForm, TeamWeeklyReportForm, WeeklyReportPe
 import html
 from django.utils.html import strip_tags
 from django.template.loader import render_to_string
+from copy import deepcopy
+from pptx.opc.constants import RELATIONSHIP_TYPE as RT
 
 class WeeklyReportListView(LoginRequiredMixin, ListView, ):
     model = WeeklyReport
@@ -472,31 +475,30 @@ def export_weekly_report_excel(request, id):
 
 
 
+
+
+
 @login_required
 def export_weekly_report_pptx(request, id):
     """주간 리포트를 PowerPoint 파일로 내보냅니다."""
     report = get_object_or_404(WeeklyReport, id=id)
 
+    # 팀이 지정된 경우 해당 팀의 워크로그만, 아니면 전체
     if report.team:
-        team_members = report.team.members.all()
-        worklogs = (
-            Worklog.objects.filter(
-                year=report.year,
-                week_number=report.week_number,
-                author__in=team_members,
-            )
-            .select_related('author', 'author__profile')
-            .order_by('display_order', 'author__profile__last_name_ko', 'author__username')
-        )
+        team = get_object_or_404(Team, id=report.team.id)
+        # 팀 멤버들의 워크로그만 가져오기
+        team_members = team.members.all()
+        worklogs = Worklog.objects.filter(
+            year=report.year, 
+            week_number=report.week_number,
+            author__in=team_members
+        ).select_related('author', 'author__profile').order_by('display_order', 'author__profile__last_name_ko', 'author__username')
     else:
-        worklogs = (
-            Worklog.objects.filter(
-                year=report.year,
-                week_number=report.week_number,
-            )
-            .select_related('author', 'author__profile')
-            .order_by('display_order', 'author__profile__last_name_ko', 'author__username')
-        )
+        # 전체 워크로그
+        worklogs = Worklog.objects.filter(
+            year=report.year, 
+            week_number=report.week_number
+        ).select_related('author', 'author__profile').order_by('display_order', 'author__profile__last_name_ko', 'author__username')
 
     entries = []
     for worklog in worklogs:
@@ -509,21 +511,12 @@ def export_weekly_report_pptx(request, id):
             meta_parts.append(profile.department_display)
         meta_text = " / ".join(meta_parts)
 
-        this_week = (
-            clean_markdown_text(worklog.this_week_work)
-            if worklog.this_week_work
-            else "작성된 내용이 없습니다."
-        )
-        next_week = (
-            clean_markdown_text(worklog.next_week_plan)
-            if worklog.next_week_plan
-            else "작성된 계획이 없습니다."
-        )
+        this_week = clean_markdown_text_for_pptx(worklog.this_week_work) if worklog.this_week_work else "작성된 내용이 없습니다."
+        next_week = clean_markdown_text_for_pptx(worklog.next_week_plan) if worklog.next_week_plan else "작성된 계획이 없습니다."
 
         entries.append(
             {
                 "author": author_name,
-                "meta": meta_text,
                 "this_week": this_week,
                 "next_week": next_week,
             }
@@ -533,7 +526,6 @@ def export_weekly_report_pptx(request, id):
         entries.append(
             {
                 "author": "작성자 없음",
-                "meta": "",
                 "this_week": "작성된 내용이 없습니다.",
                 "next_week": "작성된 계획이 없습니다.",
             }
@@ -566,11 +558,17 @@ def export_weekly_report_pptx(request, id):
     capacity = max(len(base_table.rows) - 1, 1)
 
     template_shapes_xml = [deepcopy(shape._element) for shape in base_slide.shapes]
-    template_relationships = [
-        (rel.reltype, rel.target_part, rel.rId)
-        for rel in base_slide.part.rels.values()
-        if rel.reltype != RT.SLIDE_LAYOUT
-    ]
+    template_relationships = []
+    for r_id, rel in base_slide.part.rels.items():  # (rId, rel) 튜플
+        if rel.reltype == RT.SLIDE_LAYOUT:
+            continue
+        # 발표자 노트는 복사하지 않는 편이 안전
+        if "notesSlide" in str(rel.reltype):
+            continue
+        if getattr(rel, "is_external", False):
+            template_relationships.append((rel.reltype, rel.target_ref, True))   # URL 문자열
+        else:
+            template_relationships.append((rel.reltype, rel.target_part, False)) # 내부 파트
 
     next_week_start = getattr(report, "next_week_start_date", None)
     next_week_end = getattr(report, "next_week_end_date", None)
@@ -580,76 +578,234 @@ def export_weekly_report_pptx(request, id):
 
     header_labels = [
         "담당",
-        "직책/부서",
         f"금주 실적 ({report.week_start_date:%m월 %d일} ~ {report.week_end_date:%m월 %d일})",
         f"차주 계획 ({next_week_start:%m월 %d일} ~ {next_week_end:%m월 %d일})",
     ]
 
     def clone_template_slide():
         new_slide = prs.slides.add_slide(base_slide.slide_layout)
+
+        # 기본 placeholder 제거
         for shape in list(new_slide.shapes):
             sp = shape._element
             sp.getparent().remove(sp)
+
+        # 레이아웃 외 관계 제거
         for r_id, rel in list(new_slide.part.rels.items()):
             if rel.reltype != RT.SLIDE_LAYOUT:
                 del new_slide.part.rels[r_id]
+
+        # 도형 XML 복사
         for shape_xml in template_shapes_xml:
             new_slide.shapes._spTree.insert_element_before(deepcopy(shape_xml), "p:extLst")
-        for reltype, target_part, r_id in template_relationships:
-            if r_id in new_slide.part.rels:
-                del new_slide.part.rels[r_id]
-            new_slide.part.rels.add_relationship(reltype, target_part, r_id)
-        return new_slide
 
-    def set_cell_text(cell, text, *, bold=False, size=12):
-        text_frame = cell.text_frame
-        text_frame.clear()
-        paragraph = text_frame.paragraphs[0]
-        paragraph.text = text or ""
-        paragraph.font.bold = bold
-        paragraph.font.size = Pt(size)
+        # 관계 복사 (_add_relationship 사용, rId는 라이브러리에 맡김)
+        for reltype, target, is_external in template_relationships:
+            if hasattr(new_slide.part.rels, "_add_relationship"):
+                new_slide.part.rels._add_relationship(reltype, target, is_external)
+            else:
+                # 0.6.19 이하 하위호환 (rId 없이 호출)
+                new_slide.part.rels.add_relationship(reltype, target)
+
+        return new_slide
+        
+    def fit_cell_text(cell, text, *, max_size=13, min_size=9, bold=False, font_color=None):
+        """표 셀 텍스트를 자동 축소하여 맞춤 - bold 마크다운 처리"""
+        tf = cell.text_frame
+        tf.clear()
+        tf.word_wrap = True
+        tf.auto_size = MSO_AUTO_SIZE.TEXT_TO_FIT_SHAPE
+        
+        p = tf.paragraphs[0]
+        p.line_spacing = 1.2  # 줄간격 1.2배수로 설정
+        p.space_after = Pt(0)
+        
+        if not text:
+            text = ""
+        
+        # **bold** 마크다운 처리
+        parts = re.split(r'(\*\*.*?\*\*)', text)
+        
+        for part in parts:
+            if part.startswith('**') and part.endswith('**'):
+                # bold 텍스트
+                bold_text = part[2:-2]  # ** 제거
+                run = p.add_run()
+                run.text = bold_text
+                run.font.bold = True
+                run.font.size = Pt(max_size)
+                if font_color:
+                    run.font.color.rgb = font_color
+            elif part:
+                # 일반 텍스트
+                run = p.add_run()
+                run.text = part
+                run.font.bold = bold
+                run.font.size = Pt(max_size)
+                if font_color:
+                    run.font.color.rgb = font_color
+        
+        # 줄 수 계산
+        lines = max((text or "").count("\n") + 1, 1)
+        return lines
+
+    def tighten_cell_layout(cell):
+        """표 셀 여백과 줄간격을 최소화"""
+        # 표 셀 여백 최소화
+        cell.margin_left = Pt(4)   # 너무 작으면 텍스트가 잘림
+        cell.margin_right = Pt(4)
+        cell.margin_top = Pt(3)
+        cell.margin_bottom = Pt(3)
+
+    def set_cell_text(cell, text, *, bold=False, max_size=13, min_size=9):
+        """개선된 셀 텍스트 설정"""
+        tighten_cell_layout(cell)
+        lines = fit_cell_text(cell, text, max_size=max_size, min_size=min_size, bold=bold)
         cell.vertical_anchor = MSO_VERTICAL_ANCHOR.TOP
-        return max(paragraph.text.count("\n") + 1, 1)
+        return lines
+
+    def optimize_table_layout(table):
+        """표 레이아웃 최적화 - 컬럼 너비 재분배 및 가운데 정렬"""
+        if not table or len(table.columns) < 3:
+            return
+            
+        # 슬라이드 너비 기준으로 표 너비 설정 (90% 사용하여 좌우 여백 확보)
+        slide_width = 9144000  # 표준 슬라이드 너비 (EMU 단위)
+        table_width = int(slide_width * 0.9)
+        
+        # 최적 비율: 담당(10%) : 금주실적(45%) : 차주계획(45%)
+        ratios = [0.1, 0.45, 0.45]
+        
+        # 각 컬럼에 절대 너비 적용
+        for i, ratio in enumerate(ratios):
+            if i < len(table.columns):
+                table.columns[i].width = int(table_width * ratio)
 
     def populate_table(target_slide, chunk):
+        """개선된 표 채우기 함수"""
         table = get_table(target_slide)
         if table is None:
-            return
+            return False
+            
+        # 표 레이아웃 최적화
+        optimize_table_layout(table)
+        
+        # 표를 가운데 정렬
+        for shape in target_slide.shapes:
+            if shape.has_table:
+                slide_width = 9144000  # 슬라이드 너비
+                table_width = sum(col.width for col in shape.table.columns)
+                # 가운데 정렬을 위한 left 위치 계산
+                shape.left = (slide_width - table_width) // 2
+                break
+            
+        # 기존 행 제거 (헤더 제외)
         while len(table.rows) > 1:
             table._tbl.remove(table._tbl.tr_lst[-1])
+            
+        # 새 행 추가
         for _ in chunk:
             table._tbl.append(deepcopy(template_row_xml))
-        for cell, label in zip(table.rows[0].cells, header_labels):
-            set_cell_text(cell, label, bold=True, size=14)
+            
+        # 헤더 설정 (3개 컬럼만 사용)
+        header_row = table.rows[0]
+        for i, label in enumerate(header_labels):
+            if i < len(header_row.cells):
+                tighten_cell_layout(header_row.cells[i])
+                fit_cell_text(header_row.cells[i], label, max_size=12, min_size=12, bold=True, font_color=RGBColor(255, 255, 255))
+        
+        # 4번째 컬럼이 있다면 숨기기
+        if len(header_row.cells) > 3:
+            header_row.cells[3].text = ""
+            
         table.rows[0].height = Pt(38)
+        
+        # 본문 데이터 설정 및 높이 계산
+        total_height = table.rows[0].height.pt
+        slide_body_max = 380  # 슬라이드 유효 높이 (타이틀/여백 고려) - 더 보수적으로
+        
         for row_idx, entry in enumerate(chunk, start=1):
+            if row_idx >= len(table.rows):
+                break
+                
             row = table.rows[row_idx]
-            line_counts = []
-            line_counts.append(set_cell_text(row.cells[0], entry["author"], bold=True, size=13))
-            line_counts.append(set_cell_text(row.cells[1], entry["meta"], size=12))
-            line_counts.append(set_cell_text(row.cells[2], entry["this_week"], size=12))
-            line_counts.append(set_cell_text(row.cells[3], entry["next_week"], size=12))
-            max_lines = max(line_counts) if line_counts else 1
-            row.height = Pt(28 + (max_lines - 1) * 16)
+            
+            # 각 셀 텍스트 설정 및 줄 수 계산 (3개 컬럼만 사용)
+            l1 = set_cell_text(row.cells[0], entry["author"], bold=True, max_size=13, min_size=9)
+            l2 = set_cell_text(row.cells[1], entry["this_week"], max_size=11, min_size=11)  # 금주실적을 2번째 컬럼에
+            l3 = set_cell_text(row.cells[2], entry["next_week"], max_size=11, min_size=11)  # 차주계획을 3번째 컬럼에
+            
+            # 4번째 컬럼이 있다면 비우기
+            if len(row.cells) > 3:
+                row.cells[3].text = ""
+            
+            # 행 높이 계산 (최대 줄 수 기준)
+            max_lines = max(l1, l2, l3)
+            row_height_pt = 24 + (max_lines - 1) * 12  # 기본 높이를 더 작게, 줄간격도 더 촘촘하게
+            row.height = Pt(row_height_pt)
+            total_height += row_height_pt
+            
+            # 슬라이드 높이 초과 검사
+            if total_height > slide_body_max:
+                # 현재 행 제거하고 분할 필요 표시
+                table._tbl.remove(table._tbl.tr_lst[-1])
+                return False  # 분할 필요
+                
+        return True  # 성공적으로 완료
 
-    chunks = [entries[i : i + capacity] for i in range(0, len(entries), capacity)]
+    # 동적 슬라이드 분할 처리
     template_slide = base_slide
-    for index, chunk in enumerate(chunks):
-        slide = template_slide if index == 0 else clone_template_slide()
-        populate_table(slide, chunk)
+    slide_index = 0
+    entry_index = 0
+    
+    while entry_index < len(entries):
+        # 현재 슬라이드 준비
+        slide = template_slide if slide_index == 0 else clone_template_slide()
+        
+        # 남은 항목들로 청크 생성 (최대 capacity개)
+        remaining_entries = entries[entry_index:]
+        chunk = remaining_entries[:capacity]
+        
+        # 표 채우기 시도
+        success = populate_table(slide, chunk)
+        
+        if success:
+            # 성공: 전체 청크 처리 완료
+            entry_index += len(chunk)
+        else:
+            # 실패: 청크 크기를 줄여서 재시도
+            if len(chunk) > 1:
+                # 절반으로 줄여서 재시도
+                chunk = chunk[:len(chunk)//2]
+                success = populate_table(slide, chunk)
+                if success:
+                    entry_index += len(chunk)
+                else:
+                    # 1개씩이라도 처리
+                    chunk = chunk[:1]
+                    populate_table(slide, chunk)
+                    entry_index += 1
+            else:
+                # 1개 항목도 들어가지 않는 경우 (매우 긴 텍스트)
+                entry_index += 1
+        
+        # 슬라이드 제목 설정
         title_shape = slide.shapes.title
         if title_shape is not None:
             title_shape.text = f"{month_week_display} {team_name} 주간보고"
         
+        # 빈 텍스트 박스 처리
         for shape in slide.shapes:
             if shape.shape_type == MSO_SHAPE_TYPE.AUTO_SHAPE and shape.has_text_frame:
-                existing = shape.text.replace(" ", "").strip()
+                existing = shape.text.replace(" ", "").strip()
                 if not existing:
                     text_frame = shape.text_frame
                     text_frame.clear()
                     paragraph = text_frame.paragraphs[0]
                     paragraph.font.size = Pt(12)
                     break
+        
+        slide_index += 1
 
     response = HttpResponse(
         content_type="application/vnd.openxmlformats-officedocument.presentationml.presentation"
@@ -663,8 +819,38 @@ def export_weekly_report_pptx(request, id):
     return response
 
 
+def clean_markdown_text_for_pptx(text):
+    """PPTX용 텍스트 정리 - 원본 형태 최대한 유지, bold 처리 포함"""
+    if not text:
+        return ""
+
+    # HTML 태그 처리 (bold는 유지)
+    text = text.replace("<br>", "\n").replace("<br/>", "\n").replace("<br />", "\n")
+    text = re.sub(r'</p\s*>', '\n', text, flags=re.IGNORECASE)
+    
+    # strong/b 태그를 **로 변환하여 유지
+    text = re.sub(r'<strong[^>]*>(.*?)</strong>', r'**\1**', text, flags=re.IGNORECASE | re.DOTALL)
+    text = re.sub(r'<b[^>]*>(.*?)</b>', r'**\1**', text, flags=re.IGNORECASE | re.DOTALL)
+    
+    # font-weight 스타일 처리 (bolder, bold, 700 등)
+    text = re.sub(r'<span[^>]*style="[^"]*font-weight:\s*(?:bolder|bold|700)[^"]*"[^>]*>(.*?)</span>', r'**\1**', text, flags=re.IGNORECASE | re.DOTALL)
+    text = re.sub(r'<span[^>]*style=\'[^\']*font-weight:\s*(?:bolder|bold|700)[^\']*\'[^>]*>(.*?)</span>', r'**\1**', text, flags=re.IGNORECASE | re.DOTALL)
+    
+    # 나머지 HTML 태그 제거
+    text = strip_tags(text)
+    text = html.unescape(text)
+    
+    # 기본적인 마크다운만 제거 (** bold는 유지)
+    text = re.sub(r'#{1,6}\s*', '', text)
+    text = re.sub(r'`(.*?)`', r'\1', text)
+    
+    # 연속된 빈 줄만 정리
+    text = re.sub(r'\n\s*\n\s*\n+', '\n\n', text)
+    
+    return text.strip()
+
 def clean_markdown_text(text):
-    """마크다운 및 HTML 텍스트를 일반 텍스트로 변환"""
+    """마크다운 및 HTML 텍스트를 일반 텍스트로 변환하고 가독성 개선"""
     if not text:
         return ""
 
@@ -682,8 +868,44 @@ def clean_markdown_text(text):
     text = re.sub(r'\*\*(.*?)\*\*', r'\1', text)  # 굵은 글씨
     text = re.sub(r'\*(.*?)\*', r'\1', text)  # 기울임
     text = re.sub(r'`(.*?)`', r'\1', text)  # 인라인 코드
-    text = re.sub(r'^\s*[-*+]\s+', '• ', text, flags=re.MULTILINE)  # 리스트
-    text = re.sub(r'^\s*\d+\.\s+', '• ', text, flags=re.MULTILINE)  # 번호 리스트
+    
+    # 기존 블릿 기호 제거 (• - * + 등)
+    text = re.sub(r'^\s*[•\-\*\+]\s+', '', text, flags=re.MULTILINE)
+    text = re.sub(r'^\s*\d+\.\s+', '', text, flags=re.MULTILINE)  # 번호 리스트
+    
+    # 긴 문장을 글머리표로 분리 (가독성 개선)
+    lines = text.split('\n')
+    processed_lines = []
+    
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+            
+        # 긴 문장(80자 이상)이고 문장 구분자가 있는 경우 분리
+        if len(line) > 80 and any(sep in line for sep in ['. ', ', ', '; ']):
+            # 문장 구분자로 분리
+            parts = re.split(r'([.;,])\s+', line)
+            current_part = ""
+            
+            for i in range(0, len(parts), 2):
+                if i + 1 < len(parts):
+                    segment = parts[i] + parts[i + 1]
+                else:
+                    segment = parts[i]
+                
+                if len(current_part + segment) > 60 and current_part:
+                    processed_lines.append(f"• {current_part.strip()}")
+                    current_part = segment
+                else:
+                    current_part += segment
+            
+            if current_part.strip():
+                processed_lines.append(f"• {current_part.strip()}")
+        else:
+            processed_lines.append(f"• {line}")
+    
+    text = '\n'.join(processed_lines)
     
     # 연속된 공백과 줄바꿈 정리
     text = re.sub(r'\n\s*\n', '\n', text)  # 빈 줄 제거

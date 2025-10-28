@@ -8,8 +8,8 @@
 {% block content %}
     <div class="d-flex justify-content-end align-items-center mb-4">
         <div class="page-actions">
-            <a href="{% url 'task_create' %}" class="btn btn-primary">
-                <i class="fas fa-plus me-2"></i>신규 업무 추가
+            <a href="{% url 'task_create' %}" class="scl-btn">
+                <i class="fas fa-plus me-2"></i>업무 추가
             </a>
         </div>
     </div>
@@ -46,7 +46,7 @@
                 <div class="col-lg-2 col-md-12">
                     <label class="form-label">&nbsp;</label>
                     <div class="d-grid">
-                        <button type="submit" class="btn btn-primary">
+                        <button type="submit" class="scl-btn">
                             <i class="fas fa-search me-2"></i>검색
                         </button>
                     </div>
@@ -55,7 +55,7 @@
 
             {% if request.GET %}
             <div class="mt-3">
-                <a href="{% url 'task_list' %}" class="btn btn-outline-secondary btn-sm">
+                <a href="{% url 'task_list' %}" class="scl-btn scl-btn-thin-outline scl-btn-sm ">
                     <i class="fas fa-times me-1"></i>필터 초기화
                 </a>
             </div>
@@ -70,17 +70,17 @@
 <div class="card">
     <div class="card-header">
         <div class="d-flex justify-content-between align-items-center">
-            <h1 class="card-title mb-0">
+            <h3 class="card-title mb-0">
                 <i class="fas fa-list me-2"></i>업무목록
-            </h1>
+            </h3>
             <div class="d-flex gap-2 d-none d-md-block">
-                <div class="btn-group btn-group-sm" role="group">
+                <div class="btn-group me-2" role="group" aria-label="Filter">
                     <input type="radio" class="btn-check" name="view-mode" id="card-view" checked>
-                    <label class="btn btn-outline-primary" for="card-view">
+                    <label class="scl-btn scl-btn-outline" for="card-view">
                         <i class="fas fa-th-large"></i>
                     </label>
                     <input type="radio" class="btn-check" name="view-mode" id="table-view" >
-                    <label class="btn btn-outline-primary" for="table-view">
+                    <label class="scl-btn scl-btn-outline" for="table-view">
                         <i class="fas fa-table"></i>
                     </label>
 
@@ -153,11 +153,11 @@
                                             <small class="text-muted">담당자 미지정</small>
                                         {% endif %}
                                     </div>
-                                    <div class="btn-group btn-group-sm">
-                                        <a href="{% url 'task_detail' task.pk %}" class="btn btn-outline-primary btn-sm">
+                                    <div class="scl-btn-group">
+                                        <a href="{% url 'task_detail' task.pk %}" class="scl-btn scl-btn-sm">
                                             <i class="fas fa-eye"></i>
                                         </a>
-                                        <a href="{% url 'task_update' task.pk %}" class="btn btn-outline-primary btn-sm">
+                                        <a href="{% url 'task_update' task.pk %}" class="scl-btn scl-btn-outline scl-btn-sm">
                                             <i class="fas fa-edit"></i>
                                         </a>
                                     </div>
@@ -284,14 +284,14 @@
                                     {% endif %}
                                 </td>
                                 <td>
-                                    <div class="btn-group btn-group-sm">
-                                        <a href="{% url 'task_detail' task.pk %}" class="btn btn-outline-primary btn-sm" title="상세보기">
+                                    <div class="scl-btn-group">
+                                        <a href="{% url 'task_detail' task.pk %}" class="scl-btn scl-btn-outline scl-btn-sm" title="상세보기">
                                             <i class="fas fa-eye"></i>
                                         </a>
-                                        <a href="{% url 'task_update' task.pk %}" class="btn btn-outline-primary btn-sm" title="수정">
+                                        <a href="{% url 'task_update' task.pk %}" class="scl-btn scl-btn-outline scl-btn-sm" title="수정">
                                             <i class="fas fa-edit"></i>
                                         </a>
-                                        <a href="{% url 'task_delete' task.pk %}" class="btn btn-outline-primary btn-sm" title="삭제" onclick="return confirm('정말로 삭제하시겠습니까?')">
+                                        <a href="{% url 'task_delete' task.pk %}" class="scl-btn scl-btn-outline scl-btn-sm" title="삭제" onclick="return confirm('정말로 삭제하시겠습니까?')">
                                             <i class="fas fa-trash"></i>
                                         </a>
                                     </div>
@@ -311,7 +311,7 @@
                 </div>
                 <h6 class="empty-title">등록된 업무가 없습니다</h6>
                 <p class="empty-description mb-4">첫 번째 업무를 등록해보세요.</p>
-                <a href="{% url 'task_create' %}" class="btn btn-primary">
+                <a href="{% url 'task_create' %}" class="scl-btn">
                     <i class="fas fa-plus me-2"></i>업무 등록하기
                 </a>
             </div>
