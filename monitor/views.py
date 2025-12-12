@@ -43,7 +43,7 @@ def operation_log_list(request):
             entry = LogEntry.objects.filter(operation_log=log, category=category).first()
             log_entries_map[log.id][category.id] = entry
     
-    return render(request, 'operation_log_list.html', {
+    return render(request, 'monitor/operation_log_list.html', {
         'logs': logs,
         'selected_month': month,
         'categories': categories,
@@ -83,7 +83,7 @@ def operation_log_detail(request, pk):
             entry = None
         log_entries[category.id] = entry
     
-    return render(request, 'operation_log_detail.html', {
+    return render(request, 'monitor/operation_log_detail.html', {
         'log': log,
         'ready': ready,
         'steps': steps,
@@ -164,7 +164,7 @@ def operation_log_complete(request, pk):
 @login_required
 def operation_log_approval_list(request):
     logs = OperationLog.objects.filter(completed=True, approved=False).order_by('date')
-    return render(request, 'operation_log_approval_list.html', {'logs': logs})
+    return render(request, 'monitor/operation_log_approval_list.html', {'logs': logs})
 
 
 @user_passes_test(lambda u: u.is_staff)
@@ -260,7 +260,7 @@ def operation_duty(request):
     if not month:
         month = datetime.today().strftime('%Y-%m')
 
-    return render(request, 'operation_duty.html', {'selected_month': month})
+    return render(request, 'monitor/operation_duty.html', {'selected_month': month})
 
 
 @login_required

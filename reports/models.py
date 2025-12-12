@@ -4,6 +4,26 @@ from teams.models import Team
 from worklog.models import Worklog
 
 
+class ReportReview(models.Model):
+    """개인별 주간업무 AI 리뷰 결과"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='report_reviews', verbose_name="리뷰 대상자")
+    year = models.IntegerField("년도")
+    week_number = models.IntegerField("주차")
+    review_content = models.JSONField("AI 리뷰 내용")
+    notification_sent = models.BooleanField("알림 발송 여부", default=False)
+    created_at = models.DateTimeField("생성일시", auto_now_add=True)
+    updated_at = models.DateTimeField("수정일시", auto_now=True)
+
+    class Meta:
+        unique_together = ('user', 'year', 'week_number')
+        ordering = ['-year', '-week_number', 'user']
+        verbose_name = "AI 리뷰 결과"
+        verbose_name_plural = "AI 리뷰 결과 목록"
+
+    def __str__(self):
+        return f"{self.user.username} - {self.year}년 {self.week_number}주차 리뷰"
+
+
 class WeeklyReport(models.Model):
     """주간 집계 리포트"""
     year = models.IntegerField("년도")

@@ -12,11 +12,15 @@ class CommonCode(models.Model):
     code = models.CharField(max_length=50)
     name = models.CharField(max_length=255)
     dataset = models.CharField(max_length=255,blank=True, null=True)
+    category = models.CharField(max_length=50, blank=True, null=True, verbose_name="카테고리명")
+    display_order = models.IntegerField(default=0, verbose_name="표시 순서")
     active = models.BooleanField(default=True)
+    separator = models.CharField(max_length=1, blank=True, null=True, verbose_name="구분자")
     
 
     class Meta:
         unique_together = ('parent', 'group', 'code')
+        ordering = ['category', 'display_order', 'name']
 
     def __str__(self):
         return f"{self.name}"
@@ -36,7 +40,8 @@ class CommonCode(models.Model):
 class ServiceRequest(models.Model):
 
     S_CHOICES=(
-        ("N", "요청접수"),
+        ("N", "서비스 생성"),
+        ("A", "요청접수"),
         ("P", "처리중"),
         ("G", "처리완료"),
         ("D", "처리불가")
@@ -48,20 +53,20 @@ class ServiceRequest(models.Model):
     req_title = models.TextField(verbose_name='제목', blank=True)  
     req_system = models.TextField(verbose_name='요청시스템', null=True, blank=True)  
     req_module = models.TextField(verbose_name='요청모듈', null=True, blank=True) 
-    req_depart = models.TextField(verbose_name='요청부서', blank=True)  
-    req_name =  models.TextField(verbose_name='요청자', blank=True)  
-    req_email =  models.TextField(verbose_name='요청자 email', blank=True) 
-    req_reason = models.TextField(verbose_name='요청사유', blank=True)  # Allow blank
-    req_details = models.TextField(verbose_name='요청내용', blank=True) # Allow blank
-    rcv_opinion = models.TextField(verbose_name='담당부서의견', blank=True) # Allow blank
+    req_depart = models.TextField(verbose_name='요청부서', null=True, blank=True)  
+    req_name =  models.TextField(verbose_name='요청자', null=True, blank=True)  
+    req_email =  models.TextField(verbose_name='요청자 email', null=True, blank=True) 
+    req_reason = models.TextField(verbose_name='요청사유', null=True, blank=True)  # Allow blank
+    req_details = models.TextField(verbose_name='요청내용', null=True, blank=True) # Allow blank
+    rcv_opinion = models.TextField(verbose_name='담당부서의견',null=True,  blank=True) # Allow blank
     date_of_req = models.DateField(verbose_name='희망적용일자', null=True, blank=True)
     date_of_recept = models.DateField(verbose_name='접수일자', auto_now_add=True)
-    split_msg = models.TextField(verbose_name='분할메시지', blank=True)
+    split_msg = models.TextField(verbose_name='분할메시지', null=True, blank=True)
     split_date_of_due = models.DateField(verbose_name='분할SR완료요청일자', null=True, blank=True)
     date_of_due = models.DateField(verbose_name='완료예정일자', null=True, blank=True)
     date_of_complete = models.DateField(verbose_name='완료일자', null=True, blank=True)
-    complete_content = models.TextField(verbose_name='처리결과', blank=True) # Allow blank
-    reject_reason = models.TextField(verbose_name='처리결과', blank=True) # Allow blank
+    complete_content = models.TextField(verbose_name='처리결과', null=True, blank=True) # Allow blank
+    reject_reason = models.TextField(verbose_name='처리결과', null=True, blank=True) # Allow blank
     assignee = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='assigned_requests', verbose_name='담당자')
     effort_expected = models.DecimalField(max_digits=5, decimal_places=2, verbose_name='예상 작업 시간(M/H)', blank=True, null=True) # Example: 2.5 hours
     effort = models.DecimalField(max_digits=5, decimal_places=2, verbose_name='예상 작업 시간(M/H)', blank=True, null=True) # Example: 2.5 hours
@@ -104,6 +109,8 @@ class ServiceRequest(models.Model):
     def get_status_text(self):
         """상태값 텍스트 변환"""
         if self.status == 'N':
+            return "서비스 생성"
+        elif self.status == 'A':
             return "요청접수"
         elif self.status == 'P':
             return "처리중"
@@ -117,6 +124,9 @@ class ServiceRequest(models.Model):
     def get_status_N(self):
         return self.steps.filter(status='N')
 
+    def get_status_A(self):
+        return self.steps.filter(status='A')
+
     def get_status_P(self):
         return self.steps.filter(status='P')
     
@@ -124,10 +134,6 @@ class ServiceRequest(models.Model):
         if self.date_of_due > date.today():
             return True
         return False
-    
-
-    def get_status_P(self):
-        return self.steps.filter(status='P')
     
 def service_directory_path(instance, filename):
 
@@ -221,3 +227,74 @@ class ServiceRelease(models.Model):
 
     def __str__(self):
         return f"Release for SR {self.service_request.id} ({self.request_number})"
+
+
+class ServiceRequestFormData(models.Model):
+    """동적 폼 데이터 저장"""
+    service_request = models.ForeignKey(ServiceRequest, on_delete=models.CASCADE, related_name="form_data")
+    dataset = models.CharField(max_length=255, verbose_name="데이터셋 코드")
+    field_key = models.CharField(max_length=255, verbose_name="필드명")
+    field_value = models.TextField(verbose_name="필드값", blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('service_request', 'field_key')
+
+    def __str__(self):
+        return f"{self.service_request.id} - {self.field_key}: {self.field_value}"
+
+
+class Dataset(models.Model):
+    """데이터셋 정의"""
+    name = models.CharField(max_length=255, verbose_name="데이터셋 이름")
+    code = models.CharField(max_length=255, unique=True, verbose_name="데이터셋 코드")
+    description = models.TextField(blank=True, verbose_name="설명")
+    active = models.BooleanField(default=True, verbose_name="활성 여부")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['code']
+
+    def __str__(self):
+        return f"{self.name} ({self.code})"
+
+
+class FormElement(models.Model):
+    """동적 폼 요소 정의"""
+    ELEMENT_TYPES = (
+        ('text', '텍스트'),
+        ('textarea', '텍스트영역'),
+        ('select', '선택박스'),
+        ('checkbox', '체크박스'),
+        ('radio', '라디오버튼'),
+        ('number', '숫자'),
+        ('date', '날짜'),
+        ('email', '이메일'),
+    )
+    
+    COL_WIDTH_CHOICES = (
+        (12, '전체 (12/12)'),
+        (6, '절반 (6/12)'),
+        (4, '1/3 (4/12)'),
+        (3, '1/4 (3/12)'),
+    )
+    
+    dataset = models.ForeignKey(Dataset, on_delete=models.CASCADE, related_name='elements', verbose_name="데이터셋")
+    element_name = models.CharField(max_length=255, verbose_name="폼 요소 이름")
+    element_code = models.CharField(max_length=255, verbose_name="폼 요소 코드")
+    element_type = models.CharField(max_length=20, choices=ELEMENT_TYPES, verbose_name="폼 요소 유형")
+    element_options = models.TextField(blank=True, verbose_name="선택 옵션 (JSON)")
+    is_required = models.BooleanField(default=False, verbose_name="필수 여부")
+    placeholder = models.CharField(max_length=255, blank=True, verbose_name="플레이스홀더")
+    order = models.IntegerField(default=0, verbose_name="정렬 순서")
+    row_group = models.CharField(max_length=50, blank=True, verbose_name="행 그룹")
+    col_width = models.IntegerField(choices=COL_WIDTH_CHOICES, default=12, verbose_name="열 너비")
+    active = models.BooleanField(default=True, verbose_name="활성 여부")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['dataset', 'order']
+        unique_together = ('dataset', 'element_code')
+
+    def __str__(self):
+        return f"{self.dataset.name} - {self.element_name}"

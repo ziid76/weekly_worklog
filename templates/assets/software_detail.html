@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+
+{% block page_name %}소프트웨어 자산 상세{% endblock %}
+
+{% block content %}
+<div class="border bg-white p-3 mb-3">
+    <h6 class="section-title border-bottom d-flex justify-content-between align-items-center pb-2">기본 정보
+        <a href="{% url 'assets:software_edit' software.pk %}" class="tag tag-button tag-primary">
+            수정
+        </a>
+    </h6>
+    <table class="table table-bordered">
+        <tr>
+            <th class="bg-light" style="width: 20%;">소프트웨어명</th>
+            <td>{{ software.name }}</td>
+            <th class="bg-light" style="width: 20%;">버전</th>
+            <td>{{ software.version }}</td>
+        </tr>
+        <tr>
+            <th class="bg-light">제조사</th>
+            <td>{{ software.manufacturer }}</td>
+            <th class="bg-light">라이선스 유형</th>
+            <td>{{ software.get_license_type_display }}</td>
+        </tr>
+        <tr>
+            <th class="bg-light">상태</th>
+            <td>
+                <span
+                    class="badge bg-{% if software.status == 'OPER' %}success{% elif software.status == 'EXP' %}warning{% else %}secondary{% endif %}">
+                    {{ software.get_status_display }}
+                </span>
+            </td>
+            <th class="bg-light">구매일</th>
+            <td>{{ software.purchase_date|default:"-" }}</td>
+        </tr>
+        <tr>
+            <th class="bg-light">유지보수만료일</th>
+            <td colspan="3">{{ software.warranty_date|default:"-" }}</td>
+        </tr>
+    </table>
+</div>
+
+{% include 'assets/partials/_related_systems.html' with systems=software.systems.all %}
+
+{% include 'assets/partials/_history_section.html' %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // 히스토리 추가 폼 제출
+    $('#historyForm').submit(function(e) {
+        e.preventDefault();
+        
+        const comment = $('textarea[name="comment"]').val().trim();
+        if (!comment) {
+            alert('코멘트를 입력해주세요.');
+            return;
+        }
+        
+        $.ajax({
+            url: '{% url "assets:software_history_add" software.pk %}',
+            method: 'POST',
+            data: {
+                comment: comment,
+                action: 'USER_COMMENT',
+                csrfmiddlewaretoken: '{{ csrf_token }}'
+            },
+            success: function(response) {
+                if (response.success) {
+                    location.reload();
+                } else {
+                    alert(response.error || '이력 추가에 실패했습니다.');
+                }
+            },
+            error: function() {
+                alert('서버 오류가 발생했습니다.');
+            }
+        });
+    });
+});
+</script>
+
+
+{% endblock %}

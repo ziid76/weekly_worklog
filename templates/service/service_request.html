@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block page_name %}
+Service Request 등록
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid border bg-white p-4">
+    {% if service_list %}
+        {% regroup service_list by category as service_groups %}
+        {% for group in service_groups %}
+            <div class="mb-5">
+                {% if group.grouper %}
+                    <h6 class="sr-info section-title border-bottom">    
+                        {{ group.grouper }}
+                    </h6>
+                {% else %}
+                    <h6 class="sr-info section-title border-bottom">
+                        서비스 요청-접수 일괄 등록
+                    </h6>
+                {% endif %}
+                
+                <div class="row row-cols-1 row-cols-md-3 g-4">
+                    {% for service in group.list %}
+                        <div class="col">
+                            <div class="card h-100 shadow-sm">
+                                <div class="card-body">
+                                    <h5 class="card-title">
+                                        <b>{{ service.name }}</b>
+                                        {% if service.display_order %}
+                                            <small class="badge bg-secondary ms-2">{{ service.display_order }}</small>
+                                        {% endif %}
+                                    </h5>
+                                    <p class="card-text">{{ service.description|safe }}</p>
+                                    
+                                    <a href="{% url 'service_request_create' service.code %}" class="btn btn-primary mt-3">
+                                        <i class="fas fa-plus"></i> 등록
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endfor %}
+    {% else %}
+        <div class="text-center py-5">
+            <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+            <p class="text-muted">신청 항목이 없습니다.</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

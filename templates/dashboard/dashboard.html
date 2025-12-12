@@ -1,0 +1,484 @@
+{% extends 'base.html' %}
+
+{% block page_name %}
+    업무현황
+{% endblock %}
+
+{% block content %}
+    <div class="d-flex justify-content-end align-items-center mb-4">
+
+        <div class="page-actions">
+            <a href="{% url 'task_create' %}" class="btn btn-primary">
+                <i class="fas fa-plus me-2"></i>새 업무
+            </a>
+            <a href="{% url 'worklog_list' %}" class="btn btn-outline-primary">
+                <i class="fas fa-edit me-2"></i>주간보고 작성
+            </a>
+        </div>
+    </div>
+
+<!-- 통계 카드 섹션 -->
+<div class="row g-4 mb-4">
+    <div class="col-lg-3 col-md-6">
+        <a href="{% url 'task_list' %}" class="text-decoration-none">
+            <div class="stat-card info">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="stat-content ">
+                        <h3 class="stat-number">{{ total_tasks|default:0 }}</h3>
+                        <p class="stat-label">전체 업무</p>
+                    </div>
+                    <div class="stat-icon">
+                        <i class="fas fa-clipboard-list fa-2x"></i>
+                    </div>
+                </div>
+                <div class="stat-footer">
+                    <small><i class="fas fa-info-circle me-1"></i>전체 등록된 업무</small>
+                </div>
+            </div>
+        </a>
+    </div>
+    
+    <div class="col-lg-3 col-md-6">
+        <a href="{% url 'task_list' %}?status=todo" class="text-decoration-none">
+            <div class="stat-card warning">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="stat-content">
+                        <h3 class="stat-number">{{ todo_tasks|default:0 }}</h3>
+                        <p class="stat-label">대기중 업무</p>
+                    </div>
+                    <div class="stat-icon">
+                        <i class="fas fa-clock fa-2x"></i>
+                    </div>
+                </div>
+                <div class="stat-footer">
+                    <small><i class="fas fa-hourglass-start me-1"></i>시작 대기중인 업무</small>
+                </div>
+            </div>
+        </a>
+    </div>
+    
+    <div class="col-lg-3 col-md-6">
+        <a href="{% url 'task_list' %}?status=in_progress" class="text-decoration-none">
+            <div class="stat-card primary">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="stat-content">
+                        <h3 class="stat-number">{{ in_progress_tasks|default:0 }}</h3>
+                        <p class="stat-label">진행중 업무</p>
+                    </div>
+                    <div class="stat-icon">
+                        <i class="fas fa-spinner fa-2x"></i>
+                    </div>
+                </div>
+                <div class="stat-footer">
+                    <small><i class="fas fa-play me-1"></i>현재 진행중인 업무</small>
+                </div>
+            </div>
+        </a>
+    </div>
+    
+    <div class="col-lg-3 col-md-6">
+        <a href="{% url 'task_list' %}?status=done" class="text-decoration-none">
+            <div class="stat-card success">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="stat-content">
+                        <h3 class="stat-number">{{ done_tasks|default:0 }}</h3>
+                        <p class="stat-label">완료된 업무</p>
+                    </div>
+                    <div class="stat-icon">
+                        <i class="fas fa-check-circle fa-2x"></i>
+                    </div>
+                </div>
+                <div class="stat-footer">
+                    <small><i class="fas fa-trophy me-1"></i>성공적으로 완료된 업무</small>
+                </div>
+            </div>
+        </a>
+    </div>
+</div>
+
+<!-- 모니터링 및 SR 현황 섹션 -->
+<div class="row g-4 mb-4">
+    <!-- 시스템 점검 현황 (Monitor) -->
+    <div class="col-lg-8">
+        <div class="card h-100 shadow-sm" style="border: none;">
+            <div class="card-header bg-white py-3" style="border-bottom: 1px solid #dee2e6;">
+                <h5 class="card-title mb-0 fw-bold">
+                    <i class="fas fa-server me-2 text-primary"></i>시스템 점검 현황
+                </h5>
+            </div>
+            <div class="card-body p-4">
+                <div class="row" style="gap: 1.5rem 0;">
+                    <!-- 미처리 내역 -->
+                    <div class="col-md-6">
+                        <div class="h-100">
+                            <div class="d-flex align-items-center mb-3">
+                                <div class="rounded-circle p-2 me-2" style="background-color: rgba(220, 53, 69, 0.1);">
+                                    <i class="fas fa-exclamation-circle text-danger"></i>
+                                </div>
+                                <h6 class="mb-0 fw-bold text-danger">미처리 점검 내역</h6>
+                            </div>
+                            {% if monitor_pending_logs %}
+                                <div class="list-group list-group-flush">
+                                    {% for log in monitor_pending_logs %}
+                                    <a href="{% url 'operation_log_detail' log.pk %}" 
+                                       class="list-group-item list-group-item-action monitor-pending-item"
+                                       style="border: none; border-left: 3px solid #dc3545; padding: 1rem; margin-bottom: 0.5rem; background-color: #f8f9fa; border-radius: 0 0.375rem 0.375rem 0; transition: all 0.2s;">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <div class="fw-bold text-dark mb-1" style="font-size: 0.95rem;">
+                                                    {{ log.date|date:"Y년 m월 d일" }}
+                                                </div>
+                                          </div>
+                                            <span class="badge bg-danger" style="padding: 0.5rem 0.75rem;">미완료</span>
+                                        </div>
+                                    </a>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <div class="text-center rounded" style="padding: 3rem 1rem; background-color: #f8f9fa;">
+                                    <i class="fas fa-check-circle text-success mb-3" style="font-size: 3rem; opacity: 0.5;"></i>
+                                    <p class="mb-0 text-muted fw-medium">미처리된 점검 내역이 없습니다</p>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <!-- 향후 일정 및 평균 리드타임 (가로 배치) -->
+                    <div class="col-md-6">
+                        <div class="row g-3 h-100">
+                            <!-- 향후 일정 -->
+                            <div class="col-6">
+                                <div class="h-100 d-flex flex-column">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <div class="rounded-circle p-1 me-2" style="background-color: rgba(13, 110, 253, 0.1);">
+                                            <i class="fas fa-calendar-alt text-primary" style="font-size: 0.9rem;"></i>
+                                        </div>
+                                        <h6 class="mb-0 fw-bold text-primary" style="font-size: 0.95rem;">다음 점검 일정</h6>
+                                    </div>
+                                    {% if monitor_upcoming_logs %}
+                                    <div class="flex-grow-1 rounded p-3 d-flex flex-column justify-content-center align-items-center text-center" >
+
+                                        {% for log in monitor_upcoming_logs %}
+                                                        <div class="text-center me-3 bg-white rounded shadow-sm p-2" style="min-width: 70px;">
+                                                            <small class="text-muted d-block fw-bold italic" style="font-size: 0.9rem; margin-top: 3px;">
+                                                                {{ log.date|date:"m월" }}
+                                                            </small>
+                                                            <div class="fw-bold text-primary mb-0" style="font-size: 2.2rem; line-height: 1;">
+                                                                {{ log.date|date:"d" }}
+                                                            </div>
+
+                                                            </div>
+                                                        {% if log.date == today %}
+                                                            <span class="tag tag-primary">오늘</span>
+                                                        {% else %}
+                                                            <span class="tag tag-warning">{{ log.date|timeuntil }} 남음</span>
+                                                        {% endif %}
+                                               
+                                            {% endfor %}
+                                        </div>
+                                    {% else %}
+                                        <div class="text-center rounded flex-grow-1 d-flex flex-column justify-content-center" style="background-color: #f8f9fa;">
+                                            <i class="fas fa-calendar-check text-muted mb-2" style="font-size: 1.5rem; opacity: 0.5;"></i>
+                                            <p class="mb-0 text-muted fw-medium small">일정 없음</p>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <!-- 평균 리드타임 표시 -->
+                            {% if avg_lead_time_hours is not None %}
+                            <div class="col-6">
+                                <div class="h-100 d-flex flex-column">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <div class="rounded-circle p-1 me-2" style="{% if lead_time_status == 'good' %}background-color: rgba(25, 135, 84, 0.1);{% else %}background-color: rgba(255, 193, 7, 0.1);{% endif %}">
+                                            <i class="fas fa-clock {% if lead_time_status == 'good' %}text-success{% else %}text-warning{% endif %}" style="font-size: 0.9rem;"></i>
+                                        </div>
+                                        <h6 class="mb-0 fw-bold {% if lead_time_status == 'good' %}text-success{% else %}text-warning{% endif %}" style="font-size: 0.95rem;">평균 리드타임</h6>
+                                    </div>
+                                    
+                                    <div class="flex-grow-1 rounded p-3 d-flex flex-column justify-content-center align-items-center text-center" style="{% if lead_time_status == 'good' %}background-color: rgba(25, 135, 84, 0.05); border: 1px solid rgba(25, 135, 84, 0.1);{% else %}background-color: rgba(255, 193, 7, 0.05); border: 1px solid rgba(255, 193, 7, 0.1);{% endif %}">
+                                        <div class="fw-bold mb-2" style="font-size: 1.4rem; line-height: 1.2; {% if lead_time_status == 'good' %}color: #198754;{% else %}color: #ffc107;{% endif %}">
+                                            {% if avg_lead_time_hours >= 0 %}
+                                                {% if avg_lead_time_days > 0 %}
+                                                    {{ avg_lead_time_days }}일 {{ avg_lead_time_remaining_hours }}시간
+                                                {% else %}
+                                                    {{ avg_lead_time_remaining_hours }}시간
+                                                {% endif %}
+                                            {% else %}
+                                                {% if avg_lead_time_days < 0 %}
+                                                    {{ avg_lead_time_days }}일<br>{{ avg_lead_time_remaining_hours }}시간
+                                                {% else %}
+                                                    {{ avg_lead_time_remaining_hours }}시간
+                                                {% endif %}
+                                            {% endif %}
+                                        </div>
+                                        <small class="text-muted" style="font-size: 0.65rem;">마감(17시) 기준</small>
+                                        
+                                        {% if lead_time_status == 'good' %}
+                                            <span class="tag tag-success mb-2" style="padding: 0.3rem 0.5rem; font-size: 0.7rem;">
+                                                <i class="fas fa-check-circle me-1"></i>점검이 정상적으로 이루어지고 있습니다.
+                                            </span>
+                                        {% else %}
+                                            <span class="tag tag-success text-dark mb-2" style="padding: 0.3rem 0.5rem; font-size: 0.7rem;">
+                                                <i class="fas fa-exclamation-triangle me-1"></i>점검이 너무 오래걸립니다.
+                                            </span>
+                                        {% endif %}
+                                        
+                                        
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SR 현황 (Service Request) -->
+    <div class="col-lg-4">
+        <div class="h-100 d-flex flex-column" style="gap: 1rem;">
+            <!-- SR 접수 대상 -->
+            <div class="card shadow-sm flex-fill" style="border: none;">
+                <div class="card-body p-4 rounded" style="background-color: rgba(220, 53, 69, 0.05);">
+                    <div class="d-flex align-items-start justify-content-between mb-3">
+                        <div class="flex-grow-1">
+                            <div class="d-flex align-items-center mb-2">
+                                <div class="rounded-circle p-2 me-2" style="background-color: rgba(220, 53, 69, 0.1);">
+                                    <i class="fas fa-inbox text-danger"></i>
+                                </div>
+                                <h6 class="mb-0 fw-bold text-danger">SR 접수 대상</h6>
+                            </div>
+                            <small class="text-muted d-block">접수 대기중인 요청</small>
+                        </div>
+                        <div class="text-end">
+                            <div class="fw-bold text-danger mb-0" style="font-size: 3rem; line-height: 1;">
+                                {{ sr_receipt_target_count|default:0 }}
+                            </div>
+                            <small class="text-danger fw-medium">건</small>
+                        </div>
+                    </div>
+                    <div class="progress" style="height: 4px;">
+                        <div class="progress-bar bg-danger" role="progressbar" style="width: 100%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 처리 진행 중 -->
+            <div class="card shadow-sm flex-fill" style="border: none;">
+                <div class="card-body p-4 rounded" style="background-color: rgba(13, 110, 253, 0.05);">
+                    <div class="d-flex align-items-start justify-content-between mb-3">
+                        <div class="flex-grow-1">
+                            <div class="d-flex align-items-center mb-2">
+                                <div class="rounded-circle p-2 me-2" style="background-color: rgba(13, 110, 253, 0.1);">
+                                    <i class="fas fa-cog fa-spin text-primary"></i>
+                                </div>
+                                <h6 class="mb-0 fw-bold text-primary">처리 진행 중</h6>
+                            </div>
+                            <small class="text-muted d-block">현재 처리중인 요청</small>
+                        </div>
+                        <div class="text-end">
+                            <div class="fw-bold text-primary mb-0" style="font-size: 3rem; line-height: 1;">
+                                {{ sr_in_progress_count|default:0 }}
+                            </div>
+                            <small class="text-primary fw-medium">건</small>
+                        </div>
+                    </div>
+                    <div class="progress" style="height: 4px;">
+                        <div class="progress-bar bg-primary" role="progressbar" style="width: 100%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 메인 컨텐츠 영역 -->
+<div class="row g-4 mt-2">
+    <!-- 최근 업무 -->
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-tasks me-2"></i>최근 업무
+                    </h5>
+                    <a href="{% url 'task_list' %}" class="btn btn-sm btn-outline-primary">
+                        <i class="fas fa-arrow-right me-1"></i>전체보기
+                    </a>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                {% if recent_tasks %}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0 text-center">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="border-0">제목</th>
+                                    <th class="border-0">상태</th>
+                                    <th class="border-0">마감일</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for task in recent_tasks %}
+                                <tr>
+                                    <td>
+                                        <div>
+                                            <a href="{% url 'task_detail' task.pk %}" class=" text-decoration-none fw-medium text-dark ">
+                                                {{ task.title|truncatechars:50 }}
+                                            </a>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge badge-status-{{ task.status }}">
+                                            {% if task.status == 'in_progress' %}진행중
+                                            {% elif task.status == 'todo' %}시작 전
+                                            {% elif task.status == 'done' %}완료
+                                            {% elif task.status == 'dropped' %}중단
+                                            {% else %}대기{% endif %}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if task.due_date %}
+                                            <span class="text-muted">
+                                                <i class="fas fa-calendar-alt me-1"></i>
+                                                {{ task.due_date|date:"m/d" }}
+                                            </span>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="empty-state">
+                        <div class="empty-icon">
+                            <i class="fas fa-inbox"></i>
+                        </div>
+                        <h6 class="empty-title">등록된 업무가 없습니다</h6>
+                        <p class="empty-description">첫 번째 업무를 등록해보세요.</p>
+                        <a href="{% url 'task_create' %}" class="btn btn-primary">
+                            <i class="fas fa-plus me-2"></i>업무 등록하기
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- 사이드 패널 -->
+    <div class="col-lg-4">
+        <!-- 우선순위별 업무 현황 -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-chart-pie me-2"></i>우선순위별
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="priority-stats">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-circle me-2" style="color: var(--priority-urgent);"></i>
+                            <span>긴급</span>
+                        </div>
+                        <span class="badge badge-urgent">{{ urgent_tasks|default:0 }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-circle me-2" style="color: var(--priority-high);"></i>
+                            <span>높음</span>
+                        </div>
+                        <span class="badge badge-high">{{ high_tasks|default:0 }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-circle me-2" style="color: var(--priority-medium);"></i>
+                            <span>보통</span>
+                        </div>
+                        <span class="badge badge-medium">{{ medium_tasks|default:0 }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-circle me-2" style="color: var(--priority-low);"></i>
+                            <span>낮음</span>
+                        </div>
+                        <span class="badge badge-low">{{ low_tasks|default:0 }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 최근 활동 -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-history me-2"></i>최근 알림
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if recent_notifications %}
+                    <div class="timeline">
+                        {% for notification in recent_notifications %}
+                        <div class="timeline-item">
+                            <div class="timeline-content">
+                                {% if notification.task %}
+                                    <a href="{% url 'notifications:mark_read' notification.id %}" class="text-decoration-none">
+                                        <p class="mb-1 {% if not notification.is_read %}fw-bold{% endif %}">
+                                            <i class="fas fa-bell me-1"></i>{{ notification.title }}
+                                        </p>
+                                        <small class="text-muted">{{ notification.message|truncatechars:50 }}</small>
+                                    </a>
+                                {% else %}
+                                    <p class="mb-1 {% if not notification.is_read %}fw-bold{% endif %}">
+                                        <i class="fas fa-bell me-1"></i>{{ notification.title }}
+                                    </p>
+                                    <small class="text-muted">{{ notification.message|truncatechars:50 }}</small>
+                                {% endif %}
+                                <br>
+                                <small class="text-muted">
+                                    <i class="fas fa-clock me-1"></i>
+                                    {{ notification.created_at|timesince }} 전
+                                </small>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-state py-3">
+                        <div class="empty-icon">
+                            <i class="fas fa-bell-slash"></i>
+                        </div>
+                        <p class="empty-description mb-0">최근 알림이 없습니다.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        
+
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+
+    
+    // 테이블 행 클릭 이벤트
+    $('.table tbody tr').click(function() {
+        $(this).addClass('table-active').siblings().removeClass('table-active');
+    });
+    
+    // 새로고침 버튼 애니메이션
+    $('.btn[onclick="location.reload()"]').click(function() {
+        $(this).find('i').addClass('fa-spin');
+    });
+});
+</script>
+{% endblock %}

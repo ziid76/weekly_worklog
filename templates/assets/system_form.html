@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+
+{% block page_name %}시스템 {% if form.instance.pk %}수정{% else %}등록{% endif %}{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width: 800px; margin: 0 auto;">
+    <div class="card-header">
+        <h5 class="mb-0">시스템 정보 입력</h5>
+    </div>
+    <div class="card-body">
+        <form method="post">
+            {% csrf_token %}
+
+            <div class="mb-3">
+                <label for="{{ form.name.id_for_label }}" class="form-label">시스템명</label>
+                {{ form.name }}
+                {% if form.name.errors %}
+                <div class="text-danger small">{{ form.name.errors }}</div>
+                {% endif %}
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="{{ form.code.id_for_label }}" class="form-label">시스템코드</label>
+                    {{ form.code }}
+                    {% if form.code.errors %}
+                    <div class="text-danger small">{{ form.code.errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="{{ form.manager.id_for_label }}" class="form-label">담당자</label>
+                    {{ form.manager }}
+                    {% if form.manager.errors %}
+                    <div class="text-danger small">{{ form.manager.errors }}</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="{{ form.status.id_for_label }}" class="form-label">상태</label>
+                    {{ form.status }}
+                    {% if form.status.errors %}
+                    <div class="text-danger small">{{ form.status.errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="{{ form.launch_date.id_for_label }}" class="form-label">오픈일</label>
+                    {{ form.launch_date }}
+                    {% if form.launch_date.errors %}
+                    <div class="text-danger small">{{ form.launch_date.errors }}</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label for="{{ form.description.id_for_label }}" class="form-label">설명</label>
+                {{ form.description }}
+                {% if form.description.errors %}
+                <div class="text-danger small">{{ form.description.errors }}</div>
+                {% endif %}
+            </div>
+
+            <div class="d-flex justify-content-end gap-2">
+                <a href="{% url 'assets:system_list' %}" class="btn btn-secondary">취소</a>
+                <button type="submit" class="btn btn-primary">저장</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    // Add Bootstrap classes to form fields
+    document.querySelectorAll('input, select, textarea').forEach(element => {
+        if (element.type !== 'checkbox' && element.type !== 'radio') {
+            element.classList.add('form-control');
+        }
+    });
+</script>
+{% endblock %}

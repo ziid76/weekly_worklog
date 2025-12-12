@@ -1,0 +1,353 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block page_name %}시스템 상세{% endblock %}
+
+{% block content %}
+
+<!-- Bootstrap Nav Tabs -->
+<ul class="nav nav-tabs" id="systemTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="basic-info-tab" data-bs-toggle="tab" data-bs-target="#basic-info" type="button" role="tab" style="color: #333 !important;">
+            기본 정보
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="inspection-tab" data-bs-toggle="tab" data-bs-target="#inspection" type="button" role="tab" style="color: #333 !important;">
+            정기점검
+        </button>
+    </li>
+</ul>
+
+<!-- Tab Content -->
+<div class="tab-content" id="systemTabsContent">
+
+    <!-- Basic Info Tab -->
+    <div class="tab-pane fade show active" id="basic-info" role="tabpanel">
+        <div class="border bg-white p-3 mb-3">
+            <h6 class="section-title border-bottom pb-2 d-flex justify-content-between align-items-center">기본 정보
+                <a href="{% url 'assets:system_edit' system.pk %}" class="tag tag-button tag-primary">
+                    수정
+                </a>
+            </h6>
+
+            <table class="table table-bordered">
+                <tr>
+                    <th class="bg-light" style="width: 20%;">시스템명</th>
+                    <td>{{ system.name }}</td>
+                    <th class="bg-light" style="width: 20%;">코드</th>
+                    <td>{{ system.code }}</td>
+                </tr>
+                <tr>
+                    <th class="bg-light">담당자</th>
+                    <td>{{ system.manager.profile.display_name|default:system.manager.username }}</td>
+                    <th class="bg-light">상태</th>
+                    <td>
+                        <span class="badge bg-{% if system.status == 'OPER' %}success{% elif system.status == 'DEV' %}warning{% elif system.status == 'SUSP' %}secondary{% else %}danger{% endif %}">
+                            {{ system.get_status_display }}
+                        </span>
+                    </td>
+                </tr>
+                <tr>
+                    <th class="bg-light">오픈일</th>
+                    <td colspan="3">{{ system.launch_date|default:"-" }}</td>
+                </tr>
+                <tr>
+                    <th class="bg-light">설명</th>
+                    <td colspan="3">{{ system.description|linebreaks|default:"-" }}</td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="border bg-white p-3 mb-3">
+            <h6 class="section-title border-bottom pb-2 mb-3">계약 정보</h6>
+            <div class="table-responsive">
+                <table class="table table-bordered">
+                    {% if system.contracts.all %}
+                    <thead>
+                        <tr class="text-center">
+                            <th>계약명</th>
+                            <th>유형</th>
+                            <th>업체</th>
+                            <th>기간</th>
+                            <th>금액</th>
+                        </tr>
+                    </thead>
+                    {% endif %}
+                    <tbody>
+                        {% for contract in system.contracts.all %}
+                        <tr>
+                            <td>
+                                <a href="{% url 'assets:contract_detail' contract.pk %}" class="text-decoration-none">
+                                    {{ contract.name }}
+                                </a>
+                            </td>
+                            <td class="text-center">{{ contract.get_contract_type_display }}</td>
+                            <td class="text-center">{{ contract.contractor }}</td>
+                            <td class="text-center">{{ contract.start_date|date:"Y-m-d" }} ~ {{ contract.end_date|date:"Y-m-d" }}</td>
+                            <td class="text-end">{{ contract.amount|intcomma }}원</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center py-3">등록된 계약 정보가 없습니다.
+                                <a href="{% url 'assets:contract_create' %}?system={{ system.pk }}" class="tag tag-button">
+                                    <i class="fas fa-plus"></i> 계약 등록
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="border bg-white p-3 mb-3">
+            <h6 class="section-title border-bottom pb-2 mb-3">하드웨어 자산</h6>
+            <div class="table-responsive">
+                <table class="table table-bordered">
+                    {% if system.hardwares.all %}
+                    <thead>
+                        <tr class="text-center">
+                            <th>장비명</th>
+                            <th>모델명</th>
+                            <th>제조사</th>
+                            <th>시리얼번호</th>
+                            <th>상태</th>
+                            <th>구매일</th>
+                        </tr>
+                    </thead>
+                    {% endif %}
+                    <tbody>
+                        {% for hardware in system.hardwares.all %}
+                        <tr>
+                            <td>
+                                <a href="{% url 'assets:hardware_detail' hardware.pk %}" class="text-decoration-none">
+                                    {{ hardware.name }}
+                                </a>
+                            </td>
+                            <td class="text-center">{{ hardware.model_name }}</td>
+                            <td class="text-center">{{ hardware.manufacturer }}</td>
+                            <td class="text-center">{{ hardware.serial_number }}</td>
+                            <td class="text-center">
+                                <span class="badge bg-{% if hardware.status == 'OPER' %}success{% elif hardware.status == 'IDLE' %}warning{% elif hardware.status == 'REPAIR' %}danger{% else %}secondary{% endif %}">
+                                    {{ hardware.get_status_display }}
+                                </span>
+                            </td>
+                            <td class="text-center">{{ hardware.purchase_date|default:"-" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="text-center py-3">등록된 하드웨어 자산이 없습니다.
+                                <a href="{% url 'assets:hardware_create' %}?system={{ system.pk }}" class="tag tag-button">
+                                    <i class="fas fa-plus"></i> 자산 등록
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="border bg-white p-3 mb-3">
+            <h6 class="section-title border-bottom pb-2 mb-3">소프트웨어 자산</h6>
+            <div class="table-responsive">
+                <table class="table table-bordered">
+                    {% if system.softwares.all %}   
+                    <thead>
+                        <tr class="text-center">
+                            <th>소프트웨어명</th>
+                            <th>버전</th>
+                            <th>제조사</th>
+                            <th>라이선스</th>
+                            <th>상태</th>
+                            <th>구매일</th>
+                        </tr>
+                    </thead>
+                    {% endif %}
+                    <tbody>
+                        {% for software in system.softwares.all %}
+                        <tr>
+                            <td>
+                                <a href="{% url 'assets:software_detail' software.pk %}" class="text-decoration-none">
+                                    {{ software.name }}
+                                </a>
+                            </td>
+                            <td class="text-center">{{ software.version }}</td>
+                            <td class="text-center">{{ software.manufacturer }}</td>
+                            <td class="text-center">{{ software.get_license_type_display }}</td>
+                            <td class="text-center">
+                                <span class="badge bg-{% if software.status == 'OPER' %}success{% elif software.status == 'EXP' %}warning{% else %}secondary{% endif %}">
+                                    {{ software.get_status_display }}
+                                </span>
+                            </td>
+                            <td class="text-center">{{ software.purchase_date|default:"-" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="text-center py-3">등록된 소프트웨어 자산이 없습니다.
+                                <a href="{% url 'assets:software_create' %}?system={{ system.pk }}" class="tag tag-button">
+                                    <i class="fas fa-plus"></i> 자산 등록
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        {% include 'assets/partials/_history_section.html' %}
+    </div>
+
+    <!-- Regular Inspection Tab -->
+    <div class="tab-pane fade" id="inspection" role="tabpanel">
+        <div class="border bg-white p-3 mb-3">
+
+            <h6 class="section-title border-bottom d-flex justify-content-between align-items-center pb-2 mb-3">점검 이력
+                <button type="button" class="tag tag-button tag-primary" data-bs-toggle="modal" data-bs-target="#inspectionModal">
+                    점검 등록
+                </button>
+            </h6>
+            <div class="table-responsive mb-4">
+                <table class="table table-bordered">
+                    {% if inspections %}
+                    <thead>
+                        <tr class="text-center">
+                            <th>점검월</th>
+                            <th>점검일자</th>
+                            <th>계약</th>
+                            <th>점검결과</th>
+                            <th>첨부파일</th>
+                            <th>등록일</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for inspection in inspections %}
+                        <tr>
+                            <td class="text-center">{{ inspection.inspection_month }}</td>
+                            <td class="text-center">{{ inspection.inspection_date|date:"Y-m-d" }}</td>
+                            <td class="text-center">
+                                <a href="{% url 'assets:contract_detail' inspection.contract.pk %}" class="text-decoration-none">
+                                    {{ inspection.contract.name }}
+                                </a>
+                            </td>
+                            <td>{{ inspection.result|truncatewords:10 }}</td>
+                            <td class="text-start">
+                                {% if inspection.attachments.exists %}
+                                    {% for attachment in inspection.attachments.all %}
+                                        <div><a href="{{ attachment.file.url }}" target="_blank" class="tag tag-button me-1 mb-1" title="{{ attachment.filename }}">
+                                               <i class="fas fa-file"></i> {{ attachment.filename }}
+                                        </a></div>
+                                    {% endfor %}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td class="text-center">{{ inspection.created_at|date:"Y-m-d" }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    {% else %}
+                    <tbody>
+                        <tr>
+                            <td colspan="6" class="text-center py-3">등록된 점검 이력이 없습니다.</td>
+                        </tr>
+                    </tbody>
+                    {% endif %}
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Inspection Registration Modal -->
+{% include 'assets/partials/_inspection_modal.html' %}
+
+<div class="mt-3">
+    <a href="{% url 'assets:system_list' %}" class="scl-btn scl-btn-outline scl-btn-sm">
+        <i class="fas fa-arrow-left"></i> 목록으로
+    </a>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // 히스토리 추가 폼 제출
+    $('#historyForm').submit(function(e) {
+        e.preventDefault();
+        
+        const comment = $('textarea[name="comment"]').val().trim();
+        if (!comment) {
+            alert('코멘트를 입력해주세요.');
+            return;
+        }
+        
+        $.ajax({
+            url: '{% url "assets:system_history_add" system.pk %}',
+            method: 'POST',
+            data: {
+                comment: comment,
+                action: 'USER_COMMENT',
+                csrfmiddlewaretoken: '{{ csrf_token }}'
+            },
+            success: function(response) {
+                if (response.success) {
+                    location.reload();
+                } else {
+                    alert(response.error || '이력 추가에 실패했습니다.');
+                }
+            },
+            error: function() {
+                alert('서버 오류가 발생했습니다.');
+            }
+        });
+    });
+
+    // Handle Inspection Form Submission
+    $('#inspectionForm').submit(function(e) {
+        e.preventDefault();
+        
+        var formData = new FormData(this);
+        
+        $.ajax({
+            url: $(this).attr('action'),
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            headers: {'X-Requested-With': 'XMLHttpRequest'},
+            success: function(response) {
+                if (response.success) {
+                    // Reload the page to refresh the list
+                    // Store the active tab in localStorage to persist it
+                    localStorage.setItem('activeSystemTab', '#inspection-tab');
+                    location.reload();
+                } else {
+                    // Handle errors
+                    var errorMsg = '오류가 발생했습니다.\n';
+                    if (response.errors) {
+                        $.each(response.errors, function(field, errors) {
+                            errorMsg += field + ': ' + errors.join(', ') + '\n';
+                        });
+                    }
+                    alert(errorMsg);
+                }
+            },
+            error: function() {
+                alert('서버 통신 중 오류가 발생했습니다.');
+            }
+        });
+    });
+
+    // Restore active tab if exists
+    var activeTab = localStorage.getItem('activeSystemTab');
+    if (activeTab) {
+        var tabTrigger = new bootstrap.Tab($(activeTab));
+        tabTrigger.show();
+        localStorage.removeItem('activeSystemTab'); // Clear after use
+    }
+});
+</script>
+{% endblock %}

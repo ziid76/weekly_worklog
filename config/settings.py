@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.humanize',
     'app',
     'accounts',
     'worklog',
@@ -56,7 +57,12 @@ INSTALLED_APPS = [
     'reports',
     'monitor',
     'service',
+    'mailing',
+    'batch',
     'django_summernote',  # 임시 비활성화
+    'django_ses',
+    'templates',
+    'assets',
 ]
 
 MIDDLEWARE = [
@@ -65,6 +71,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'common.middleware.ThreadLocalUserMiddleware',  # Thread Local User Middleware
     'accounts.middleware.FirstLoginMiddleware',  # 첫 로그인 체크 미들웨어
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
@@ -93,6 +100,14 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 LOGIN_REDIRECT_URL = 'dashboard'
 LOGOUT_REDIRECT_URL = 'login'
+
+
+# Email Settings for AWS SES
+EMAIL_BACKEND = 'django_ses.SESBackend'
+AWS_SES_REGION_NAME = os.environ.get('AWS_SES_REGION_NAME', 'ap-northeast-2')
+AWS_SES_ACCESS_KEY_ID = os.environ.get('AWS_SES_ACCESS_KEY_ID')
+AWS_SES_SECRET_ACCESS_KEY = os.environ.get('AWS_SES_SECRET_ACCESS_KEY')
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'gemini@example.com')
 
 
 # Database

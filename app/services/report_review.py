@@ -13,6 +13,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 
 from worklog.models import Worklog
+from reports.models import ReportReview
 
 from google import genai
 from google.api_core import exceptions as google_exceptions
@@ -92,7 +93,23 @@ def review_last_4_weeks(user: User, as_of: Optional[date] = None) -> Dict[str, A
         logger.exception("Malformed JSON from Gemini: %s", exc)
         fallback = _fallback_result("malformed_json")
         fallback["raw"] = raw_text
-        return fallback
+        payload = fallback
+    
+    # 리뷰 결과를 데이터베이스에 저장
+    try:
+        review_year, review_week, _ = anchor.isocalendar()
+        ReportReview.objects.update_or_create(
+            user=user,
+            year=review_year,
+            week_number=review_week,
+            defaults={
+                'review_content': payload,
+                'notification_sent': False  # 새 리뷰가 생성되었으므로 알림 미발송 상태로 설정
+            }
+        )
+        logger.info("Saved AI review for user=%s, week=%s-%s", user.pk, review_year, review_week)
+    except Exception as e:
+        logger.exception("Failed to save AI review to database: %s", e)
 
     return payload
 
@@ -180,9 +197,7 @@ def _build_prompt(user: User, entries: Sequence[Dict[str, Any]], anchor_date: da
         "분석 대상자: {name} ({username})".format(name=display_name, username=user.username),
         "요약 기간: 최근 4주 (최신 주 포함)",
         "각 주차는 금주 실적과 차주 계획으로 구성되어 있습니다.",
-        "작성 공백은 '미작성'으로 표시했습니다.",
-        "주간보고 작성이 '미작성'인 경우, 대한민국의 휴일(설, 추석) 여부를 먼저 검색합니다. 휴일인 경우, 전주의 차주 계획은 휴일 이후 주간에 대한 계획으로 간주합니다. 휴일이 아닌 경우는 개인의 휴가로 간주하고 분석합니다.",
-        "",
+         "",
     ]
 
     for entry in entries:
@@ -197,8 +212,8 @@ def _build_prompt(user: User, entries: Sequence[Dict[str, Any]], anchor_date: da
             lines.append("- 차주 계획:")
             lines.append(entry["next_week_plan"].strip() or "(내용은 공백이지만 계획이 비어있음)")
         else:
-            lines.append("- 금주 실적: 미작성")
-            lines.append("- 차주 계획: 미작성")
+            lines.append("- 이번주는 휴무여서 금주 실적은 작성하지 않았습니다.")
+            lines.append("- 이번주는 휴무여서 차주 계획은 작성하지 않았습니다. 전주의 차주계획을 금주의 차주계획으로 간주합니다.")
         lines.append("")
 
     lines.extend(
@@ -212,7 +227,6 @@ def _build_prompt(user: User, entries: Sequence[Dict[str, Any]], anchor_date: da
             "6. 각 'metric' 항목은 'value' (숫자)와 'details' (문자열 배열)을 포함해야 합니다. 'details'에는 해당 지표의 근거가 되는 항목들을 상세한 목록으로 나열하세요.(ex, value=10이면, details에 10개를 목록으로 포함)",
             "7. 'mismatches' 는 중복된 내용을 포함하지 마세요.",
             "8. 'mismatches' 는 지난 주의 계획에 있으나 금주의 실적에는 누락된 항목, 지난 계획의 완료 일정과 실적이 지연되거나 차이가 나는 항목 등을 분석해서 제시하세요.",
-            "9. 주간보고 작성이 누락된 경우, 대한민국의 장기 휴일(설, 추석)가 아닌지 먼저 검토합니다. 장기 휴일인 경우, 전주의 차주 계획은 휴일 이후의 주간에 대한 계획으로 간주합니다. 장기 휴일이 아닌 경우는 개인의 휴가로 간주하고 분석합니다. ",
             ""
         ]
     )

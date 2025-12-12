@@ -1,0 +1,291 @@
+<!-- System Selector Modal -->
+<div class="modal fade" id="systemSelectorModal" tabindex="-1" aria-labelledby="systemSelectorModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="systemSelectorModalLabel">시스템 선택</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Search Input -->
+                <div class="mb-3">
+                    <div class="input-group">
+                        <input type="text" id="systemSearchInput" class="form-control" placeholder="시스템명, 코드, 설명 검색">
+                        <button class="btn btn-outline-primary" type="button" id="systemSearchBtn">
+                            <i class="fas fa-search"></i> 검색
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Systems Table -->
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>시스템명</th>
+                                <th>코드</th>
+                                <th>담당자</th>
+                                <th>상태</th>
+                                <th>선택</th>
+                            </tr>
+                        </thead>
+                        <tbody id="systemSearchResults">
+                            <tr>
+                                <td colspan="5" class="text-center py-3">검색 중...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                <nav aria-label="System pagination">
+                    <ul class="pagination justify-content-center" id="systemPagination">
+                        <!-- Pagination will be dynamically generated -->
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function () {
+        let currentPage = 1;
+        let searchQuery = '';
+        let selectedSystems = [];
+        const multiSelect = {{ multi_select|default:'false'|lower }};
+
+        const modal = document.getElementById('systemSelectorModal');
+        const searchInput = document.getElementById('systemSearchInput');
+        const searchBtn = document.getElementById('systemSearchBtn');
+        const searchResults = document.getElementById('systemSearchResults');
+        const pagination = document.getElementById('systemPagination');
+
+        // Load systems when modal opens
+        modal.addEventListener('shown.bs.modal', function () {
+            currentPage = 1;
+            searchQuery = '';
+            searchInput.value = '';
+            loadSystems();
+        });
+
+        // Search with debouncing on input
+        let searchTimeout;
+        searchInput.addEventListener('input', function () {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(function () {
+                searchQuery = searchInput.value.trim();
+                currentPage = 1;
+                loadSystems();
+            }, 300);
+        });
+
+        // Search on button click
+        searchBtn.addEventListener('click', function () {
+            searchQuery = searchInput.value.trim();
+            currentPage = 1;
+            loadSystems();
+        });
+
+        // Search on Enter key
+        searchInput.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                searchQuery = searchInput.value.trim();
+                currentPage = 1;
+                loadSystems();
+            }
+        });
+
+        // Load systems via AJAX
+        function loadSystems() {
+            searchResults.innerHTML = '<tr><td colspan="5" class="text-center py-3">로딩 중...</td></tr>';
+            
+            const url = `/assets/systems/search/?q=${encodeURIComponent(searchQuery)}&page=${currentPage}&page_size=10`;
+
+            fetch(url)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Loaded systems:', data);
+                    renderSystems(data.systems);
+                    renderPagination(data.pagination);
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    searchResults.innerHTML = '<tr><td colspan="5" class="text-center py-3 text-danger">시스템을 불러오는 중 오류가 발생했습니다</td></tr>';
+                });
+        }
+
+        // Render systems table
+        function renderSystems(systems) {
+            if (systems.length === 0) {
+                searchResults.innerHTML = '<tr><td colspan="5" class="text-center py-3">검색 결과가 없습니다</td></tr>';
+                return;
+            }
+
+            searchResults.innerHTML = systems.map(system => `
+                <tr>
+                    <td>${system.name}</td>
+                    <td>${system.code}</td>
+                    <td>${system.manager_name || '-'}</td>
+                    <td>${system.status}</td>
+                    <td>
+                        <button type="button" class="btn btn-sm btn-primary select-system-btn" 
+                                data-system-id="${system.id}" 
+                                data-system-name="${system.name}"
+                                data-system-code="${system.code}">
+                            <i class="fas fa-check"></i> 선택
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+
+            // Add event listeners to select buttons
+            document.querySelectorAll('.select-system-btn').forEach(btn => {
+                btn.addEventListener('click', function () {
+                    const systemId = this.getAttribute('data-system-id');
+                    const systemName = this.getAttribute('data-system-name');
+                    const systemCode = this.getAttribute('data-system-code');
+                    selectSystem(systemId, systemName, systemCode);
+                });
+            });
+        }
+
+        // Render pagination
+        function renderPagination(paginationData) {
+            if (paginationData.total_pages <= 1) {
+                pagination.innerHTML = '';
+                return;
+            }
+
+            let paginationHTML = '';
+
+            // Previous button
+            if (paginationData.has_previous) {
+                paginationHTML += `
+                    <li class="page-item">
+                        <a class="page-link" href="#" data-page="${paginationData.previous_page}">이전</a>
+                    </li>
+                `;
+            }
+
+            // Page numbers
+            for (let i = 1; i <= paginationData.total_pages; i++) {
+                if (i === paginationData.current_page) {
+                    paginationHTML += `<li class="page-item active"><span class="page-link">${i}</span></li>`;
+                } else if (
+                    i === 1 ||
+                    i === paginationData.total_pages ||
+                    (i >= paginationData.current_page - 2 && i <= paginationData.current_page + 2)
+                ) {
+                    paginationHTML += `<li class="page-item"><a class="page-link" href="#" data-page="${i}">${i}</a></li>`;
+                } else if (
+                    i === paginationData.current_page - 3 ||
+                    i === paginationData.current_page + 3
+                ) {
+                    paginationHTML += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+                }
+            }
+
+            // Next button
+            if (paginationData.has_next) {
+                paginationHTML += `
+                    <li class="page-item">
+                        <a class="page-link" href="#" data-page="${paginationData.next_page}">다음</a>
+                    </li>
+                `;
+            }
+
+            pagination.innerHTML = paginationHTML;
+
+            // Add event listeners to pagination links
+            pagination.querySelectorAll('a.page-link').forEach(link => {
+                link.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    currentPage = parseInt(this.getAttribute('data-page'));
+                    loadSystems();
+                });
+            });
+        }
+
+        // Select system
+        function selectSystem(systemId, systemName, systemCode) {
+            if (multiSelect) {
+                // Multi-select mode (for Hardware/Software)
+                if (!selectedSystems.find(s => s.id === systemId)) {
+                    selectedSystems.push({ id: systemId, name: systemName, code: systemCode });
+                    updateSelectedSystemsDisplay();
+                }
+            } else {
+                // Single-select mode (for Contract)
+                selectedSystems = [{ id: systemId, name: systemName, code: systemCode }];
+                updateSelectedSystemsDisplay();
+                // Close modal after selection
+                bootstrap.Modal.getInstance(modal).hide();
+            }
+        }
+
+        // Update selected systems display
+        function updateSelectedSystemsDisplay() {
+            const displayContainer = document.getElementById('selectedSystemsDisplay');
+            const hiddenInput = document.getElementById('id_system');
+
+            if (!multiSelect) {
+                // Single select - update hidden input and display
+                if (selectedSystems.length > 0) {
+                    hiddenInput.value = selectedSystems[0].id;
+                    displayContainer.innerHTML = `
+                        <span class="badge bg-light text-dark border text-decoration-none me-1">
+                            ${selectedSystems[0].name} (${selectedSystems[0].code})
+                            <button type="button" class="btn-close btn-close-sm ms-1" onclick="clearSelectedSystem()" aria-label="제거" style="font-size: 0.7em;"></button>
+                        </span>
+                    `;
+                } else {
+                    hiddenInput.value = '';
+                    displayContainer.innerHTML = '<small class="text-muted">선택된 시스템이 없습니다</small>';
+                }
+            } else {
+                // Multi select - update hidden inputs and display
+                const systemsInput = document.getElementById('id_systems');
+                systemsInput.innerHTML = selectedSystems.map(s =>
+                    `<option value="${s.id}" selected>${s.name}</option>`
+                ).join('');
+
+                if (selectedSystems.length > 0) {
+                    displayContainer.innerHTML = selectedSystems.map((s, index) => `
+                        <span class="badge bg-light text-dark border text-decoration-none me-1 mb-1">
+                            ${s.name} (${s.code})
+                            <button type="button" class="btn-close btn-close-sm ms-1" onclick="removeSelectedSystem(${index})" aria-label="제거" style="font-size: 0.7em;"></button>
+                        </span>
+                    `).join('');
+                } else {
+                    displayContainer.innerHTML = '<small class="text-muted">선택된 시스템이 없습니다</small>';
+                }
+            }
+        }
+
+        // Clear selected system (single select)
+        window.clearSelectedSystem = function () {
+            selectedSystems = [];
+            updateSelectedSystemsDisplay();
+        };
+
+        // Remove selected system (multi select)
+        window.removeSelectedSystem = function (index) {
+            selectedSystems.splice(index, 1);
+            updateSelectedSystemsDisplay();
+        };
+
+        // Initialize from existing selection
+        window.initializeSystemSelector = function (initialSystems) {
+            selectedSystems = initialSystems || [];
+            updateSelectedSystemsDisplay();
+        };
+    })();
+</script>

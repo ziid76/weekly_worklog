@@ -19,9 +19,11 @@ urlpatterns = [
     path('worklog/', include('worklog.urls')),
     path('task/', include('task.urls')),
     path('reports/', include('reports.urls')),
+    path('batch/', include('batch.urls', namespace='batch')),
     path('monitor/', include('monitor.urls')),
     path('service/', include('service.urls')),
     path("notifications/", include("notifications.urls")),
+    path('assets/', include('assets.urls')),
     path('', include('app.urls')),
     path('summernote/', include('django_summernote.urls')), 
 ]

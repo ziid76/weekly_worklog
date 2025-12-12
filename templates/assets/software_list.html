@@ -1,0 +1,91 @@
+{% extends 'base.html' %}
+
+{% block page_name %}소프트웨어 자산 관리{% endblock %}
+
+{% block content %}
+<div class="border bg-white p-3">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <form method="get" class="d-flex gap-2 align-items-center">
+            <input type="text" name="q" class="form-control form-control-sm" placeholder="소프트웨어명, 버전, 시스템명 검색"
+                value="{{ request.GET.q }}" style="width: 300px; height: 31px; border-width: 1px;">
+            <button type="submit" class="scl-btn scl-btn-sm rounded-pill" style="min-width: 60px;">검색</button>
+        </form>
+        <a href="{% url 'assets:software_create' %}" class="scl-btn scl-btn-primary scl-btn-sm">
+            <i class="fas fa-plus"></i> 자산 등록
+        </a>
+    </div>
+
+    <div class="border bg-white p-3 table-responsive">
+        <table class="display nowrap text-center" style="width:100%" id="list_table">
+            <thead>
+                <tr class="text-center">
+                    <th>소프트웨어명</th>
+                    <th>버전</th>
+                    <th>제조사</th>
+                    <th>라이선스</th>
+                    <th>상태</th>
+                    <th>구매일</th>
+                    <th>관련시스템</th>
+                    <th>관리</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for software in softwares %}
+                <tr>
+                    <td>
+                        <a href="{% url 'assets:software_detail' software.pk %}" class="text-decoration-none">
+                            {{ software.name }}
+                        </a>
+                    </td>
+                    <td class="text-center">{{ software.version }}</td>
+                    <td class="text-center">{{ software.manufacturer }}</td>
+                    <td class="text-center">{{ software.get_license_type_display }}</td>
+                    <td class="text-center">
+                        <span
+                            class="badge bg-{% if software.status == 'OPER' %}success{% elif software.status == 'EXP' %}warning{% else %}secondary{% endif %}">
+                            {{ software.get_status_display }}
+                        </span>
+                    </td>
+                    <td class="text-center">{{ software.purchase_date|default:"-" }}</td>
+                    <td class="text-center">
+                        {% for system in software.systems.all %}
+                        <a href="{% url 'assets:system_detail' system.pk %}"
+                            class="badge bg-light text-dark border text-decoration-none">
+                            {{ system.name }}
+                        </a>
+                        {% empty %}
+                        -
+                        {% endfor %}
+                    </td>
+                    <td class="text-center">
+                        <a href="{% url 'assets:software_edit' software.pk %}" class="btn btn-sm btn-outline-secondary">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8" class="text-center py-3">등록된 소프트웨어 자산이 없습니다.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+    $(document).ready(function () {
+        $('#list_table').DataTable({
+            "searching": false,
+            "paging": false,
+            "info": false,
+            "ordering": false,
+            "language": {
+                "url": "https://cdn.datatables.net/plug-ins/1.11.3/i18n/ko.json"
+            }
+        });
+    });
+</script>
+
+{% endblock %}

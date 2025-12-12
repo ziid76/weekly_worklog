@@ -1,0 +1,145 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}일괄작업{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">📋 일괄작업</h3>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card border-primary">
+                                <div class="card-header bg-primary text-white">
+                                    <h5 class="mb-0">📧 리뷰 알림 발송</h5>
+                                </div>
+                                <div class="card-body">
+                                    <p class="card-text">발송 대기 중인 AI 리뷰 결과를 이메일로 발송합니다.</p>
+                                    <button id="sendNotificationsBtn" class="btn btn-primary">
+                                        <i class="fas fa-paper-plane"></i> 알림 발송 실행
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card border-success">
+                                <div class="card-header bg-success text-white">
+                                    <h5 class="mb-0">🤖 누락 리뷰 생성</h5>
+                                </div>
+                                <div class="card-body">
+                                    <p class="card-text">워크로그는 있지만 리뷰가 없는 사용자의 AI 리뷰를 생성합니다.</p>
+                                    <button id="generateReviewsBtn" class="btn btn-success">
+                                        <i class="fas fa-robot"></i> 리뷰 생성 실행
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 실행 결과 표시 영역 -->
+                    <div id="resultArea" class="mt-4" style="display: none;">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0">📊 실행 결과</h5>
+                            </div>
+                            <div class="card-body">
+                                <div id="resultContent"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const sendBtn = document.getElementById('sendNotificationsBtn');
+    const generateBtn = document.getElementById('generateReviewsBtn');
+    const resultArea = document.getElementById('resultArea');
+    const resultContent = document.getElementById('resultContent');
+
+    function showLoading(button, text) {
+        button.disabled = true;
+        button.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${text}`;
+    }
+
+    function hideLoading(button, originalText, icon) {
+        button.disabled = false;
+        button.innerHTML = `<i class="${icon}"></i> ${originalText}`;
+    }
+
+    function showResult(success, stdout, stderr, error) {
+        resultArea.style.display = 'block';
+        
+        let html = '';
+        if (success) {
+            html = `<div class="alert alert-success"><h6>✅ 실행 성공</h6><pre>${stdout}</pre></div>`;
+        } else {
+            html = `<div class="alert alert-danger"><h6>❌ 실행 실패</h6>`;
+            if (error) {
+                html += `<p><strong>오류:</strong> ${error}</p>`;
+            }
+            if (stderr) {
+                html += `<p><strong>에러 출력:</strong></p><pre>${stderr}</pre>`;
+            }
+            if (stdout) {
+                html += `<p><strong>표준 출력:</strong></p><pre>${stdout}</pre>`;
+            }
+            html += `</div>`;
+        }
+        
+        resultContent.innerHTML = html;
+        resultArea.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    sendBtn.addEventListener('click', function() {
+        showLoading(sendBtn, '알림 발송 중...');
+        
+        fetch('{% url "batch:send_review_notifications" %}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            hideLoading(sendBtn, '알림 발송 실행', 'fas fa-paper-plane');
+            showResult(data.success, data.stdout, data.stderr, data.error);
+        })
+        .catch(error => {
+            hideLoading(sendBtn, '알림 발송 실행', 'fas fa-paper-plane');
+            showResult(false, '', '', '네트워크 오류: ' + error.message);
+        });
+    });
+
+    generateBtn.addEventListener('click', function() {
+        showLoading(generateBtn, '리뷰 생성 중...');
+        
+        fetch('{% url "batch:generate_missing_reviews" %}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            hideLoading(generateBtn, '리뷰 생성 실행', 'fas fa-robot');
+            showResult(data.success, data.stdout, data.stderr, data.error);
+        })
+        .catch(error => {
+            hideLoading(generateBtn, '리뷰 생성 실행', 'fas fa-robot');
+            showResult(false, '', '', '네트워크 오류: ' + error.message);
+        });
+    });
+});
+</script>
+{% endblock %}

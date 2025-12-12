@@ -1,0 +1,104 @@
+<!-- 변경 이력 섹션 -->
+<div class="border bg-white p-3 mb-3">
+    <h6 class="section-title border-bottom pb-2">
+        <i class="fas fa-history me-2"></i>변경 이력
+    </h6>
+    
+    <!-- 코멘트 추가 폼 -->
+    <form id="historyForm" class="mb-4">
+        {% csrf_token %}
+        <div class="mb-3">
+            <div class="comment-input-wrapper">
+                <textarea name="comment" class="form-control comment-textarea" rows="3" placeholder="변경 사항이나 메모를 입력하세요" required></textarea>
+                <button type="submit" class="scl-btn scl-btn-primary scl-btn-sm comment-submit-btn">
+                    <i class="fas fa-plus"></i> 등록
+                </button>
+            </div>
+        </div>
+    </form>
+    
+    <!-- 이력 테이블 -->
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th style="width: 150px;" class="text-center">유형</th>
+                    <th>내용</th>
+                    <th style="width: 120px;" class="text-center">작성</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for history in histories %}
+                <tr>
+                    <td class="text-center">
+                        <span class="tag tag-{% if history.action == 'CREATE' %}primary{% elif history.action == 'UPDATE' %}info{% elif 'ADD' in history.action %}success{% elif 'REMOVE' in history.action %}danger{% else %}secondary{% endif %}">
+                            {{ history.get_action_display }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if history.comment %}
+                        <div class="mb-1 fw-bold text-dark">{{ history.comment }}</div>
+                        {% endif %}
+
+                        {% if history.changed_fields %}
+                        <div class="small bg-light p-2 rounded border">
+                            <ul class="list-unstyled mb-0">
+                                {% for field, changes in history.changed_fields.items %}
+                                <li class="mb-1">
+                                    <span class="fw-semibold text-secondary">{{ field }}</span>: 
+                                    <span class="text-decoration-line-through text-muted me-1">{{ changes.old|default:"(없음)" }}</span>
+                                    <i class="fas fa-arrow-right text-primary mx-1" style="font-size: 0.8em;"></i>
+                                    <span class="fw-bold text-success">{{ changes.new|default:"(없음)" }}</span>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        {% endif %}
+                        
+                        {% if history.related_contract %}
+                        <div class="small mt-1 text-muted">
+                            <i class="fas fa-file-contract me-1"></i>계약: 
+                            <a href="{% url 'assets:contract_detail' history.related_contract.pk %}" class="text-decoration-none text-muted fw-bold">
+                                {{ history.related_contract.name }}
+                            </a>
+                        </div>
+                        {% elif history.related_hardware %}
+                        <div class="small mt-1 text-muted">
+                            <i class="fas fa-server me-1"></i>하드웨어: 
+                            <a href="{% url 'assets:hardware_detail' history.related_hardware.pk %}" class="text-decoration-none text-muted fw-bold">
+                                {{ history.related_hardware.name }}
+                            </a>
+                        </div>
+                        {% elif history.related_software %}
+                        <div class="small mt-1 text-muted">
+                            <i class="fas fa-code me-1"></i>소프트웨어: 
+                            <a href="{% url 'assets:software_detail' history.related_software.pk %}" class="text-decoration-none text-muted fw-bold">
+                                {{ history.related_software.name }}
+                            </a>
+                        </div>
+                        {% endif %}
+                    </td>
+                    <td class="text-center">
+                        {% if history.user %}
+                            {% if history.user.profile %}
+                                {{ history.user.profile.display_name }}
+                            {% else %}
+                                {{ history.user.username }}
+                            {% endif %}
+                        {% else %}
+                            -
+                        {% endif %}
+                        <p class="text-center text-muted small">{{ history.created_at|date:"Y-m-d H:i" }}</p>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4" class="text-center py-4 text-muted">
+                        <i class="fas fa-info-circle me-1"></i> 변경 이력이 없습니다.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>

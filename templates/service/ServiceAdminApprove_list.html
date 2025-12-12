@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block page_name %}
+SR 승인
+{% endblock %}
+
+{% block content %}
+<h5 class="pb-2">승인 대기 목록</h5>
+<table id="custom_table" class="display nowrap text-center" style="width:100%">
+    <thead>
+        <tr>
+            <th>승인 유형</th>
+            <th>SR No</th>
+            <th>제목/요청번호</th>
+            <th>기본 정보</th>
+            <th>일자</th>
+            <th>상세</th>
+            <th>승인</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% if pending_items %}
+        {% for item in pending_items %}
+        <tr>
+            {% if item.type == 'sr' %}
+                <td><span class="tag tag-danger">요청 승인</span></td>
+                <td>{{ item.sr.id }}</td>
+                <td>{{ item.sr.req_title|truncatechars:30 }}</td>
+                <td>
+                    <small class="text-muted">
+                        {% if item.sr.req_system %}시스템: {{ item.sr.req_system }}{% endif %}
+                        {% if item.sr.req_module %} | 모듈: {{ item.sr.req_module }}{% endif %}
+                    </small>
+                </td>
+                <td>{{ item.sr.date_of_req|default:"-" }}</td>
+                <td><a href="{% url 'service_request_detail' item.sr.id %}" class="btn btn-sm btn-outline-secondary">상세</a></td>
+                <td>
+                    <form method="post" action="{% url 'service_request_approve' item.sr.id %}" style="display:inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-success" onclick="return confirm('요청을 승인하시겠습니까?');">
+                            <i class="fas fa-check"></i> 승인
+                        </button>
+                    </form>
+                </td>
+            {% else %}
+                <td><span class="tag tag-success">CTS/릴리즈 승인</span></td>
+                <td>{{ item.release.service_request.id }}</td>
+                <td>{{ item.release.request_number }}</td>
+                <td>
+                    <small class="text-muted">
+                        {{ item.release.source_system }} → {{ item.release.target_system }}
+                    </small>
+                </td>
+                <td>{{ item.release.release_date }}</td>
+                <td><a href="{% url 'service_request_detail' item.release.service_request.id %}" class="btn btn-sm btn-outline-secondary">상세</a></td>
+                <td>
+                    <form method="post" action="{% url 'service_request_release_approve' item.release.id %}" style="display:inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-success" onclick="return confirm('릴리즈를 승인하시겠습니까?');">
+                            <i class="fas fa-check"></i> 승인
+                        </button>
+                    </form>
+                </td>
+            {% endif %}
+        </tr>
+        {% endfor %}
+    {% else %}
+        <tr><td colspan="7" class="text-center">승인 대상이 없습니다.</td></tr>
+    {% endif %}
+    </tbody>
+</table>
+{% endblock %}

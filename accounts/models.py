@@ -23,7 +23,7 @@ class UserProfile(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"{self.user.username} - {self.get_korean_name}"
+        return f"{self.user.username} - {self.display_name}"
 
     @property
     def get_korean_name(self):

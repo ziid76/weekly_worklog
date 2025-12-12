@@ -1,0 +1,122 @@
+<!-- Inspection Registration Modal -->
+<div class="modal fade" id="inspectionModal" tabindex="-1" aria-labelledby="inspectionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold" id="inspectionModalLabel">
+                    점검결과 등록
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="inspectionForm" method="post" enctype="multipart/form-data" action="{% url 'assets:inspection_create' %}">
+                <div class="modal-body p-4">
+                    {% csrf_token %}
+                    
+                    {# Render hidden fields #}
+                    {% for field in inspection_form %}
+                        {% if field.is_hidden %}
+                            {{ field }}
+                        {% endif %}
+                    {% endfor %}
+
+                    <div class="row g-3">
+                        {# Context Field - Contract or System (Full width when visible) #}
+                        {% if not inspection_form.contract.is_hidden %}
+                        <div class="col-md-3">
+                            <div class="form-floating">
+                                {{ inspection_form.contract }}
+                                <label for="{{ inspection_form.contract.id_for_label }}">
+                                    계약
+                                </label>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        {% if not inspection_form.system.is_hidden %}
+                        <div class="col-md-3">
+                            <div class="form-floating">
+                                {{ inspection_form.system }}
+                                <label for="{{ inspection_form.system.id_for_label }}">
+                                    시스템
+                                </label>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        {# Inspection Month and Date in one row #}
+                        <div class="col-md-3">
+                            <div class="form-floating">
+                                {{ inspection_form.inspection_month }}
+                                <label for="{{ inspection_form.inspection_month.id_for_label }}">
+                                    점검월
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="col-md-3">
+                            <div class="form-floating">
+                                {{ inspection_form.inspection_date }}
+                                <label for="{{ inspection_form.inspection_date.id_for_label }}">
+                                    점검일자
+                                </label>
+                            </div>
+                        </div>
+
+
+
+                        {# Result - Full width textarea #}
+                        <div class="col-12">
+                            <div class="form-floating"">
+                                {{ inspection_form.result }}
+                                <label for="{{ inspection_form.result.id_for_label }}">
+                                    점검결과
+                                </label>
+                            </div>
+                        </div>
+                        {# Attachments #}
+                        <div class="col-8">
+                            <label class="form-label fw-semibold">
+                                <i class="fas fa-paperclip me-1 text-primary"></i>첨부파일
+                            </label>
+                            <div class="input-group">
+                                <input type="file" name="attachments" multiple class="form-control" id="id_attachments" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png">
+                                <span class="input-group-text bg-primary text-white">
+                                    <i class="fas fa-upload"></i>
+                                </span>
+                            </div>
+                            <div class="form-text">
+                                <i class="fas fa-info-circle me-1"></i>여러 파일을 선택할 수 있습니다. (PDF, Word, Excel, 이미지)
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="submit" class="scl-btn scl-btn-primary px-4">
+                        <i class="fas fa-save me-1"></i>저장
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// Set max date/month to today to prevent future date selection
+document.addEventListener('DOMContentLoaded', function() {
+    const today = new Date();
+    const maxDate = today.toISOString().split('T')[0]; // YYYY-MM-DD
+    const maxMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`; // YYYY-MM
+    
+    // Set max for inspection_date
+    const dateInput = document.querySelector('#id_inspection_date');
+    if (dateInput) {
+        dateInput.setAttribute('max', maxDate);
+    }
+    
+    // Set max for inspection_month
+    const monthInput = document.querySelector('#id_inspection_month');
+    if (monthInput) {
+        monthInput.setAttribute('max', maxMonth);
+    }
+});
+</script>

@@ -1,0 +1,102 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block page_name %}계약 관리{% endblock %}
+
+{% block content %}
+<div class="border bg-white p-3">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <form method="get" class="d-flex gap-2 align-items-center flex-wrap">
+            <input type="text" name="q" class="form-control form-control-sm" placeholder="계약명, 업체명, 시스템명 검색" value="{{ request.GET.q }}"
+                style="width: 300px; height: 31px; border-width: 1px;">
+            <select name="year" class="form-select form-select-sm" style="width: 120px; height: 31px;">
+                <option value="">계약 연도</option>
+                {% for year in year_range %}
+                <option value="{{ year }}" {% if request.GET.year == year|stringformat:"s" %}selected{% endif %}>{{ year }}년</option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="scl-btn scl-btn-sm rounded-pill" style="min-width: 60px;">검색</button>
+            {% if request.GET.q or request.GET.year %}
+            <a href="{% url 'assets:contract_list' %}" class="scl-btn scl-btn-outline scl-btn-sm">초기화</a>
+            {% endif %}
+        </form>
+        <a href="{% url 'assets:contract_create' %}" class="scl-btn scl-btn-primary scl-btn-sm">
+            <i class="fas fa-plus"></i> 계약 등록
+        </a>
+    </div>
+
+    <div class="border bg-white p-3 table-responsive">
+        <table class="display nowrap text-center" style="width:100%" id="list_table">
+            <thead>
+                <tr class="text-center">
+                    <th>계약명</th>
+                    <th>유형</th>
+                    <th>업체</th>
+                    <th>기간</th>
+                    <th>금액</th>
+                    <th>관련시스템</th>
+                    <th>관리</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for contract in contracts %}
+                <tr>
+                    <td>
+                        <a href="{% url 'assets:contract_detail' contract.pk %}" class="text-decoration-none">
+                            {{ contract.name }}
+                        </a>
+                    </td>
+                    <td class="text-center">{{ contract.get_contract_type_display }}</td>
+                    <td class="text-center">{{ contract.contractor }}</td>
+                    <td class="text-center">{{ contract.start_date|date:"Y-m-d" }} ~
+                        {{ contract.end_date|date:"Y-m-d"}}</td>
+                    <td class="text-end">{{ contract.amount|intcomma }}원</td>
+                    <td class="text-center">
+                        {% for system in contract.systems.all %}
+                        <a href="{% url 'assets:system_detail' system.pk %}"
+                            class="badge bg-light text-dark border text-decoration-none me-1 mb-1">
+                            {{ system.name }}
+                        </a>
+                        {% empty %}
+                        <span class="text-muted">-</span>
+                        {% endfor %}
+                    </td>
+                    <td class="text-center">
+                        <a href="{% url 'assets:contract_edit' contract.pk %}" class="btn btn-sm btn-outline-secondary">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                        {% if contract.file %}
+                        <a href="{{ contract.file.url }}" class="btn btn-sm btn-outline-info" target="_blank"
+                            title="계약서 다운로드">
+                            <i class="fas fa-file-download"></i>
+                        </a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="text-center py-3">등록된 계약 정보가 없습니다.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function () {
+        $('#list_table').DataTable({
+            "searching": false,
+            "paging": false,
+            "info": false,
+            "ordering": false,
+            "language": {
+                "url": "https://cdn.datatables.net/plug-ins/1.11.3/i18n/ko.json"
+            }
+        });
+    });
+</script>
+
+{% endblock %}

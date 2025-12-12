@@ -1,7 +1,28 @@
 from django.contrib import admin
 from django.utils.html import format_html
 from django.urls import reverse
-from .models import WeeklyReport, WeeklyReportComment
+from .models import WeeklyReport, WeeklyReportComment, ReportReview
+
+@admin.register(ReportReview)
+class ReportReviewAdmin(admin.ModelAdmin):
+    list_display = ('user', 'year', 'week_number', 'notification_sent', 'created_at', 'updated_at')
+    list_filter = ('notification_sent', 'year')
+    search_fields = ('user__username', 'year', 'week_number')
+    ordering = ('-created_at',)
+    readonly_fields = ('created_at', 'updated_at', 'review_content')
+    
+    fieldsets = (
+        ('기본 정보', {
+            'fields': ('user', ('year', 'week_number'), 'notification_sent')
+        }),
+        ('리뷰 내용', {
+            'fields': ('review_content',)
+        }),
+        ('타임스탬프', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
 
 class WeeklyReportCommentInline(admin.TabularInline):
     model = WeeklyReportComment

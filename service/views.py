@@ -8,6 +8,9 @@ from .models import (
     ServiceRelease,
     User,
     CommonCode,
+    ServiceRequestFormData,
+    FormElement,
+    Dataset,
     ServiceRequestStep,
 )
 from django.views.generic import ListView, DetailView
@@ -61,7 +64,7 @@ def service_request_type_list(request):
 
     }
 
-    return render(request, 'service_request.html', data)
+    return render(request, 'service/service_request.html', data)
 
 
 def create_step(service_request, user, msg, status):
@@ -75,6 +78,7 @@ def create_step(service_request, user, msg, status):
 
 @login_required
 def service_request_create(request, code):
+    print('service_request_create')
     url = reverse('service_request_create', kwargs={'code': code})
     
     if request.method == 'POST':
@@ -107,6 +111,34 @@ def service_request_create(request, code):
         for file_ in request.FILES.getlist('attachments'):
             ServiceRequestAttachment.objects.create(record=service_request, file=file_)
         create_step(service_request, request.user, '서비스 요청 생성', 'N')
+        
+        # Handle dynamic form data
+        if req_type.dataset:
+            form_html = []
+            for key, value in request.POST.items():
+                if key not in ['csrfmiddlewaretoken', 'req_title', 'req_system', 'req_module', 'req_manager',
+                              'req_depart', 'req_name', 'req_email', 'req_reason', 'req_details', 
+                              'rcv_opinion', 'date_of_req', 'date_of_due', 'effort_expected','attachments','status']:
+                    dataset_filter = Dataset.objects.get(code=req_type.dataset)
+                    print(dataset_filter.code)
+                    print(key)
+                    
+                    element = get_object_or_404(FormElement, dataset=dataset_filter, element_code=key)   
+
+                    print(element)
+                    ServiceRequestFormData.objects.create(
+                        service_request=service_request,
+                        dataset=req_type.dataset,
+                        field_key=element.element_name,
+                        field_value=value
+                    )
+                    # Add to HTML generation
+                    form_html.append(f'<div class="mb-2"><strong>{element.element_name}:</strong> {value}</div>')
+            
+            # Update req_details with generated HTML
+            if form_html:
+                service_request.req_details = ''.join(form_html)
+                service_request.save()
         messages.success(request, "서비스 요청이 성공적으로 생성되었습니다.")
         return redirect('service_request_list') # Redirect to a list view
 
@@ -117,22 +149,146 @@ def service_request_create(request, code):
         messages.error(request, "잘못된 요청 유형입니다.")
         return redirect(url) 
     
-    assignees = User.objects.all()
+    assignees = User.objects.exclude(id=request.user.id)
     systems = CommonCode.objects.filter(group='system').filter(active=True)
     modules = CommonCode.objects.filter(group='module').filter(active=True)
+    
+    # Load form elements for dataset
+    form_elements = []
+    dataset_name = ""
+    if selected_type.dataset:
+        try:
+            dataset = Dataset.objects.get(code=selected_type.dataset)
+            form_elements = dataset.elements.filter(active=True).order_by('order')
+            dataset_name = dataset.name
+            
+            # Parse JSON options for select/radio elements
+            for element in form_elements:
+                if element.element_options:
+                    try:
+                        import json
+                        element.options = json.loads(element.element_options)
+                    except:
+                        element.options = []
+                else:
+                    element.options = []
+        except Dataset.DoesNotExist:
+            pass
+    
     context = {
         'selected_type' : selected_type,
         'type': code, 
         'assignees': assignees,
         'systems': systems,
         'modules': modules,
+        'form_elements': form_elements,
+        'dataset_code': selected_type.dataset,
+        'dataset_name': dataset_name,        
         }
-    return render(request, 'service_request_form.html', context)
+    
+    return render(request, 'service/service_request_form.html', context)
+
+@login_required
+def service_request_reception_create(request, pk):
+    service_request = get_object_or_404(ServiceRequest, pk=pk)
+
+    print(request.POST.get('date_of_due'))
+    print(type(request.POST.get('date_of_due')))
+
+    if request.method == 'POST':
+
+
+        service_request.rcv_opinion = request.POST.get('rcv_opinion')
+        service_request.date_of_due = request.POST.get('date_of_due') or None
+        service_request.effort_expected = request.POST.get('effort_expected')
+        service_request.status = 'A'
+        service_request.save()
+
+        # Handle file uploads
+        for file_ in request.FILES.getlist('attachments'):
+            ServiceRequestAttachment.objects.create(record=service_request, file=file_)
+        create_step(service_request, request.user, '서비스 접수완료', 'A')
+        
+        messages.success(request, "서비스 접수가 완료되었습니다.")
+        return redirect('service_request_reception_list') # Redirect to a list view
+
+    assignees = User.objects.all()
+    systems = CommonCode.objects.filter(group='system').filter(active=True)
+    modules = CommonCode.objects.filter(group='module').filter(active=True)
+
+    if service_request.parent_sr is not None:
+        attatchments_sr = service_request.get_root_sr()
+    else:
+        attatchments_sr = service_request
+
+
+    try:
+        selected_type = CommonCode.objects.get(group='service', code='9001') 
+    except CommonCode.DoesNotExist:
+        messages.error(request, "잘못된 요청 유형입니다.")
+        return redirect(url) 
+    
+    assignees = User.objects.all()
+    systems = CommonCode.objects.filter(group='system').filter(active=True)
+    modules = CommonCode.objects.filter(group='module').filter(active=True)
+    
+    # Load form elements for dataset
+    form_elements = []
+    dataset_name = ""
+    if selected_type.dataset:
+        try:
+            dataset = Dataset.objects.get(code=selected_type.dataset)
+            form_elements = dataset.elements.filter(active=True).order_by('order')
+            dataset_name = dataset.name
+            
+            # Parse JSON options for select/radio elements
+            for element in form_elements:
+                if element.element_options:
+                    try:
+                        import json
+                        element.options = json.loads(element.element_options)
+                    except:
+                        element.options = []
+                else:
+                    element.options = []
+        except Dataset.DoesNotExist:
+            pass
+    
+    context = {
+        'selected_type' : selected_type,
+        'assignees': assignees,
+        'systems': systems,
+        'modules': modules,
+        'form_elements': form_elements,
+        'dataset_code': selected_type.dataset,
+        'dataset_name': dataset_name,     
+        'service_request': service_request,
+        "assignees": assignees,
+        'attatchments_sr': attatchments_sr,
+        'systems': systems,
+        'modules': modules,
+        'inspections': ServiceInspection.objects.filter(service_request=service_request).order_by('seq'),
+        'releases': ServiceRelease.objects.filter(service_request=service_request).order_by('created_at'),   
+        }
+    
+    return render(request, 'service/service_request_reception_form.html', context)
+
 
 @login_required
 def service_request_list(request):
     service_requests = ServiceRequest.objects.filter(Q(status__in=["N", "P"]), assignee=request.user).order_by('-id')
-    return render(request, 'service_request_list.html', {'service_requests': service_requests, 'today': date.today()})
+    return render(request, 'service/service_request_list.html', {'service_requests': service_requests, 'today': date.today()})
+
+@login_required
+def service_request_reception_list(request):
+    """SR 접수 - 상태가 'N'이고 담당자가 본인인 SR 목록"""
+    reception_requests = ServiceRequest.objects.filter(status='N', assignee=request.user).order_by('created_at')
+    context = {
+        'service_requests': reception_requests,
+        'today': date.today()
+    }
+    return render(request, 'service/service_request_reception_list.html', context)
+
 
 def service_request_list_search(request):
     managers = User.objects.all()
@@ -206,13 +362,13 @@ def service_request_list_search(request):
  
     }
 
-    return render(request, 'service_request_list_search.html', context)
+    return render(request, 'service/service_request_list_search.html', context)
 
 @login_required
 def service_request_detail(request, pk):
     # 특정 요청의 상세 정보를 가져옵니다.
     service_request = get_object_or_404(ServiceRequest, pk=pk)
-    assignees = User.objects.all()
+    assignees = User.objects.exclude(id=request.user.id)
     systems = CommonCode.objects.filter(group='system').filter(active=True)
     modules = CommonCode.objects.filter(group='module').filter(active=True)
 
@@ -230,16 +386,16 @@ def service_request_detail(request, pk):
         'inspections': ServiceInspection.objects.filter(service_request=service_request).order_by('seq'),
         'releases': ServiceRelease.objects.filter(service_request=service_request).order_by('created_at'),
     }
-    return render(request, 'service_request_detail.html', context)
+    return render(request, 'service/service_request_detail.html', context)
 
 def service_request_approve(request, pk):
     if request.method == 'POST':
         service_request = get_object_or_404(ServiceRequest, pk=pk)
         service_request.status = 'P'  # 상태를 '진행중'으로 변경
         service_request.save()
-        create_step(service_request, request.user, '요청 승인', 'N')
-
-        return redirect('service_request_detail', pk=pk)
+        create_step(service_request, request.user, '요청 승인', 'A')
+        messages.success(request, '요청이 승인되었습니다.')
+        return redirect('service_admin_approve_list')
 
 
 def service_request_inspection_result(request, token):
@@ -251,8 +407,8 @@ def service_request_inspection_result(request, token):
         inspection.save()
         msg = '검수 완료' if inspection.result == 'C' else '재작업 요청'
         create_step(inspection.service_request, None, msg, 'P')
-        return render(request, 'inspection_result_done.html')
-    return render(request, 'inspection_result_form.html', {'inspection': inspection})
+        return render(request, 'service/inspection_result_done.html')
+    return render(request, 'service/inspection_result_form.html', {'inspection': inspection})
 
 def service_request_assign(request, pk):
     if request.method == 'POST':
@@ -357,12 +513,13 @@ def service_request_release_approve(request, pk):
     release.approved_at = timezone.now()
     release.save()
     create_step(release.service_request, request.user, 'CTS/릴리즈 승인', 'P')
-    return redirect('service_admin_release_list')
+    messages.success(request, 'CTS/릴리즈가 승인되었습니다.')
+    return redirect('service_admin_approve_list')
 
 
 @login_required
 def service_admin_approve_list(request):
-    pending_requests = ServiceRequest.objects.filter(status='N', parent_sr__isnull=True)
+    pending_requests = ServiceRequest.objects.filter(status='A', parent_sr__isnull=True)
     pending_releases = ServiceRelease.objects.filter(approved=False)
 
     pending_items = []
@@ -386,21 +543,9 @@ def service_admin_approve_list(request):
     context = {
         'pending_items': pending_items,
     }
-    return render(request, 'ServiceAdminApprove_list.html', context)
+    return render(request, 'service/ServiceAdminApprove_list.html', context)
 
 
-@login_required
-def service_admin_request_list(request):
-    """신규 SR 승인 대기 목록"""
-    pending_requests = ServiceRequest.objects.filter(status='N', parent_sr__isnull=True).order_by('-created_at')
-    return render(request, 'ServiceAdminRequest_list.html', {'pending_requests': pending_requests})
-
-
-@login_required
-def service_admin_release_list(request):
-    """CTS/릴리즈 승인 대기 목록"""
-    pending_releases = ServiceRelease.objects.filter(approved=False).order_by('-created_at')
-    return render(request, 'ServiceAdminRelease_list.html', {'pending_releases': pending_releases})
 
 
 def service_request_complete(request, pk):
@@ -469,4 +614,217 @@ def service_request_report(request):
         'end_date': end_date.strftime('%Y-%m-%d'),
     }
 
-    return render(request, 'service_request_report.html', context)
+    return render(request, 'service/service_request_report.html', context)
+
+
+@login_required
+def dataset_data_list(request, dataset):
+    """특정 dataset을 가진 서비스 요청 목록과 폼 데이터"""
+    service_requests = ServiceRequest.objects.filter(
+        req_type__dataset=dataset
+    ).prefetch_related('form_data').order_by('-created_at')
+    
+    # 해당 dataset의 모든 필드명 수집
+    field_keys = ServiceRequestFormData.objects.filter(
+        dataset=dataset
+    ).values_list('field_key', flat=True).distinct()
+    
+    context = {
+        'dataset': dataset,
+        'service_requests': service_requests,
+        'field_keys': field_keys,
+    }
+    
+    return render(request, 'service/dataset_data_list.html', context)
+
+
+@login_required
+def dataset_status_list(request):
+    """데이터셋별 요청 현황 조회"""
+    datasets = CommonCode.objects.filter(
+        group='service', 
+        dataset__isnull=False
+    ).exclude(dataset='').values('dataset', 'name').distinct()
+    
+    dataset_stats = []
+    for dataset_info in datasets:
+        dataset = dataset_info['dataset']
+        service_name = dataset_info['name']
+        
+        total_count = ServiceRequest.objects.filter(req_type__dataset=dataset).count()
+        status_counts = ServiceRequest.objects.filter(req_type__dataset=dataset).values('status').annotate(count=Count('id'))
+        
+        stats = {
+            'dataset': dataset,
+            'service_name': service_name,
+            'total': total_count,
+            'status_counts': {item['status']: item['count'] for item in status_counts}
+        }
+        dataset_stats.append(stats)
+    
+    context = {
+        'dataset_stats': dataset_stats,
+    }
+    
+    return render(request, 'service/dataset_status_list.html', context)
+
+
+@login_required
+def form_element_list(request):
+    """데이터셋 목록 (요소 개수 포함)"""
+    from django.db.models import Count
+    datasets = Dataset.objects.annotate(
+        element_count=Count('elements')
+    ).order_by('code')
+    
+    context = {
+        'datasets': datasets,
+    }
+    return render(request, 'service/form_element_list.html', context)
+
+
+@login_required
+def form_element_create(request):
+    """폼 요소 생성"""
+    if request.method == 'POST':
+        dataset_name = request.POST['dataset_name']
+        dataset_code = request.POST['dataset_code']
+        
+        # Get or create dataset
+        dataset, created = Dataset.objects.get_or_create(
+            code=dataset_code,
+            defaults={'name': dataset_name}
+        )
+        
+        # Process multiple elements
+        elements_data = {}
+        for key, value in request.POST.items():
+            if key.startswith('elements[') and '][' in key:
+                import re
+                match = re.match(r'elements\[(\d+)\]\[([^\]]+)\]', key)
+                if match:
+                    index = int(match.group(1))
+                    field = match.group(2)
+                    
+                    if index not in elements_data:
+                        elements_data[index] = {}
+                    elements_data[index][field] = value
+        
+        # Create FormElement objects
+        for index, element_data in elements_data.items():
+            is_required_key = f"elements[{index}][is_required]"
+            FormElement.objects.create(
+                dataset=dataset,
+                element_name=element_data['element_name'],
+                element_code=element_data['element_code'],
+                element_type=element_data['element_type'],
+                is_required=is_required_key in request.POST,
+                placeholder=element_data.get('placeholder', ''),
+                order=int(element_data.get('order', 0)),
+            )
+        
+        return redirect('form_element_list')
+    
+    return render(request, 'service/form_element_form.html', {'action': 'create'})
+
+
+@login_required
+def form_element_edit(request, pk):
+    """폼 요소 수정"""
+    element = get_object_or_404(FormElement, pk=pk)
+    
+    if request.method == 'POST':
+        dataset_name = request.POST['dataset_name']
+        dataset_code = request.POST['dataset_code']
+        
+        # Update dataset
+        element.dataset.name = dataset_name
+        element.dataset.code = dataset_code
+        element.dataset.save()
+        
+        # Handle both old format (direct fields) and new format (array)
+        if 'elements[0][element_name]' in request.POST:
+            # New array format
+            element.element_name = request.POST['elements[0][element_name]']
+            element.element_code = request.POST['elements[0][element_code]']
+            element.element_type = request.POST['elements[0][element_type]']
+            element.is_required = 'elements[0][is_required]' in request.POST
+            element.placeholder = request.POST.get('elements[0][placeholder]', '')
+            element.order = int(request.POST.get('elements[0][order]', 0))
+        
+        element.save()
+        return redirect('form_element_list')
+    
+    context = {'element': element, 'action': 'edit'}
+    return render(request, 'service/form_element_form.html', context)
+
+
+@login_required
+def form_element_delete(request, pk):
+    """폼 요소 삭제"""
+    element = get_object_or_404(FormElement, pk=pk)
+    element.delete()
+    return redirect('form_element_list')
+
+
+@login_required
+def dataset_detail(request, pk):
+    """데이터셋 상세 - 요소 관리"""
+    dataset = get_object_or_404(Dataset, pk=pk)
+    elements = dataset.elements.all().order_by('order')
+    
+    if request.method == 'POST':
+        # Update dataset info
+        dataset.name = request.POST['dataset_name']
+        dataset.code = request.POST['dataset_code']
+        dataset.description = request.POST.get('dataset_description', '')
+        dataset.save()
+        
+        # Process elements
+        elements_data = {}
+        for key, value in request.POST.items():
+            if key.startswith('elements[') and '][' in key:
+                import re
+                match = re.match(r'elements\[(\d+)\]\[([^\]]+)\]', key)
+                if match:
+                    index = int(match.group(1))
+                    field = match.group(2)
+                    
+                    if index not in elements_data:
+                        elements_data[index] = {}
+                    elements_data[index][field] = value
+        
+        # Delete existing elements and create new ones
+        dataset.elements.all().delete()
+        
+        for index, element_data in elements_data.items():
+            if element_data.get('element_name') and element_data.get('element_code'):
+                is_required_key = f"elements[{index}][is_required]"
+                FormElement.objects.create(
+                    dataset=dataset,
+                    element_name=element_data['element_name'],
+                    element_code=element_data['element_code'],
+                    element_type=element_data['element_type'],
+                    is_required=is_required_key in request.POST,
+                    placeholder=element_data.get('placeholder', ''),
+                    order=int(element_data.get('order', index)),
+                    row_group=element_data.get('row_group', ''),
+                    col_width=int(element_data.get('col_width', 12)),
+                )
+        
+        return redirect('dataset_detail', pk=pk)
+    
+    context = {
+        'dataset': dataset,
+        'elements': elements,
+        'action': 'edit'
+    }
+    return render(request, 'service/dataset_detail.html', context)
+
+
+@login_required
+def dataset_delete(request, pk):
+    """데이터셋 삭제"""
+    dataset = get_object_or_404(Dataset, pk=pk)
+    dataset.delete()
+    return redirect('form_element_list')

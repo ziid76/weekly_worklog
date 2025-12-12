@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block page_name %}
+서비스 요청 접수
+{% endblock %}
+
+{% block content %}
+<div class="container border bg-white p-3 table-responsive">
+    <table id="request_table" class="display nowrap text-center" style="width:100%" >
+        <thead>
+            <tr>
+                <th>SR No</th>
+                <th>원SR</th>
+                <th>담당자</th>
+                <th>요청자(부서)</th>
+                <th>요청제목</th>
+                <th>접수 일자</th>
+                <th>희망 적용 일자</th>
+                <th>완료 예정 일자</th>
+                <th>상태</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for request in service_requests %}
+            <tr>
+                <td>
+                    <a href="{% url 'service_request_detail' request.id %}" ><button class="scl-btn scl-btn-sm rounded-pill" style="min-width: 60px;">{{ request.id }}</button></a>
+                </td>
+                <td>{{ request.get_root_sr.id }}</td>
+                <td>{{ request.assignee.profile.display_name }}</td>
+                <td>{{ request.req_name }}({{ request.req_depart }})</td>
+                <td>{{ request.req_title|truncatechars:30 }}</td>
+                <td>{{ request.date_of_recept }}</td>
+                <td>{{ request.date_of_req }}</td>
+                <td>
+                {% if request.date_of_due < today %}
+                    <span class="text-danger">{{ request.date_of_due }}</span>
+                {% else %}
+                    {{ request.date_of_due }}
+                {% endif %} 
+                </td>
+                <td>{{ request.get_status_text }}</td>
+
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="8" class="text-center">등록된 요청이 없습니다.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+
+{% block extra_js%}
+
+<script>
+$(document).ready(function() {
+  $('#request_table').DataTable( {
+      "searching":   false,
+      "paging":   false,
+      "info":     false,
+      "ordering": false,
+      "language": {
+          "url": "https://cdn.datatables.net/plug-ins/1.11.3/i18n/ko.json"
+      }
+  } );
+} );
+</script>
+
+{% endblock %}

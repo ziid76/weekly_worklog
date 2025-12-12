@@ -1,0 +1,41 @@
+<div class="border bg-white p-3 mb-3">
+    <h6 class="section-title border-bottom pb-2">관련 시스템</h6>
+    <div class="table-responsive">
+        <table class="table table-bordered">
+            <thead>
+                <tr class="text-center">
+                    <th>시스템명</th>
+                    <th>코드</th>
+                    <th>담당자</th>
+                    <th>상태</th>
+                    <th>오픈일</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for system in systems %}
+                <tr>
+                    <td>
+                        <a href="{% url 'assets:system_detail' system.pk %}" class="text-decoration-none">
+                            {{ system.name }}
+                        </a>
+                    </td>
+                    <td class="text-center">{{ system.code }}</td>
+                    <td class="text-center">{{ system.manager.profile.display_name|default:system.manager.username }}
+                    </td>
+                    <td class="text-center">
+                        <span
+                            class="badge bg-{% if system.status == 'OPER' %}success{% elif system.status == 'DEV' %}warning{% elif system.status == 'SUSP' %}secondary{% else %}danger{% endif %}">
+                            {{ system.get_status_display }}
+                        </span>
+                    </td>
+                    <td class="text-center">{{ system.launch_date|default:"-" }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="text-center py-3">연결된 시스템이 없습니다.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>

@@ -1,0 +1,169 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+{% block page_name %}{{ title }}{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+
+                <form method="post" id="userCreateForm">
+                    {% csrf_token %}
+
+                    <div class="mb-4">
+                        <h6 class="mb-3"><i class="fas fa-user me-2"></i>기본 계정 정보</h6>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.username.id_for_label }}" class="form-label">사용자 ID</label>
+                                {{ form.username }}
+                                {% if form.username.errors %}
+                                    <div class="text-danger small">{{ form.username.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.email.id_for_label }}" class="form-label">이메일</label>
+                                {{ form.email }}
+                                {% if form.email.errors %}
+                                    <div class="text-danger small">{{ form.email.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.password1.id_for_label }}" class="form-label">비밀번호</label>
+                                {{ form.password1 }}
+                                {% if form.password1.errors %}
+                                    <div class="text-danger small">{{ form.password1.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.password2.id_for_label }}" class="form-label">비밀번호 확인</label>
+                                {{ form.password2 }}
+                                {% if form.password2.errors %}
+                                    <div class="text-danger small">{{ form.password2.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <h6 class="mb-3"><i class="fas fa-id-card me-2"></i>개인 정보</h6>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.last_name_ko.id_for_label }}" class="form-label">성 (한글)</label>
+                                {{ form.last_name_ko }}
+                                {% if form.last_name_ko.errors %}
+                                    <div class="text-danger small">{{ form.last_name_ko.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.first_name_ko.id_for_label }}" class="form-label">이름 (한글)</label>
+                                {{ form.first_name_ko }}
+                                {% if form.first_name_ko.errors %}
+                                    <div class="text-danger small">{{ form.first_name_ko.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.first_name.id_for_label }}" class="form-label">이름 (영문)</label>
+                                {{ form.first_name }}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.last_name.id_for_label }}" class="form-label">성 (영문)</label>
+                                {{ form.last_name }}
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.position.id_for_label }}" class="form-label">직급</label>
+                                {{ form.position }}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.phone.id_for_label }}" class="form-label">전화번호</label>
+                                {{ form.phone }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <h6 class="mb-3"><i class="fas fa-shield-alt me-2"></i>권한 설정</h6>
+                        <div class="form-check mb-2">
+                            {{ form.is_staff }}
+                            <label class="form-check-label" for="{{ form.is_staff.id_for_label }}">관리자 권한</label>
+                        </div>
+                        <div class="form-check mb-2">
+                            {{ form.is_superuser }}
+                            <label class="form-check-label" for="{{ form.is_superuser.id_for_label }}">슈퍼유저 권한</label>
+                        </div>
+                        {% if form.groups.field.queryset %}
+                        <label class="form-label mt-3">권한 그룹</label>
+                        <div class="row">
+                            {% for group in form.groups.field.queryset %}
+                                <div class="col-md-4 mb-2">
+                                    <div class="form-check">
+                                        <input type="checkbox" name="groups" value="{{ group.id }}" id="group_{{ group.id }}" class="form-check-input">
+                                        <label class="form-check-label" for="group_{{ group.id }}">{{ group.name }}</label>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-4">
+                        <h6 class="mb-3"><i class="fas fa-users me-2"></i>팀 설정</h6>
+                        {% if form.teams.field.queryset %}
+                        <label class="form-label">소속 팀</label>
+                        <div class="row">
+                            {% for team in form.teams.field.queryset %}
+                                <div class="col-md-4 mb-2">
+                                    <div class="form-check">
+                                        <input type="checkbox" name="teams" value="{{ team.id }}" id="team_{{ team.id }}" class="form-check-input">
+                                        <label class="form-check-label" for="team_{{ team.id }}">{{ team.name }}</label>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        <div class="mb-3">
+                            <label class="form-label">{{ form.team_role.label }}</label><br>
+                            {% for radio in form.team_role %}
+                                <div class="form-check form-check-inline">
+                                    {{ radio.tag }}
+                                    <label class="form-check-label" for="{{ radio.id_for_label }}">
+                                        {{ radio.choice_label }}
+                                    </label>
+                                </div>
+                            {% endfor %}
+                            {% if form.team_role.errors %}
+                                <div class="text-danger small">{{ form.team_role.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                    </div>
+
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'user_list' %}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> 취소
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i> 사용자 생성
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

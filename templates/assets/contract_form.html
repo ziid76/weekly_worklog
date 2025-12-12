@@ -1,0 +1,250 @@
+{% extends 'base.html' %}
+
+{% block page_name %}계약 {% if form.instance.pk %}수정{% else %}등록{% endif %}{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width: 800px; margin: 0 auto;">
+    <div class="card-header">
+        <h5 class="mb-0">계약 정보 입력</h5>
+    </div>
+    <div class="card-body">
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+
+            <div class="mb-3">
+                <label for="{{ form.name.id_for_label }}" class="form-label">계약명</label>
+                {{ form.name }}
+                {% if form.name.errors %}
+                <div class="text-danger small">{{ form.name.errors }}</div>
+                {% endif %}
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="{{ form.contract_type.id_for_label }}" class="form-label">계약유형</label>
+                    {{ form.contract_type }}
+                    {% if form.contract_type.errors %}
+                    <div class="text-danger small">{{ form.contract_type.errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="{{ form.contractor.id_for_label }}" class="form-label">계약업체</label>
+                    {{ form.contractor }}
+                    {% if form.contractor.errors %}
+                    <div class="text-danger small">{{ form.contractor.errors }}</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="{{ form.start_date.id_for_label }}" class="form-label">계약시작일</label>
+                    {{ form.start_date }}
+                    {% if form.start_date.errors %}
+                    <div class="text-danger small">{{ form.start_date.errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="{{ form.end_date.id_for_label }}" class="form-label">계약종료일</label>
+                    {{ form.end_date }}
+                    {% if form.end_date.errors %}
+                    <div class="text-danger small">{{ form.end_date.errors }}</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label for="{{ form.amount.id_for_label }}" class="form-label">계약금액</label>
+                {{ form.amount }}
+                {% if form.amount.errors %}
+                <div class="text-danger small">{{ form.amount.errors }}</div>
+                {% endif %}
+            </div>
+
+            <div class="mb-3">
+                <label for="{{ form.content.id_for_label }}" class="form-label">계약내용</label>
+                {{ form.content }}
+                {% if form.content.errors %}
+                <div class="text-danger small">{{ form.content.errors }}</div>
+                {% endif %}
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">첨부파일</label>
+                <input type="file" name="attachments" class="form-control" multiple id="fileInput">
+                <small class="form-text text-muted">여러 파일을 선택하려면 Ctrl 키를 누른 상태에서 파일을 클릭하세요.</small>
+                
+                {% if form.instance.pk and form.instance.attachments.exists %}
+                <div class="mt-3">
+                    <label class="form-label">기존 첨부파일</label>
+                    <div class="list-group" id="existingAttachments">
+                        {% for attachment in form.instance.attachments.all %}
+                        <div class="list-group-item d-flex justify-content-between align-items-center" data-attachment-id="{{ attachment.id }}">
+                            <div>
+                                <i class="fas fa-file me-2"></i>
+                                <a href="{{ attachment.file.url }}" target="_blank" class="text-decoration-none">
+                                    {{ attachment.filename }}
+                                </a>
+                                <small class="text-muted ms-2">
+                                    ({{ attachment.uploaded_at|date:"Y-m-d" }})
+                                </small>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-danger delete-attachment-btn" data-attachment-id="{{ attachment.id }}">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">관련 시스템</label>
+                <div class="d-flex gap-2 align-items-center mb-2">
+                    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#systemSelectorModal">
+                        <i class="fas fa-search"></i> 시스템 선택
+                    </button>
+                    <select id="id_systems" name="systems" multiple style="display: none;">
+                        {% if form.instance.pk %}
+                        {% for system in form.instance.systems.all %}
+                        <option value="{{ system.id }}" selected>{{ system.name }}</option>
+                        {% endfor %}
+                        {% endif %}
+                    </select>
+                </div>
+                <div id="selectedSystemsDisplay">
+                    {% if form.instance.pk and form.instance.systems.exists %}
+                    {% for system in form.instance.systems.all %}
+                    <span class="badge bg-light text-dark border text-decoration-none me-1 mb-1">
+                        {{ system.name }} ({{ system.code }})
+                    </span>
+                    {% endfor %}
+                    {% else %}
+                    <small class="text-muted">선택된 시스템이 없습니다</small>
+                    {% endif %}
+                </div>
+                {% if form.systems.errors %}
+                <div class="text-danger small mt-1">{{ form.systems.errors }}</div>
+                {% endif %}
+                <small class="form-text text-muted">이 계약이 적용되는 시스템을 모두 선택하세요.</small>
+            </div>
+
+            {% if form.instance.pk %}
+            <div class="mb-3">
+                <label class="form-label">연관계약</label>
+                <div class="d-flex gap-2 align-items-center mb-2">
+                    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#relatedContractsModal">
+                        <i class="fas fa-search"></i> 연관계약 선택
+                    </button>
+                </div>
+                <div id="selectedContractsDisplay">
+                    {% if form.instance.related_contracts.exists %}
+                    {% for related in form.instance.related_contracts.all %}
+                    <span class="badge bg-light text-dark border text-decoration-none me-1 mb-1">
+                        {{ related.name }} ({{ related.contractor }})
+                    </span>
+                    {% endfor %}
+                    {% else %}
+                    <small class="text-muted">선택된 연관계약이 없습니다</small>
+                    {% endif %}
+                </div>
+                <small class="form-text text-muted">이 계약과 관련된 다른 계약을 선택하세요.</small>
+            </div>
+            {% endif %}
+
+            <div class="d-flex justify-content-end gap-2">
+                <a href="{% url 'assets:contract_list' %}" class="btn btn-secondary">취소</a>
+                <button type="submit" class="scl-btn scl-btn-primary">저장</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Include System Selector Modal -->
+{% include 'assets/partials/system_selector_modal.html' with multi_select=True %}
+
+<!-- Include Related Contracts Modal (only in edit mode) -->
+{% if form.instance.pk %}
+{% include 'assets/partials/related_contracts_modal.html' with contract=form.instance %}
+{% endif %}
+
+<script>
+    // Add Bootstrap classes to form fields
+    document.querySelectorAll('input, select, textarea').forEach(element => {
+        if (element.type !== 'checkbox' && element.type !== 'radio' && element.type !== 'file' && element.type !== 'hidden') {
+            element.classList.add('form-control');
+        } else if (element.type === 'file') {
+            element.classList.add('form-control');
+        }
+    });
+
+    // Initialize system selector with existing selection
+    document.addEventListener('DOMContentLoaded', function () {
+        const initialSystems = [
+            {% if form.instance.pk %}
+            {% for system in form.instance.systems.all %}
+            {
+                id: '{{ system.id }}',
+                name: '{{ system.name }}',
+                code: '{{ system.code }}'
+            }{% if not forloop.last %},{% endif %}
+            {% endfor %}
+            {% endif %}
+        ];
+        initializeSystemSelector(initialSystems);
+
+        // Initialize related contracts (only in edit mode)
+        {% if form.instance.pk %}
+        const relatedContracts = [
+            {% for related in form.instance.related_contracts.all %}
+            {
+                id: '{{ related.id }}',
+                name: '{{ related.name }}',
+                contractor: '{{ related.contractor }}',
+                system_names: '{% for sys in related.systems.all %}{{ sys.name }}{% if not forloop.last %}, {% endif %}{% endfor %}',
+                start_date: '{{ related.start_date|date:"Y-m-d" }}',
+                end_date: '{{ related.end_date|date:"Y-m-d" }}'
+            }{% if not forloop.last %},{% endif %}
+            {% endfor %}
+        ];
+        initializeRelatedContracts(relatedContracts);
+        
+        // Handle attachment deletion
+        document.querySelectorAll('.delete-attachment-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                if (!confirm('이 파일을 삭제하시겠습니까?')) {
+                    return;
+                }
+                
+                const attachmentId = this.dataset.attachmentId;
+                const contractId = '{{ form.instance.pk }}';
+                
+                fetch(`/assets/contracts/${contractId}/attachments/${attachmentId}/delete/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Remove the attachment from the list
+                        const item = document.querySelector(`[data-attachment-id="${attachmentId}"]`);
+                        if (item) {
+                            item.remove();
+                        }
+                    } else {
+                        alert('파일 삭제에 실패했습니다.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('파일 삭제 중 오류가 발생했습니다.');
+                });
+            });
+        });
+        {% endif %}
+    });
+</script>
+{% endblock %}

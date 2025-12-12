@@ -1,0 +1,227 @@
+<!-- Related Contracts Selector Modal -->
+<div class="modal fade" id="relatedContractsModal" tabindex="-1" aria-labelledby="relatedContractsModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="relatedContractsModalLabel">연관계약 선택</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Search Input -->
+                <div class="mb-3">
+                    <div class="input-group">
+                        <input type="text" id="contractSearchInput" class="form-control" placeholder="계약명, 업체명, 시스템명 검색">
+                        <button class="btn btn-outline-primary" type="button" id="contractSearchBtn">
+                            <i class="fas fa-search"></i> 검색
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Contracts Table -->
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>계약명</th>
+                                <th>계약업체</th>
+                                <th>관련시스템</th>
+                                <th>계약기간</th>
+                                <th>선택</th>
+                            </tr>
+                        </thead>
+                        <tbody id="contractSearchResults">
+                            <tr>
+                                <td colspan="5" class="text-center py-3">검색 중...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function () {
+        const contractId = '{{ contract.id }}';
+        if (!contractId) return; // Only works in edit mode
+
+        let selectedContracts = [];
+        const modal = document.getElementById('relatedContractsModal');
+        const searchInput = document.getElementById('contractSearchInput');
+        const searchBtn = document.getElementById('contractSearchBtn');
+        const searchResults = document.getElementById('contractSearchResults');
+
+        // Load contracts when modal opens
+        modal.addEventListener('shown.bs.modal', function () {
+            searchInput.value = '';
+            loadContracts();
+        });
+
+        // Search on button click
+        searchBtn.addEventListener('click', function () {
+            loadContracts();
+        });
+
+        // Search on Enter key
+        searchInput.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                loadContracts();
+            }
+        });
+
+        // Load contracts via AJAX
+        function loadContracts() {
+            const searchQuery = searchInput.value.trim();
+            searchResults.innerHTML = '<tr><td colspan="5" class="text-center py-3">로딩 중...</td></tr>';
+            
+            const url = `/assets/contracts/${contractId}/search-related/?q=${encodeURIComponent(searchQuery)}`;
+
+            fetch(url)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Loaded contracts:', data);
+                    renderContracts(data.contracts);
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    searchResults.innerHTML = '<tr><td colspan="5" class="text-center py-3 text-danger">계약을 불러오는 중 오류가 발생했습니다</td></tr>';
+                });
+        }
+
+        // Render contracts table
+        function renderContracts(contracts) {
+            if (contracts.length === 0) {
+                searchResults.innerHTML = '<tr><td colspan="5" class="text-center py-3">검색 결과가 없습니다</td></tr>';
+                return;
+            }
+
+            searchResults.innerHTML = contracts.map(contract => `
+                <tr>
+                    <td>${contract.name}</td>
+                    <td>${contract.contractor}</td>
+                    <td>${contract.system_names}</td>
+                    <td>${contract.start_date} ~ ${contract.end_date}</td>
+                    <td>
+                        <button type="button" class="btn btn-sm btn-primary select-contract-btn" 
+                                data-contract-id="${contract.id}" 
+                                data-contract-name="${contract.name}"
+                                data-contractor="${contract.contractor}"
+                                data-system-names="${contract.system_names}"
+                                data-start-date="${contract.start_date}"
+                                data-end-date="${contract.end_date}">
+                            <i class="fas fa-check"></i> 선택
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+
+            // Add event listeners to select buttons
+            document.querySelectorAll('.select-contract-btn').forEach(btn => {
+                btn.addEventListener('click', function () {
+                    const contractData = {
+                        id: this.getAttribute('data-contract-id'),
+                        name: this.getAttribute('data-contract-name'),
+                        contractor: this.getAttribute('data-contractor'),
+                        system_names: this.getAttribute('data-system-names'),
+                        start_date: this.getAttribute('data-start-date'),
+                        end_date: this.getAttribute('data-end-date')
+                    };
+                    selectContract(contractData);
+                });
+            });
+        }
+
+        // Select contract
+        function selectContract(contractData) {
+            // Check if already selected
+            if (selectedContracts.find(c => c.id === contractData.id)) {
+                alert('이미 선택된 계약입니다.');
+                return;
+            }
+
+            // Add via AJAX
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            
+            fetch(`/assets/contracts/${contractId}/add-related/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': csrfToken
+                },
+                body: `related_id=${contractData.id}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    selectedContracts.push(contractData);
+                    updateSelectedContractsDisplay();
+                    // Close modal after selection
+                    bootstrap.Modal.getInstance(modal).hide();
+                } else {
+                    alert(data.error || '계약 추가 중 오류가 발생했습니다.');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('계약 추가 중 오류가 발생했습니다.');
+            });
+        }
+
+        // Update selected contracts display
+        function updateSelectedContractsDisplay() {
+            const displayContainer = document.getElementById('selectedContractsDisplay');
+
+            if (selectedContracts.length > 0) {
+                displayContainer.innerHTML = selectedContracts.map((c, index) => `
+                    <span class="badge bg-light text-dark border text-decoration-none me-1 mb-1">
+                        ${c.name} (${c.contractor})
+                        <button type="button" class="btn-close btn-close-sm ms-1" onclick="removeRelatedContract('${c.id}', ${index})" aria-label="제거" style="font-size: 0.7em;"></button>
+                    </span>
+                `).join('');
+            } else {
+                displayContainer.innerHTML = '<small class="text-muted">선택된 연관계약이 없습니다</small>';
+            }
+        }
+
+        // Remove related contract
+        window.removeRelatedContract = function (relatedId, index) {
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            
+            fetch(`/assets/contracts/${contractId}/remove-related/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': csrfToken
+                },
+                body: `related_id=${relatedId}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    selectedContracts.splice(index, 1);
+                    updateSelectedContractsDisplay();
+                } else {
+                    alert(data.error || '계약 제거 중 오류가 발생했습니다.');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('계약 제거 중 오류가 발생했습니다.');
+            });
+        };
+
+        // Initialize from existing selection
+        window.initializeRelatedContracts = function (initialContracts) {
+            selectedContracts = initialContracts || [];
+            updateSelectedContractsDisplay();
+        };
+    })();
+</script>

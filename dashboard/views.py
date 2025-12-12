@@ -2,10 +2,13 @@ from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q, Count
 from django.utils import timezone
-from datetime import timedelta
-from task.models import Task, Category
+from datetime import datetime, timedelta
+from task.models import Task
 from worklog.models import Worklog
 from notifications.models import Notification
+
+from monitor.models import OperationLog
+from service.models import ServiceRequest
 
 @login_required
 def dashboard(request):
@@ -68,6 +71,70 @@ def dashboard(request):
     # 카테고리별 업무 통계
     category_stats = Task.objects.filter(user_tasks).distinct().values('category__name', 'category__color').annotate(count=Count('id'))
     
+    # --- Monitor App Data ---
+    # 1. 미처리 내역 (로그인한 사용자에게 할당된 완료되지 않은 점검일지)
+    # Note: OperationLog model has 'duty_user' and 'completed' fields.
+    monitor_pending_logs = OperationLog.objects.filter(
+        duty_user=user,
+        completed=False,
+        date__lte=timezone.now().date()
+    ).order_by('date')
+
+    # 2. 향후 시스템점검일지 일정 (오늘 이후의 일정)
+    monitor_upcoming_logs = OperationLog.objects.filter(
+        date__gte=timezone.now().date()
+    ).order_by('date')[:5]
+
+    # --- Service Request (SR) Data ---
+    # 1. SR 접수 대상 (Status 'A': 요청접수)
+    sr_receipt_target_count = ServiceRequest.objects.filter(status='A').count()
+
+    # 2. 현재 처리진행 중인 SR 건수 (Status 'P': 처리중)
+    sr_in_progress_count = ServiceRequest.objects.filter(status='P').count()
+
+    # --- Average Lead Time Calculation ---
+    # Calculate average lead time for completed operation logs
+    # Lead time = completed_at - (date + 17:00)
+    # Deadline is 5:00 PM on the operation log date
+    
+    avg_lead_time_hours = None
+    avg_lead_time_days = None
+    avg_lead_time_remaining_hours = None
+    lead_time_status = None  # 'good' or 'attention'
+    
+    completed_logs = OperationLog.objects.filter(
+        completed=True,
+        completed_at__isnull=False
+    )
+    
+    if completed_logs.exists():
+        total_seconds = 0
+        count = 0
+        
+        for log in completed_logs:
+            # Create deadline: operation date at 5:00 PM (17:00)
+            deadline = datetime.combine(log.date, datetime.min.time().replace(hour=17, minute=0))
+            deadline = timezone.make_aware(deadline)
+            
+            # Calculate lead time (can be negative if completed before deadline)
+            lead_time = (log.completed_at - deadline).total_seconds()
+            total_seconds += lead_time
+            count += 1
+        
+        # Calculate average in hours
+        avg_lead_time_seconds = total_seconds / count
+        avg_lead_time_hours = avg_lead_time_seconds / 3600
+        
+        # Convert to days and hours
+        avg_lead_time_days = int(avg_lead_time_hours // 24)
+        avg_lead_time_remaining_hours = int(avg_lead_time_hours % 24)
+        
+        # Determine status based on 24-hour threshold
+        if avg_lead_time_hours <= 24:
+            lead_time_status = 'good'
+        else:
+            lead_time_status = 'attention'
+
     context = {
         'total_tasks': total_tasks,
         'todo_tasks': todo_tasks,
@@ -86,9 +153,20 @@ def dashboard(request):
         'category_stats': category_stats,
         'new_tasks':new_tasks,
         'newly_start_tasks':newly_start_tasks,
+        # Monitor Data
+        'monitor_pending_logs': monitor_pending_logs,
+        'monitor_upcoming_logs': monitor_upcoming_logs,
+        # SR Data
+        'sr_receipt_target_count': sr_receipt_target_count,
+        'sr_in_progress_count': sr_in_progress_count,
+        'avg_lead_time_hours': avg_lead_time_hours,
+        'avg_lead_time_days': avg_lead_time_days,
+        'avg_lead_time_remaining_hours': avg_lead_time_remaining_hours,
+        'lead_time_status': lead_time_status,
+        'today': timezone.now().date(),
     }
     
-    return render(request, 'dashboard.html', context)
+    return render(request, 'dashboard/dashboard.html', context)
 
 @login_required
 def search(request):
@@ -114,4 +192,4 @@ def search(request):
             author=request.user
         )
     
-    return render(request, 'search_results.html', results)
+    return render(request, 'dashboard/search_results.html', results)

@@ -1,0 +1,220 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block page_name %}
+일괄작업
+{% endblock %}
+{% block content %}
+<style>
+    .operation-card {
+        background-color: #fdfdfe;
+        border: 1px solid #e9ecef;
+        border-radius: 6px;
+        padding: 20px;
+        margin-bottom: 20px;
+        transition: box-shadow .3s ease-in-out;
+    }
+    .operation-card:hover {
+        box-shadow: 0 4px 15px rgba(0,0,0,0.07);
+    }
+    .operation-card h5 {
+        color: #0056b3;
+        font-weight: 600;
+    }
+    .operation-card p {
+        color: #555;
+    }
+    #resultArea pre {
+        background-color: #282c34;
+        color: #abb2bf;
+        padding: 15px;
+        border-radius: 5px;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+    }
+</style>
+
+<div class="container-fluid">
+    <div class="card">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-lg-8 offset-lg-2">
+                    
+                    <div class="operation-card">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h5>📧 리뷰결과 메일 발송</h5>
+                                <p class="mb-0">발송 대기 중인 AI 리뷰 결과를 이메일로 발송합니다.</p>
+                            </div>
+                            <button id="sendNotificationsBtn" class="btn btn-primary ml-3">
+                                발송하기
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="operation-card">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h5>🤖 AI 리뷰 생성</h5>
+                                <p class="mb-0">워크로그는 있지만 리뷰가 없는 사용자의 AI 리뷰를 생성합니다.</p>
+                            </div>
+                            <button id="generateReviewsBtn" class="btn btn-success ml-3">
+                                 생성하기
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="operation-card">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h5>🔔 모니터링 미실시자 알림</h5>
+                                <p class="mb-0">모니터링 실시 여부를 확인하고 확인하고 미실시된 경우 카카오 알림을 발송합니다.</p>
+                            </div>
+                            <button id="checkMonitorNotificationsBtn" class="btn btn-warning ml-3">
+                                 알림실행
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+            
+            <!-- 실행 결과 표시 영역 -->
+            <div id="resultArea" class="mt-4" style="display: none;">
+                <div class="row">
+                    <div class="col-lg-8 offset-lg-2">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0">📊 실행 결과</h5>
+                            </div>
+                            <div class="card-body">
+                                <div id="resultContent"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const sendBtn = document.getElementById('sendNotificationsBtn');
+    const generateBtn = document.getElementById('generateReviewsBtn');
+    const checkMonitorBtn = document.getElementById('checkMonitorNotificationsBtn');
+    const resultArea = document.getElementById('resultArea');
+    const resultContent = document.getElementById('resultContent');
+
+    function showLoading(button, text) {
+        button.disabled = true;
+        const icon = button.querySelector('i');
+        if (icon) {
+            icon.className = 'fas fa-spinner fa-spin';
+        }
+        button.querySelector('span').textContent = ` ${text}`;
+    }
+
+    function hideLoading(button, originalText, iconClass) {
+        button.disabled = false;
+        const icon = button.querySelector('i');
+        if (icon) {
+            icon.className = iconClass;
+        }
+        button.querySelector('span').textContent = ` ${originalText}`;
+    }
+
+    function showResult(success, stdout, stderr, error) {
+        resultArea.style.display = 'block';
+        
+        let html = '';
+        if (success) {
+            html = `<div class="alert alert-success"><h6>✅ 실행 성공</h6><pre>${stdout || '(출력 없음)'}</pre></div>`;
+        } else {
+            html = `<div class="alert alert-danger"><h6>❌ 실행 실패</h6>`;
+            if (error) {
+                html += `<p><strong>오류:</strong> ${error}</p>`;
+            }
+            if (stderr) {
+                html += `<p><strong>에러 출력:</strong></p><pre>${stderr}</pre>`;
+            }
+            if (stdout && stdout.trim()) {
+                html += `<p><strong>표준 출력:</strong></p><pre>${stdout}</pre>`;
+            }
+            html += `</div>`;
+        }
+        
+        resultContent.innerHTML = html;
+        resultArea.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    sendBtn.addEventListener('click', function() {
+        showLoading(sendBtn, '알림 발송 중...');
+        
+        fetch('{% url "batch:send_review_notifications" %}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            hideLoading(sendBtn, '알림 발송 실행', 'fas fa-paper-plane');
+            showResult(data.success, data.stdout, data.stderr, data.error);
+        })
+        .catch(error => {
+            hideLoading(sendBtn, '알림 발송 실행', 'fas fa-paper-plane');
+            showResult(false, '', '', '네트워크 오류: ' + error.message);
+        });
+    });
+
+    generateBtn.addEventListener('click', function() {
+        showLoading(generateBtn, '리뷰 생성 중...');
+        
+        fetch('{% url "batch:generate_missing_reviews" %}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            hideLoading(generateBtn, '리뷰 생성 실행', 'fas fa-robot');
+            showResult(data.success, data.stdout, data.stderr, data.error);
+        })
+        .catch(error => {
+            hideLoading(generateBtn, '리뷰 생성 실행', 'fas fa-robot');
+            showResult(false, '', '', '네트워크 오류: ' + error.message);
+        });
+    });
+
+    checkMonitorBtn.addEventListener('click', function() {
+        showLoading(checkMonitorBtn, '알림 확인 중...');
+        
+        fetch('{% url "batch:check_monitor_notifications" %}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            hideLoading(checkMonitorBtn, '알림 확인 실행', 'fas fa-bell');
+            showResult(data.success, data.stdout, data.stderr, data.error);
+        })
+        .catch(error => {
+            hideLoading(checkMonitorBtn, '알림 확인 실행', 'fas fa-bell');
+            showResult(false, '', '', '네트워크 오류: ' + error.message);
+        });
+    });
+
+    // Add spans for button text manipulation
+    sendBtn.innerHTML = `<i class="fas fa-paper-plane"></i><span> 알림 발송 실행</span>`;
+    generateBtn.innerHTML = `<i class="fas fa-robot"></i><span> 리뷰 생성 실행</span>`;
+    checkMonitorBtn.innerHTML = `<i class="fas fa-bell"></i><span> 알림 확인 실행</span>`;
+});
+</script>
+{% endblock %}

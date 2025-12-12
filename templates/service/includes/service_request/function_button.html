@@ -1,0 +1,103 @@
+
+    <!-- 버튼 -->
+
+    {% if service_request.status == 'N' and user.profile.team_role != "leader" and service_request.is_root %}
+    <div class="alert alert-warning mt-3" role="alert">관리자 승인 대기{{user.profile.current_team_role}}</div>
+    {% endif %}
+    <div class="button-group">
+        {% if service_request.status == "N" %} <!-- 관리자만 승인 and service_request.is_parent-->   
+            {% if  service_request.is_child and service_request.assignee == user %}
+            <button type="button" class="scl-btn" data-bs-toggle="modal" data-bs-target="#acceptModal">분할SR 접수</button>
+            {% endif %}
+        {% endif %}
+
+        {% if service_request.status == "A" %} <!-- 관리자만 승인 and service_request.is_parent-->   
+            {% if user.profile.current_team_role == "leader" and service_request.is_root %}
+            <button type="button" class="scl-btn" data-bs-toggle="modal" data-bs-target="#approveModal">승인</button>
+            {% endif %}
+        {% endif %}
+        
+        {% if service_request.assignee == user %} <!-- 해당 SR 담당자 일때 처리 가능 -->
+            {% if service_request.status == "P" %}
+            <button type="button" class="scl-btn scl-btn-outline scl-btn-sm" data-bs-toggle="modal" data-bs-target="#assignModal">담당자 변경</button>
+            <button type="button" class="scl-btn scl-btn-outline scl-btn-sm" data-bs-toggle="modal" data-bs-target="#splitModal">SR 분할</button>
+            {% endif %}
+            {% if service_request.status == "P" %}
+            <button type="button" class="scl-btn scl-btn-outline scl-btn-sm" data-bs-toggle="modal" data-bs-target="#inspectModal">검수 요청</button>
+            <button type="button" class="scl-btn scl-btn-outline scl-btn-sm" data-bs-toggle="modal" data-bs-target="#releaseModal">CTS/릴리즈 요청</button>
+            <button type="button" class="scl-btn scl-btn-sm" data-bs-toggle="modal" data-bs-target="#completeModal">완료처리</button>
+            {% endif %}
+        {% endif %}
+        
+    </div>
+
+ <!--    
+<div class="button-group">
+    <button class="naver-btn">저장</button>
+    <button class="naver-btn">등록</button>
+    <button class="naver-btn-secondary">취소</button>
+    <button class="naver-btn-secondary">미리보기</button>
+</div>
+
+
+
+<div class="button-group">
+    
+    <button class="naver-btn">저장</button>
+    
+    <button class="naver-btn">
+        <span class="material-icons">add</span>
+        새로 등록
+    </button>
+    
+    <button class="naver-btn-secondary">취소</button>
+    
+    <button class="naver-btn" disabled>비활성화</button>
+    
+    <button class="naver-btn naver-btn-sm">작은 버튼</button>
+    
+    <button class="naver-btn naver-btn-lg">큰 버튼</button>
+</div>
+<div class="button-group">
+    <button class="scl-btn">저장</button>
+    
+    <button class="scl-btn">
+        <span class="material-icons">add</span>
+        새로 등록
+    </button>
+    
+    <button class="scl-btn scl-btn-outline">미리보기</button>
+    
+    <button class="scl-btn scl-btn-ghost">도움말</button>
+    
+    <button class="scl-btn" disabled>비활성화</button>
+    
+    <button class="scl-btn scl-btn-loading">저장 중...</button>
+    
+    <button class="scl-btn scl-btn-sm">작은 버튼</button>
+    
+    <button class="scl-btn scl-btn-lg">큰 버튼</button>
+</div>
+
+
+<div class="button-group">
+    <button class="scl-btn-icon"><span class="material-icons">edit</span></button>
+    <button class="scl-btn-icon scl-btn-icon-sm"><span class="material-icons">delete</span></button>
+    <button class="scl-btn-icon scl-btn-icon-lg"><span class="material-icons">add</span></button>
+
+</div>
+
+<div class="button-group">
+    <button class="scl-btn-icon-outline">
+        <span class="material-icons">edit</span>
+    </button>
+
+    <button class="scl-btn-icon-outline">
+        <span class="material-icons">delete</span>
+    </button>
+
+    <button class="scl-btn-icon-outline">
+        <span class="material-icons">add</span>
+    </button>
+</div>
+-->
