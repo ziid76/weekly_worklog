@@ -11,13 +11,26 @@ logger = logging.getLogger(__name__)
 class Command(BaseCommand):
     help = 'Generate review reports for users who have current week worklogs but no existing review'
 
+    def add_arguments(self, parser):
+        parser.add_argument('--year', type=int, help='ISO year to process')
+        parser.add_argument('--week', type=int, help='ISO week number to process')
+
     def handle(self, *args, **options):
         """
         오늘이 포함된 주차의 워크로그가 있지만 리뷰 리포트가 없는 사용자들을 찾아
         AI 리뷰를 일괄 생성합니다.
         """
-        today = date.today()
-        current_year, current_week, _ = today.isocalendar()
+        if options.get('year') and options.get('week'):
+            current_year = options['year']
+            current_week = options['week']
+            try:
+                target_monday = date.fromisocalendar(current_year, current_week, 1)
+            except ValueError:
+                self.stdout.write(self.style.ERROR("Invalid --year/--week combination."))
+                return
+        else:
+            target_monday = date.today()
+            current_year, current_week, _ = target_monday.isocalendar()
         
         self.stdout.write(f"현재 주차: {current_year}년 {current_week}주차")
         
@@ -54,7 +67,7 @@ class Command(BaseCommand):
                 self.stdout.write(f"🔄 {user.username}님의 리뷰를 생성 중...")
                 
                 # AI 리뷰 생성 (이 함수가 자동으로 DB에 저장함)
-                review_result = review_last_4_weeks(user, as_of=today)
+                review_result = review_last_4_weeks(user, as_of=target_monday)
                 
                 if review_result.get('error'):
                     self.stdout.write(self.style.WARNING(f"⚠️  {user.username}님 리뷰 생성 중 오류: {review_result['error']}"))

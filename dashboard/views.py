@@ -9,11 +9,15 @@ from notifications.models import Notification
 
 from monitor.models import OperationLog
 from service.models import ServiceRequest
+from assets.models import System, Contract
+from reports.models import ReportReview, WeeklyReport
 
 @login_required
 def dashboard(request):
     """대시보드 메인 페이지"""
     user = request.user
+    today = timezone.now().date()
+    current_year = today.year
     
     # 업무 통계 (작성한 업무 + 할당받은 업무)
     user_tasks = Q(author=user) | Q(assigned_to=user)
@@ -56,8 +60,14 @@ def dashboard(request):
         status__in=['todo', 'in_progress']
     ).distinct().order_by('due_date')
 
-    # 최근 업무
-    recent_tasks = Task.objects.filter(user_tasks).distinct()[:5]
+    # 올해 업무 (Gantt 차트용: 올해 기간에 걸쳐 있는 모든 업무)
+    current_year_filter = Q(start_date__year=current_year) | \
+                         Q(due_date__year=current_year) | \
+                         Q(start_date__isnull=True, created_at__year=current_year) | \
+                         Q(start_date__lt=timezone.datetime(current_year, 1, 1).date(), 
+                           due_date__gt=timezone.datetime(current_year, 12, 31).date())
+    
+    recent_tasks = Task.objects.filter(user_tasks).filter(current_year_filter).distinct().order_by('start_date')
    
     # 최근 워크로그
     recent_worklogs = Worklog.objects.filter(author=user)[:5]
@@ -81,16 +91,17 @@ def dashboard(request):
     ).order_by('date')
 
     # 2. 향후 시스템점검일지 일정 (오늘 이후의 일정)
-    monitor_upcoming_logs = OperationLog.objects.filter(
+    monitor_upcoming = OperationLog.objects.filter(
+        duty_user=user,
         date__gte=timezone.now().date()
-    ).order_by('date')[:5]
-
+    ).first()
+    
     # --- Service Request (SR) Data ---
     # 1. SR 접수 대상 (Status 'A': 요청접수)
-    sr_receipt_target_count = ServiceRequest.objects.filter(status='A').count()
+    sr_receipt_target_count = ServiceRequest.objects.filter(status='N', assignee=user).count()
 
     # 2. 현재 처리진행 중인 SR 건수 (Status 'P': 처리중)
-    sr_in_progress_count = ServiceRequest.objects.filter(status='P').count()
+    sr_in_progress_count = ServiceRequest.objects.filter(status='P', assignee=user).count()
 
     # --- Average Lead Time Calculation ---
     # Calculate average lead time for completed operation logs
@@ -135,6 +146,38 @@ def dashboard(request):
         else:
             lead_time_status = 'attention'
 
+    # --- Asset Management Data ---
+    # 1. 전체 시스템 개수
+    total_systems = System.objects.count()
+    # 2. 올해 유효 계약 건수 (현재 날짜가 시작일과 종료일 사이이거나 올해 기간에 걸치는 계약)
+    active_contracts_count = Contract.objects.filter(
+        start_date__year__lte=current_year,
+        end_date__year__gte=current_year
+    ).count()
+    # 3. 내 담당 자산 (내가 담당자인 시스템 + 해당 시스템이 포함된 계약)
+    my_managed_systems = System.objects.filter(manager=user)
+    my_systems_count = my_managed_systems.count()
+    my_contracts_count = Contract.objects.filter(systems__in=my_managed_systems).distinct().count()
+
+    # --- AI Review Data ---
+    # --- AI Review Data ---
+    latest_review = ReportReview.objects.filter(user=user).order_by('-year', '-week_number').first()
+    latest_review_report_id = None
+    if latest_review:
+        # Try to find a report for this user's primary team first
+        try:
+             primary_team = user.profile.primary_team
+             report = WeeklyReport.objects.filter(year=latest_review.year, week_number=latest_review.week_number, team=primary_team).first()
+        except:
+             report = None
+        
+        if not report:
+            # Fallback to any report for that week if team report not found
+            report = WeeklyReport.objects.filter(year=latest_review.year, week_number=latest_review.week_number).first()
+            
+        if report:
+            latest_review_report_id = report.id
+
     context = {
         'total_tasks': total_tasks,
         'todo_tasks': todo_tasks,
@@ -155,15 +198,25 @@ def dashboard(request):
         'newly_start_tasks':newly_start_tasks,
         # Monitor Data
         'monitor_pending_logs': monitor_pending_logs,
-        'monitor_upcoming_logs': monitor_upcoming_logs,
+        'monitor_upcoming': monitor_upcoming,
         # SR Data
         'sr_receipt_target_count': sr_receipt_target_count,
-        'sr_in_progress_count': sr_in_progress_count,
+        'sr_in_progress_count': sr_receipt_target_count + sr_in_progress_count, # Re-calculate for UI coherence
+        'sr_total_count': ServiceRequest.objects.count(),
+        # Asset Data
+        'total_systems': total_systems,
+        'active_contracts_count': active_contracts_count,
+        'my_systems_count': my_systems_count,
+        'my_contracts_count': my_contracts_count,
         'avg_lead_time_hours': avg_lead_time_hours,
         'avg_lead_time_days': avg_lead_time_days,
         'avg_lead_time_remaining_hours': avg_lead_time_remaining_hours,
         'lead_time_status': lead_time_status,
+        'lead_time_status': lead_time_status,
         'today': timezone.now().date(),
+        'latest_review': latest_review,
+        'latest_report_id': latest_review_report_id,
+        'current_year': current_year,
     }
     
     return render(request, 'dashboard/dashboard.html', context)

@@ -14,6 +14,7 @@ urlpatterns = [
     path('assign/<int:pk>/', views.service_request_assign, name='service_request_assign'),    # 담당자 변경 URL
     path('split/<int:pk>/', views.child_service_request_create, name='child_service_request_create'),  # SR 분할 처리 URL
     path('accept/<int:pk>/', views.service_request_accept, name='service_request_accept'),  # 분할SR 접수
+    path('step/<int:pk>/', views.service_request_step_create, name='service_request_step_create'),  # 단계 추가
     path('inspection/<int:pk>/', views.service_request_inspection, name='service_request_inspection'),  # 검수요청
     path('inspection_result/<uuid:token>/', views.service_request_inspection_result, name='service_request_inspection_result'),
     path('release/<int:pk>/', views.service_request_release, name='service_request_release'),  # 검수요청

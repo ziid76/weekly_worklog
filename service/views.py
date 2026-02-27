@@ -24,36 +24,8 @@ from django.db.models import Q, Count, Sum, F
 from django.db.models.functions import TruncMonth
 from django.utils import timezone
 from django.core.mail import EmailMessage
+from teams.models import Team
 
-
-@login_required
-def send_simple_mail(title, body, receiver):
-    mode = 'TEST'
-
-    mail_template = '<head><meta http-equiv="Content-Type" content="text/html; charset=utf-8">  <title>삼천리 IT 관리시스템</title>'
-    mail_template +='<style type="text/css">  body { margin-left: 0px; margin-top: 0px; margin-right: 0px; margin-bottom: 0px; } </style> </head>'
-    mail_template +='<body><div style="position:absolute; width:100%;  overflow:hidden; border-top:#d64b72 solid 2px; font-family:맑은 고딕;color:#6d6d6d;line-height:30px;overflow:hidden; border-top:#d64b72 solid; border-bottom:#d64b72 solid 2px;font-family:Dotum,돋움,sans-serif;color:#6d6d6d;line-height:30px;  no-repeat;font-size:13px;">'
-    mail_template += '<center> <table width="100%" border="0" cellspacing="0" cellpadding="20"><tr><td><b>삼천리 IT 관리시스템</b></td></tr><tr><td>'
-    mail_template += body
-    mail_template +='</td></tr> <tr><td>삼천리 IT 관리시스템 <a href="https://secure.serveone.co.kr">바로가기</a> &nbsp URL : https://secure.serveone.co.kr'
-    mail_template +='<br>* 본 메일은 발신전용 메일입니다. 문의나 연락은 IT서비스2팀 담당자에게 해주시기 바랍니다. *</p></td></tr></table> </div></body>'
-
-    #테스트용 메일수신자
-    if mode == 'TEST':
-        print('mail to : ')
-        print(receiver)
-        receiver = ['ziid@samchully.co.kr']
-
-    email = EmailMessage(
-        title,  # 제목
-        mail_template,  # 내용
-        'ziid@samchully.co.kr', # 발신자
-        to=receiver,  # 받는 이메일 리스트
-    )
-    email.content_subtype = "html"
-    rtn = email.send()
-
-    return rtn
 
 @login_required
 def service_request_type_list(request):
@@ -68,13 +40,13 @@ def service_request_type_list(request):
 
 
 def create_step(service_request, user, msg, status):
-        service_step = ServiceRequestStep(
-            service_request=service_request,
-            user=user,
-            content=msg,
-            status=status,
-        )
-        return service_step.save()
+    service_step = ServiceRequestStep(
+        service_request=service_request,
+        user=user,
+        content=msg,
+        status=status,
+    )
+    return service_step.save()
 
 @login_required
 def service_request_create(request, code):
@@ -192,9 +164,6 @@ def service_request_create(request, code):
 def service_request_reception_create(request, pk):
     service_request = get_object_or_404(ServiceRequest, pk=pk)
 
-    print(request.POST.get('date_of_due'))
-    print(type(request.POST.get('date_of_due')))
-
     if request.method == 'POST':
 
 
@@ -206,7 +175,7 @@ def service_request_reception_create(request, pk):
 
         # Handle file uploads
         for file_ in request.FILES.getlist('attachments'):
-            ServiceRequestAttachment.objects.create(record=service_request, file=file_)
+            ServiceRequestAttachment.objects.create(record=service_request, file=file_, file_type='RCV')
         create_step(service_request, request.user, '서비스 접수완료', 'A')
         
         messages.success(request, "서비스 접수가 완료되었습니다.")
@@ -269,6 +238,7 @@ def service_request_reception_create(request, pk):
         'modules': modules,
         'inspections': ServiceInspection.objects.filter(service_request=service_request).order_by('seq'),
         'releases': ServiceRelease.objects.filter(service_request=service_request).order_by('created_at'),   
+        'sr_teams': Team.objects.filter(is_sr_team=True).prefetch_related('members__profile'),
         }
     
     return render(request, 'service/service_request_reception_form.html', context)
@@ -276,7 +246,7 @@ def service_request_reception_create(request, pk):
 
 @login_required
 def service_request_list(request):
-    service_requests = ServiceRequest.objects.filter(Q(status__in=["N", "P"]), assignee=request.user).order_by('-id')
+    service_requests = ServiceRequest.objects.filter(Q(status__in=["A", "P"]), assignee=request.user).order_by('id')
     return render(request, 'service/service_request_list.html', {'service_requests': service_requests, 'today': date.today()})
 
 @login_required
@@ -302,13 +272,25 @@ def service_request_list_search(request):
     req_system = request.GET.get('req_system')
     req_module = request.GET.get('req_module')
     req_manager = request.GET.get('req_manager')
-    if not req_manager:
+    if req_manager is None:
         req_manager = request.user.id
+    elif req_manager == "":
+        req_manager = None
 
     req_type = request.GET.get('req_type')
 
-    selected_manager = User.objects.filter(id=req_manager).first()
-    statuses = CommonCode.objects.filter(group='status', active=True)
+    if req_manager:
+        selected_manager = User.objects.filter(id=req_manager).first()
+    else:
+        selected_manager = None
+    # statuses = CommonCode.objects.filter(group='status', active=True)
+    statuses = [
+        {"code": "N", "name": "서비스 생성"},
+        {"code": "A", "name": "승인 대기"},
+        {"code": "P", "name": "처리중"},
+        {"code": "G", "name": "처리완료"},
+        {"code": "D", "name": "처리불가"}
+    ]
     selected_type = CommonCode.objects.filter(group='service', code=req_type, active=True).first()
     selected_statuses = request.GET.getlist('status')  # 여러 개 선택 가능
 
@@ -385,6 +367,7 @@ def service_request_detail(request, pk):
         'modules': modules,
         'inspections': ServiceInspection.objects.filter(service_request=service_request).order_by('seq'),
         'releases': ServiceRelease.objects.filter(service_request=service_request).order_by('created_at'),
+        'sr_teams': Team.objects.filter(is_sr_team=True).prefetch_related('members__profile'),
     }
     return render(request, 'service/service_request_detail.html', context)
 
@@ -457,6 +440,34 @@ def child_service_request_create(request, pk):
         create_step(service_request, request.user, 'SR No. '+str(parent_sr.id) + '에서 분할 생성', 'N')
         create_step(parent_sr, request.user, 'SR No. '+str(service_request.id) + '로 분할', 'P')
 
+    return redirect('service_request_detail', pk=pk)
+
+@login_required
+def service_request_step_create(request, pk):
+    """SR 진행 상황(Step) 추가"""
+    if request.method == 'POST':
+        service_request = get_object_or_404(ServiceRequest, pk=pk)
+        content = request.POST.get('step_content')
+        
+        # Create Step
+        step = ServiceRequestStep.objects.create(
+            service_request=service_request,
+            user=request.user,
+            content=content,
+            status='P'  # 기본적으로 진행중(P) 상태로 기록
+        )
+        
+        # Handle Attachments
+        if request.FILES.getlist('attachments'):
+            for file_ in request.FILES.getlist('attachments'):
+                ServiceRequestAttachment.objects.create(
+                    record=service_request, 
+                    step=step,
+                    file=file_,
+                    file_type='STEP'
+                )
+        
+        messages.success(request, '진행 상황이 등록되었습니다.')
     return redirect('service_request_detail', pk=pk)
 
 def service_request_accept(request, pk):

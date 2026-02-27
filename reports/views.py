@@ -19,12 +19,13 @@ from pptx.enum.text import MSO_VERTICAL_ANCHOR, MSO_AUTO_SIZE
 from pptx.enum.shapes import MSO_SHAPE_TYPE
 from pptx.opc.constants import RELATIONSHIP_TYPE as RT
 from pptx.dml.color import RGBColor
-from .models import WeeklyReport, WeeklyReportComment, TeamWeeklyReport, WeeklyReportPersonalComment
+from .models import WeeklyReport, WeeklyReportComment, WeeklyReportPersonalComment, ReportReview, TeamPerformanceAnalysis
+from mailing.text_formatter import format_review_content
 from worklog.models import Worklog
 from teams.models import Team, TeamMembership
 from accounts.models import UserProfile
 from django.contrib.auth.models import User
-from .forms import WeeklyReportCommentForm, TeamWeeklyReportForm, WeeklyReportPersonalCommentForm
+from .forms import WeeklyReportCommentForm, WeeklyReportPersonalCommentForm
 import html
 from django.utils.html import strip_tags
 from django.template.loader import render_to_string
@@ -91,6 +92,12 @@ def weekly_report_detail(request, id):
     for comment in personal_comments:
         comments_by_user[comment.target_user_id].append(comment)
 
+    # 해당 주차의 AI 리뷰가 존재하는 사용자 ID 조회
+    review_user_ids = set(ReportReview.objects.filter(
+        year=report.year,
+        week_number=report.week_number
+    ).values_list('user', flat=True))
+
     worklog_entries = []
     for worklog in worklogs:
         author_profile = getattr(worklog.author, 'profile', None)
@@ -102,6 +109,7 @@ def weekly_report_detail(request, id):
             'author_name': author_name,
             'worklog': worklog,
             'personal_comments': comments_by_user.get(worklog.author_id, []),
+            'has_ai_review': worklog.author_id in review_user_ids,
         })
 
     user_role = None
@@ -168,7 +176,7 @@ def add_personal_comment(request, report_id):
     ).select_related('created_by__profile').order_by('created_at')
 
     comments_html = render_to_string(
-        'reports/partials/personal_comment_list.html',
+        'reports/personal_comment_list.html',
         {'comments': updated_comments},
         request=request
     )
@@ -180,71 +188,6 @@ def add_personal_comment(request, report_id):
     })
 
 @login_required
-def generate_weekly_report(request):
-    """주간 리포트 생성 및 최근 5주 현황 페이지"""
-
-
-    team = get_object_or_404(Team, id=request.user.profile.primary_team.id)
-    team_members = team.members.all()
-    
-    if request.method == 'POST':
-        year = int(request.POST.get('year'))
-        week_number = int(request.POST.get('week_number'))
-
-        week_start = datetime.date.fromisocalendar(year, week_number, 1)
-        month_week_display = f"{week_start.month}월 {((week_start.day - 1) // 7) + 1}주차"
-        
-        # 팀 ID는 이제 사용하지 않으므로 team=None으로 고정
-        report, created = WeeklyReport.objects.get_or_create(
-            year=year,
-            week_number=week_number,
-            team=team,
-            defaults={
-                'title': f'{month_week_display} {team.name} 주간보고서',
-                'created_by': request.user
-            }
-        )
-        
-        if created:
-            messages.success(request, f'{month_week_display} {team.name} 주간보고서가 생성되었습니다.')
-        
-        return redirect('weekly_report_detail', id=report.id)
-
-    # --- 최근 5주 데이터 생성 ---
-    today = datetime.date.today()
-    recent_weeks = []
-
-    for i in range(5):
-        target_date = today - datetime.timedelta(weeks=i)
-        year, week_number, _ = target_date.isocalendar()
-        
-        # 해당 주의 첫 날과 마지막 날 계산
-        week_start = datetime.date.fromisocalendar(year, week_number, 1)
-        
-        # "M월 W주차" 형식 생성
-        month_week_display = f"{week_start.month}월 {((week_start.day - 1) // 7) + 1}주차"
-
-
-
-        # 해당 주차의 Worklog 개수 계산
-        worklog_count = Worklog.objects.filter(year=year, week_number=week_number, author__in=team_members).count()
-        
-        # 이미 생성된 리포트가 있는지 확인 (팀 없는 전체 리포트 기준)
-        report = WeeklyReport.objects.filter(year=year, week_number=week_number, team=team).first()
-
-        recent_weeks.append({
-            'year': year,
-            'week_number': week_number,
-            'month_week_display': month_week_display,
-            'worklog_count': worklog_count,
-            'report': report,
-        })
-
-    context = {
-        'recent_weeks': recent_weeks,
-    }
-    
-    return render(request, 'reports/generate_weekly_report.html', context)
 
 @login_required
 def team_worklog_summary(request):
@@ -454,10 +397,13 @@ def export_weekly_report_excel(request, id):
         
         row += 1
     
-    # HTTP 응답 생성
-    response = HttpResponse(
-        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    )
+    # Excel 파일을 메모리 버퍼에 저장
+    import io
+    from django.http import FileResponse
+    
+    buffer = io.BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
     
     # 팀명과 월/주차 정보로 파일명 생성
     team_name = report.team.name if report.team else "전체"
@@ -465,17 +411,57 @@ def export_weekly_report_excel(request, id):
     week_in_month = ((report.week_start_date.day - 1) // 7) + 1
     filename = f"{team_name}_주간보고서_{month}월_{week_in_month}주차.xlsx"
     
-    # 파일명 인코딩 처리 (한글 및 특수문자 지원)
-    from urllib.parse import quote
-    encoded_filename = quote(filename.encode('utf-8'))
-    response['Content-Disposition'] = f'attachment; filename*=UTF-8\'\'{encoded_filename}'
-    
-    wb.save(response)
+    response = FileResponse(
+        buffer,
+        as_attachment=True,
+        filename=filename,
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
     return response
 
 
 
 
+
+
+    return response
+
+
+@login_required
+def get_ai_review_content(request, report_id, user_id):
+    """특정 주간보고의 사용자 AI 리뷰 내용을 가져옵니다 (AJAX)."""
+    if not request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        return JsonResponse({'success': False, 'message': '잘못된 요청입니다.'}, status=400)
+
+    report = get_object_or_404(WeeklyReport, id=report_id)
+    target_user = get_object_or_404(User, id=user_id)
+    
+    # 해당 연도/주차 및 사용자의 가장 최근 리뷰 조회
+    review = ReportReview.objects.filter(
+        year=report.year,
+        week_number=report.week_number,
+        user=target_user
+    ).order_by('-created_at').first()
+    
+    if not review:
+        return JsonResponse({'success': False, 'message': '해당 사용자의 AI 리뷰가 아직 존재하지 않습니다.'})
+    
+    # 이메일 템플릿에 사용할 데이터 포맷팅
+    formatted_review = format_review_content(review.review_content)
+    
+    context = {
+        'review': formatted_review,
+        'month_week_display': review.month_week_display,
+        'user': target_user,
+        'year': report.year,
+        'week_number': report.week_number,
+        'site_url': settings.SITE_URL,
+    }
+    
+    # 이메일 템플릿을 사용하여 HTML 생성 (inline-style 포함)
+    html_content = render_to_string('emails/review_notification.html', context)
+    
+    return JsonResponse({'success': True, 'html': html_content})
 
 
 @login_required
@@ -537,7 +523,7 @@ def export_weekly_report_pptx(request, id):
         month_week_display = f"{report.week_start_date.month}월 {week_in_month}주차"
     team_name = report.team.name if report.team else "전체"
 
-    template_path = settings.BASE_DIR / "templates.pptx"
+    template_path = settings.BASE_DIR / "reports/files/templates.pptfile"
     prs = Presentation(str(template_path))
     base_slide = prs.slides[0]
 
@@ -609,7 +595,7 @@ def export_weekly_report_pptx(request, id):
 
         return new_slide
         
-    def fit_cell_text(cell, text, *, max_size=13, min_size=9, bold=False, font_color=None):
+    def fit_cell_text(cell, text, *, max_size=11, min_size=9, bold=False, font_color=None):
         """표 셀 텍스트를 자동 축소하여 맞춤 - bold 마크다운 처리"""
         tf = cell.text_frame
         tf.clear()
@@ -657,7 +643,7 @@ def export_weekly_report_pptx(request, id):
         cell.margin_top = Pt(3)
         cell.margin_bottom = Pt(3)
 
-    def set_cell_text(cell, text, *, bold=False, max_size=13, min_size=9):
+    def set_cell_text(cell, text, *, bold=False, max_size=11, min_size=9):
         """개선된 셀 텍스트 설정"""
         tighten_cell_layout(cell)
         lines = fit_cell_text(cell, text, max_size=max_size, min_size=min_size, bold=bold)
@@ -669,9 +655,9 @@ def export_weekly_report_pptx(request, id):
         if not table or len(table.columns) < 3:
             return
             
-        # 슬라이드 너비 기준으로 표 너비 설정 (90% 사용하여 좌우 여백 확보)
-        slide_width = 9144000  # 표준 슬라이드 너비 (EMU 단위)
-        table_width = int(slide_width * 0.9)
+        # 슬라이드 너비 기준으로 표 너비 설정 (95% 사용하여 좌우 여백 최소화 및 균형 확보)
+        slide_width = prs.slide_width
+        table_width = int(slide_width * 0.95)
         
         # 최적 비율: 담당(10%) : 금주실적(45%) : 차주계획(45%)
         ratios = [0.1, 0.45, 0.45]
@@ -693,7 +679,7 @@ def export_weekly_report_pptx(request, id):
         # 표를 가운데 정렬
         for shape in target_slide.shapes:
             if shape.has_table:
-                slide_width = 9144000  # 슬라이드 너비
+                slide_width = prs.slide_width
                 table_width = sum(col.width for col in shape.table.columns)
                 # 가운데 정렬을 위한 left 위치 계산
                 shape.left = (slide_width - table_width) // 2
@@ -722,7 +708,9 @@ def export_weekly_report_pptx(request, id):
         
         # 본문 데이터 설정 및 높이 계산
         total_height = table.rows[0].height.pt
-        slide_body_max = 380  # 슬라이드 유효 높이 (타이틀/여백 고려) - 더 보수적으로
+        # 슬라이드 실제 높이에 맞게 최대 높이 설정 (약 75% 수준)
+        slide_height_pt = prs.slide_height / 12700
+        slide_body_max = slide_height_pt * 0.75
         
         for row_idx, entry in enumerate(chunk, start=1):
             if row_idx >= len(table.rows):
@@ -732,8 +720,8 @@ def export_weekly_report_pptx(request, id):
             
             # 각 셀 텍스트 설정 및 줄 수 계산 (3개 컬럼만 사용)
             l1 = set_cell_text(row.cells[0], entry["author"], bold=True, max_size=13, min_size=9)
-            l2 = set_cell_text(row.cells[1], entry["this_week"], max_size=11, min_size=11)  # 금주실적을 2번째 컬럼에
-            l3 = set_cell_text(row.cells[2], entry["next_week"], max_size=11, min_size=11)  # 차주계획을 3번째 컬럼에
+            l2 = set_cell_text(row.cells[1], entry["this_week"], max_size=10, min_size=10)  # 금주실적을 2번째 컬럼에
+            l3 = set_cell_text(row.cells[2], entry["next_week"], max_size=10, min_size=10)  # 차주계획을 3번째 컬럼에
             
             # 4번째 컬럼이 있다면 비우기
             if len(row.cells) > 3:
@@ -741,12 +729,12 @@ def export_weekly_report_pptx(request, id):
             
             # 행 높이 계산 (최대 줄 수 기준)
             max_lines = max(l1, l2, l3)
-            row_height_pt = 24 + (max_lines - 1) * 12  # 기본 높이를 더 작게, 줄간격도 더 촘촘하게
+            row_height_pt = 24 + (max_lines - 1) * 12  # 기본 높이와 줄간격 최적화
             row.height = Pt(row_height_pt)
             total_height += row_height_pt
             
-            # 슬라이드 높이 초과 검사
-            if total_height > slide_body_max:
+            # 슬라이드 높이 초과 검사 (단, 최소 1개의 행은 보장)
+            if total_height > slide_body_max and row_idx > 1:
                 # 현재 행 제거하고 분할 필요 표시
                 table._tbl.remove(table._tbl.tr_lst[-1])
                 return False  # 분할 필요
@@ -807,15 +795,22 @@ def export_weekly_report_pptx(request, id):
         
         slide_index += 1
 
-    response = HttpResponse(
+    # PPTX 파일을 메모리 버퍼에 저장
+    import io
+    from django.http import FileResponse
+    
+    buffer = io.BytesIO()
+    prs.save(buffer)
+    buffer.seek(0)
+    
+    filename = f"{team_name}_주간보고_{month_week_display}.pptx"
+    
+    response = FileResponse(
+        buffer,
+        as_attachment=True,
+        filename=filename,
         content_type="application/vnd.openxmlformats-officedocument.presentationml.presentation"
     )
-    from urllib.parse import quote
-
-    filename = f"{team_name}_주간보고_{report.year}년_{report.week_number}주차.pptx"
-    encoded_filename = quote(filename.encode("utf-8"))
-    response['Content-Disposition'] = f"attachment; filename*=UTF-8''{encoded_filename}"
-    prs.save(response)
     return response
 
 
@@ -1007,3 +1002,30 @@ def personal_report_history(request):
         'worklogs_data': worklogs_data,
     }
     return render(request, 'reports/personal_report_history.html', context)
+
+
+@login_required
+def team_performance_list(request):
+    """팀 성과 분석 리포트 목록"""
+    # 사용자가 속한 팀의 리포트만 보여주거나, 관리자 권한에 따라 전체 조회
+    if request.user.is_superuser or request.user.is_staff:
+        analyses = TeamPerformanceAnalysis.objects.all()
+    else:
+        # 일반 사용자는 본인 팀 리포트만
+        user_teams = request.user.team_memberships.values_list('team', flat=True)
+        analyses = TeamPerformanceAnalysis.objects.filter(team__in=user_teams)
+    
+    return render(request, 'reports/performance_analysis_list.html', {'analyses': analyses})
+
+@login_required
+def team_performance_detail(request, pk):
+    """팀 성과 분석 리포트 상세"""
+    analysis = get_object_or_404(TeamPerformanceAnalysis, pk=pk)
+    
+    # 권한 체크 (간단히 팀 멤버인지 확인)
+    if not (request.user.is_superuser or request.user.is_staff):
+         is_member = request.user.team_memberships.filter(team=analysis.team).exists()
+         if not is_member:
+             return render(request, '403.html', status=403)
+    
+    return render(request, 'reports/performance_analysis_detail.html', {'analysis': analysis})

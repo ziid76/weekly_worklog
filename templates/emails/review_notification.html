@@ -13,8 +13,8 @@
                     <!-- Header -->
                     <tr>
                         <td align="center" style="padding: 25px 25px 20px 25px;">
-                            <h1 style="text-align: center; font-size: 26px; border: none; color: #0056b3; margin: 0 0 10px 0;">주간보고서 AI 리뷰 결과</h1>
-                            <p style="margin: 0;">{{ user.username }}님의 {{ year }}년 {{ week_number }}주차 보고서에 대한 AI 리뷰입니다.</p>
+                            <h1 style="text-align: center; font-size: 26px; border: none; color: #0056b3; margin: 0 0 10px 0;">주간보고 리뷰 </h1>
+                            <p style="margin: 0;">{{ user.profile.display_name }}님의 {{ month_week_display }} 보고서에 대한 AI 리뷰입니다.</p>
                         </td>
                     </tr>
 
@@ -108,42 +108,6 @@
                     </tr>
                     {% endif %}
 
-                    <!-- Metrics -->
-                    {% if review.metrics %}
-                    <tr>
-                        <td style="padding: 0 25px;">
-                            <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #fdfdfe; border: 1px solid #e9ecef; border-radius: 6px; margin-bottom: 20px;">
-                                <tr>
-                                    <td style="padding: 20px;">
-                                        <h3 style="font-size: 18px; border-bottom: 1px solid #dee2e6; color: #17a2b8; padding-bottom: 10px; margin-top: 0; margin-bottom: 15px;">📈 주요 지표</h3>
-                                        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="width: 100%; border-collapse: collapse; margin-top: 15px;">
-                                            <tr>
-                                                <th style="border: 1px solid #ddd; padding: 12px; text-align: left; background-color: #f2f2f2; font-weight: bold;">지표</th>
-                                                <th style="width: 20%; border: 1px solid #ddd; padding: 12px; text-align: left; background-color: #f2f2f2; font-weight: bold;">수치</th>
-                                            </tr>
-                                            <tr>
-                                                <td style="border: 1px solid #ddd; padding: 12px; text-align: left;">계획 항목 수</td>
-                                                <td style="border: 1px solid #ddd; padding: 12px; text-align: left;">{{ review.metrics.planned_count.value }} 건</td>
-                                            </tr>
-                                            <tr>
-                                                <td style="border: 1px solid #ddd; padding: 12px; text-align: left;">완료 항목 수</td>
-                                                <td style="border: 1px solid #ddd; padding: 12px; text-align: left;">{{ review.metrics.done_count.value }} 건</td>
-                                            </tr>
-                                            <tr>
-                                                <td style="border: 1px solid #ddd; padding: 12px; text-align: left;">계획 이행률</td>
-                                                <td style="border: 1px solid #ddd; padding: 12px; text-align: left;">{{ review.metrics.completion_rate.value|format_percentage }}</td>
-                                            </tr>
-                                            <tr>
-                                                <td style="border: 1px solid #ddd; padding: 12px; text-align: left;">이월된 항목 수</td>
-                                                <td style="border: 1px solid #ddd; padding: 12px; text-align: left;">{{ review.metrics.carryover_count.value }} 건</td>
-                                            </tr>
-                                        </table>
-                                    </td>
-                                </tr>
-                            </table>
-                        </td>
-                    </tr>
-                    {% endif %}
 
                     <!-- Error -->
                     {% if review.error and review.error != "None" %}
@@ -164,7 +128,6 @@
                     <!-- Footer -->
                     <tr>
                         <td align="center" style="padding: 20px 25px 25px 25px; text-align: center; font-size: 12px; color: #777;">
-                            <p style="margin: 0 0 5px 0;">이 메일은 자동 발송되었습니다.</p>
                             <p style="margin: 0;"><a href="{{ site_url }}" style="color: #0056b3; text-decoration: none;">ITMS 바로가기</a></p>
                         </td>
                     </tr>

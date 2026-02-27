@@ -30,8 +30,8 @@ CSRF_TRUSTED_ORIGINS = os.environ.get(
 
 SITE_URL ="https://itms.samchully.co.kr"
 
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SECURE = True
+#SESSION_COOKIE_SECURE = True
+#CSRF_COOKIE_SECURE = True
 
 GEMINI_MODEL_NAME = os.getenv("GEMINI_MODEL_NAME", "gemini-1.5-pro")
 GEMINI_TIMEOUT = int(os.getenv("GEMINI_TIMEOUT", "30"))
@@ -63,6 +63,7 @@ INSTALLED_APPS = [
     'django_ses',
     'templates',
     'assets',
+    'hooks',
 ]
 
 MIDDLEWARE = [
@@ -91,6 +92,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'notifications.context_processors.notifications',
+                'common.context_processors.service_request_counts',
             ],
         },
     },
@@ -100,6 +102,29 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 LOGIN_REDIRECT_URL = 'dashboard'
 LOGOUT_REDIRECT_URL = 'login'
+
+# SSO 설정
+SSO_SERVER_URL = os.environ.get('SSO_SERVER_URL', 'http://localhost:8000')
+SSO_CLIENT_ID = os.environ.get('SSO_CLIENT_ID', '')
+SSO_CLIENT_SECRET = os.environ.get('SSO_CLIENT_SECRET', '')
+SSO_REDIRECT_URI = os.environ.get('SSO_REDIRECT_URI', 'http://localhost:8001/auth/sso/callback/')
+SSO_SCOPES = os.environ.get('SSO_SCOPES', 'openid profile email').split()
+
+# SSO 엔드포인트
+SSO_AUTHORIZATION_URL = f'{SSO_SERVER_URL}/oauth/authorize/'
+SSO_TOKEN_URL = f'{SSO_SERVER_URL}/oauth/token/'
+SSO_USERINFO_URL = f'{SSO_SERVER_URL}/oauth/userinfo/'
+SSO_LOGOUT_URL = f'{SSO_SERVER_URL}/auth/logout/'
+
+# Authentication Backends
+AUTHENTICATION_BACKENDS = [
+    'accounts.backends.SSOAuthenticationBackend',  # SSO 백엔드 추가
+    'django.contrib.auth.backends.ModelBackend',  # 기본 백엔드 유지
+]
+
+# Session 설정
+SESSION_COOKIE_AGE = 86400  # 24시간
+SESSION_SAVE_EVERY_REQUEST = True
 
 
 # Email Settings for AWS SES
@@ -169,7 +194,7 @@ if DEBUG:
     STATICFILES_DIRS = [BASE_DIR / 'static']
 # Media files
 MEDIA_URL = '/media/'
-MEDIA_ROOT = '/app/media'         # nginx와 공유하는 경로로 지정
+MEDIA_ROOT = BASE_DIR / 'media' if DEBUG else '/app/media'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
@@ -198,3 +223,82 @@ SUMMERNOTE_CONFIG = {
     'disable_attachment': False,
     'attachment_require_authentication': True,
 }
+
+
+# 로그 디렉토리 설정
+LOG_DIR = os.path.join(BASE_DIR, 'logs')
+if not os.path.exists(LOG_DIR):
+    os.makedirs(LOG_DIR)
+
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+        'file_general': {
+            'level': 'INFO',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': os.path.join(LOG_DIR, 'general.log'),
+            'maxBytes': 1024 * 1024 * 5,  # 5 MB
+            'backupCount': 5,
+            'formatter': 'verbose',
+        },
+        'file_error': {
+            'level': 'WARNING',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': os.path.join(LOG_DIR, 'error.log'),
+            'maxBytes': 1024 * 1024 * 5,  # 5 MB
+            'backupCount': 5,
+            'formatter': 'verbose',
+        },
+        'file_batch': {
+            'level': 'INFO',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': os.path.join(LOG_DIR, 'batch.log'),
+            'maxBytes': 1024 * 1024 * 5,
+            'backupCount': 5,
+            'formatter': 'verbose',
+        },
+    },
+    'root': {
+        'handlers': ['console', 'file_general', 'file_error'],
+        'level': 'INFO',
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console', 'file_general', 'file_error'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'batch': {
+            'handlers': ['console', 'file_batch', 'file_error'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
+}
+
+
+# [ITMS] settings.py 최하단에 추가
+SESSION_COOKIE_NAME = 'itms_sessionid'   # SSO와 겹치지 않게 고유 이름 사용
+CSRF_COOKIE_NAME = 'itms_csrftoken'
+# 로컬(http) 테스트 환경용 설정
+SESSION_COOKIE_SECURE = False   # https가 아니므로 False여야 함
+CSRF_COOKIE_SECURE = False
+SESSION_COOKIE_SAMESITE = 'Lax'
+SESSION_COOKIE_DOMAIN = None    # localhost인 경우 비워두거나 None

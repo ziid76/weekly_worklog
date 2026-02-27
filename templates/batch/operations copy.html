@@ -1,62 +1,76 @@
-{% extends 'base.html' %}
+{% extends 'basic.html' %}
 {% load static %}
 
 {% block title %}일괄작업{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title">📋 일괄작업</h3>
+<main class="flex-1 flex flex-col min-w-0 overflow-y-auto pb-12">
+    <div class="max-w-[1400px] mx-auto w-full px-4 md:px-8 py-8 flex flex-col gap-8">
+        <!-- Header -->
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+            <div class="flex flex-col gap-1">
+                <h1 class="text-3xl font-extrabold tracking-tight text-slate-900">일괄작업</h1>
+                <p class="text-slate-500 font-medium">시스템 관리를 위한 일괄 작업을 실행합니다.</p>
+            </div>
+        </div>
+
+        <!-- Action Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- 리뷰 알림 발송 -->
+            <div class="bg-white rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden">
+                <div class="bg-primary/5 px-8 py-6 border-b border-primary/10">
+                    <div class="flex items-center gap-3">
+                        <div class="size-12 rounded-full bg-primary/10 text-primary flex items-center justify-center">
+                            <span class="material-symbols-outlined text-2xl">mail</span>
+                        </div>
+                        <h3 class="text-lg font-bold text-slate-900">리뷰 알림 발송</h3>
+                    </div>
                 </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="card border-primary">
-                                <div class="card-header bg-primary text-white">
-                                    <h5 class="mb-0">📧 리뷰 알림 발송</h5>
-                                </div>
-                                <div class="card-body">
-                                    <p class="card-text">발송 대기 중인 AI 리뷰 결과를 이메일로 발송합니다.</p>
-                                    <button id="sendNotificationsBtn" class="btn btn-primary">
-                                        <i class="fas fa-paper-plane"></i> 알림 발송 실행
-                                    </button>
-                                </div>
-                            </div>
+                <div class="p-8 flex flex-col gap-6">
+                    <p class="text-sm text-slate-600 font-medium leading-relaxed">발송 대기 중인 AI 리뷰 결과를 이메일로 발송합니다.</p>
+                    <button id="sendNotificationsBtn" class="rounded-full bg-primary text-white font-bold px-6 py-3 hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2">
+                        <span class="material-symbols-outlined text-lg">send</span>
+                        알림 발송 실행
+                    </button>
+                </div>
+            </div>
+
+            <!-- 누락 리뷰 생성 -->
+            <div class="bg-white rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden">
+                <div class="bg-emerald-50 px-8 py-6 border-b border-emerald-100">
+                    <div class="flex items-center gap-3">
+                        <div class="size-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                            <span class="material-symbols-outlined text-2xl">smart_toy</span>
                         </div>
-                        <div class="col-md-6">
-                            <div class="card border-success">
-                                <div class="card-header bg-success text-white">
-                                    <h5 class="mb-0">🤖 누락 리뷰 생성</h5>
-                                </div>
-                                <div class="card-body">
-                                    <p class="card-text">워크로그는 있지만 리뷰가 없는 사용자의 AI 리뷰를 생성합니다.</p>
-                                    <button id="generateReviewsBtn" class="btn btn-success">
-                                        <i class="fas fa-robot"></i> 리뷰 생성 실행
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
+                        <h3 class="text-lg font-bold text-slate-900">누락 리뷰 생성</h3>
                     </div>
-                    
-                    <!-- 실행 결과 표시 영역 -->
-                    <div id="resultArea" class="mt-4" style="display: none;">
-                        <div class="card">
-                            <div class="card-header">
-                                <h5 class="mb-0">📊 실행 결과</h5>
-                            </div>
-                            <div class="card-body">
-                                <div id="resultContent"></div>
-                            </div>
-                        </div>
-                    </div>
+                </div>
+                <div class="p-8 flex flex-col gap-6">
+                    <p class="text-sm text-slate-600 font-medium leading-relaxed">워크로그는 있지만 리뷰가 없는 사용자의 AI 리뷰를 생성합니다.</p>
+                    <button id="generateReviewsBtn" class="rounded-full bg-emerald-500 text-white font-bold px-6 py-3 hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2">
+                        <span class="material-symbols-outlined text-lg">auto_awesome</span>
+                        리뷰 생성 실행
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 실행 결과 표시 영역 -->
+        <div id="resultArea" class="hidden">
+            <div class="bg-white rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden">
+                <div class="bg-slate-50/50 px-8 py-5 border-b border-slate-100">
+                    <h3 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-xl">analytics</span>
+                        실행 결과
+                    </h3>
+                </div>
+                <div class="p-8">
+                    <div id="resultContent"></div>
                 </div>
             </div>
         </div>
     </div>
-</div>
+</main>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -67,30 +81,53 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function showLoading(button, text) {
         button.disabled = true;
-        button.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${text}`;
+        button.innerHTML = `<span class="material-symbols-outlined text-lg animate-spin">refresh</span> ${text}`;
     }
 
     function hideLoading(button, originalText, icon) {
         button.disabled = false;
-        button.innerHTML = `<i class="${icon}"></i> ${originalText}`;
+        button.innerHTML = `<span class="material-symbols-outlined text-lg">${icon}</span> ${originalText}`;
     }
 
     function showResult(success, stdout, stderr, error) {
-        resultArea.style.display = 'block';
+        resultArea.classList.remove('hidden');
         
         let html = '';
         if (success) {
-            html = `<div class="alert alert-success"><h6>✅ 실행 성공</h6><pre>${stdout}</pre></div>`;
+            html = `<div class="bg-emerald-50 border border-emerald-200 rounded-xl p-6">
+                        <div class="flex items-center gap-3 mb-4">
+                            <div class="size-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                                <span class="material-symbols-outlined text-lg">check_circle</span>
+                            </div>
+                            <h4 class="text-lg font-bold text-emerald-900">실행 성공</h4>
+                        </div>
+                        <pre class="bg-white rounded-lg p-4 text-sm text-slate-700 font-mono overflow-x-auto border border-emerald-100">${stdout}</pre>
+                    </div>`;
         } else {
-            html = `<div class="alert alert-danger"><h6>❌ 실행 실패</h6>`;
+            html = `<div class="bg-rose-50 border border-rose-200 rounded-xl p-6">
+                        <div class="flex items-center gap-3 mb-4">
+                            <div class="size-8 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center">
+                                <span class="material-symbols-outlined text-lg">error</span>
+                            </div>
+                            <h4 class="text-lg font-bold text-rose-900">실행 실패</h4>
+                        </div>`;
             if (error) {
-                html += `<p><strong>오류:</strong> ${error}</p>`;
+                html += `<div class="mb-4">
+                            <span class="text-xs font-bold uppercase tracking-wider text-rose-400 mb-2 block">오류</span>
+                            <p class="text-sm text-rose-700 font-medium">${error}</p>
+                        </div>`;
             }
             if (stderr) {
-                html += `<p><strong>에러 출력:</strong></p><pre>${stderr}</pre>`;
+                html += `<div class="mb-4">
+                            <span class="text-xs font-bold uppercase tracking-wider text-rose-400 mb-2 block">에러 출력</span>
+                            <pre class="bg-white rounded-lg p-4 text-sm text-slate-700 font-mono overflow-x-auto border border-rose-100">${stderr}</pre>
+                        </div>`;
             }
             if (stdout) {
-                html += `<p><strong>표준 출력:</strong></p><pre>${stdout}</pre>`;
+                html += `<div class="mb-4">
+                            <span class="text-xs font-bold uppercase tracking-wider text-rose-400 mb-2 block">표준 출력</span>
+                            <pre class="bg-white rounded-lg p-4 text-sm text-slate-700 font-mono overflow-x-auto border border-rose-100">${stdout}</pre>
+                        </div>`;
             }
             html += `</div>`;
         }
@@ -111,11 +148,11 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .then(response => response.json())
         .then(data => {
-            hideLoading(sendBtn, '알림 발송 실행', 'fas fa-paper-plane');
+            hideLoading(sendBtn, '알림 발송 실행', 'send');
             showResult(data.success, data.stdout, data.stderr, data.error);
         })
         .catch(error => {
-            hideLoading(sendBtn, '알림 발송 실행', 'fas fa-paper-plane');
+            hideLoading(sendBtn, '알림 발송 실행', 'send');
             showResult(false, '', '', '네트워크 오류: ' + error.message);
         });
     });
@@ -132,11 +169,11 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .then(response => response.json())
         .then(data => {
-            hideLoading(generateBtn, '리뷰 생성 실행', 'fas fa-robot');
+            hideLoading(generateBtn, '리뷰 생성 실행', 'auto_awesome');
             showResult(data.success, data.stdout, data.stderr, data.error);
         })
         .catch(error => {
-            hideLoading(generateBtn, '리뷰 생성 실행', 'fas fa-robot');
+            hideLoading(generateBtn, '리뷰 생성 실행', 'auto_awesome');
             showResult(false, '', '', '네트워크 오류: ' + error.message);
         });
     });

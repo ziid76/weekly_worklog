@@ -128,5 +128,6 @@ def operation_directory_path(instance, filename):
 
 class OperationLogAttachment(models.Model):
     record = models.ForeignKey(OperationLog, related_name='attachments', on_delete=models.CASCADE)
+    category = models.ForeignKey(LogCategory, on_delete=models.SET_NULL, null=True, blank=True, related_name='attachments')
     file = models.FileField(upload_to=operation_directory_path)
     uploaded_at = models.DateTimeField(auto_now_add=True)

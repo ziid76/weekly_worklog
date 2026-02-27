@@ -15,8 +15,15 @@ from django.contrib.auth import get_user_model
 from worklog.models import Worklog
 from reports.models import ReportReview
 
-from google import genai
-from google.api_core import exceptions as google_exceptions
+try:
+    from google import genai
+except ImportError:
+    genai = None
+
+try:
+    from google.api_core import exceptions as google_exceptions
+except ImportError:
+    google_exceptions = None
 
 
 

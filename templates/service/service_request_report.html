@@ -1,44 +1,110 @@
-{% extends "base.html" %}
+{% extends 'basic.html' %}
+{% load static %}
 
-{% block page_name %}
-SR 리포트
-{% endblock %}
+{% block page_name %}SR 리포트{% endblock %}
 
 {% block content %}
-<div class="container-fluid border bg-white p-3">
-  <form class="row g-2 mb-3">
-    <div class="col-auto d-flex align-items-center gap-2">
-      <label for="start_date" class="fw-bold mb-0">시작일</label>
-      <input type="date" id="start_date" name="start_date" value="{{ start_date }}" class="form-control">
+<div class="flex flex-col gap-8">
+    <!-- Header Section -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div class="flex flex-col gap-1">
+            <h1 class="text-3xl font-extrabold tracking-tight text-slate-900">SR 통계 리포트</h1>
+            <p class="text-slate-500 font-medium text-sm">기간별 SR 처리 현황 및 통계 데이터를 시각화하여 제공합니다.</p>
+        </div>
     </div>
-    <div class="col-auto d-flex align-items-center gap-2">
-      <label for="end_date" class="fw-bold mb-0">종료일</label>
-      <input type="date" id="end_date" name="end_date" value="{{ end_date }}" class="form-control">
+
+    <!-- Filter Section -->
+    <div class="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 overflow-hidden">
+        <form class="flex flex-wrap items-end gap-6">
+            <div class="flex flex-col gap-2">
+                <label for="start_date" class="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">시작일</label>
+                <div class="relative group">
+                    <span class="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400 group-focus-within:text-primary transition-colors">calendar_today</span>
+                    <input type="date" id="start_date" name="start_date" value="{{ start_date }}" 
+                           class="pl-12 pr-4 py-2.5 bg-slate-50 border-slate-200 focus:bg-white focus:ring-4 focus:ring-primary/10 focus:border-primary rounded-xl text-sm font-bold text-slate-700 transition-all outline-none">
+                </div>
+            </div>
+            <div class="flex flex-col gap-2">
+                <label for="end_date" class="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">종료일</label>
+                <div class="relative group">
+                    <span class="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400 group-focus-within:text-primary transition-colors">event</span>
+                    <input type="date" id="end_date" name="end_date" value="{{ end_date }}" 
+                           class="pl-12 pr-4 py-2.5 bg-slate-50 border-slate-200 focus:bg-white focus:ring-4 focus:ring-primary/10 focus:border-primary rounded-xl text-sm font-bold text-slate-700 transition-all outline-none">
+                </div>
+            </div>
+            <button type="submit" class="h-[46px] px-8 rounded-xl bg-slate-900 text-white font-bold text-sm shadow-lg shadow-slate-200 hover:bg-slate-800 transition-all flex items-center gap-2">
+                <span class="material-symbols-outlined text-[20px]">search</span>
+                조회하기
+            </button>
+        </form>
     </div>
-    <div class="col-auto align-self-end">
-      <button type="submit" class="scl-btn scl-btn-sm rounded-pill">조회</button>
+
+    <!-- Charts Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <!-- Chart 1: SR Count -->
+        <div class="bg-white rounded-[2rem] border border-slate-200 shadow-sm p-8 flex flex-col gap-6">
+            <div class="flex items-center gap-3">
+                <div class="size-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                    <span class="material-symbols-outlined">bar_chart</span>
+                </div>
+                <div>
+                    <h3 class="text-base font-bold text-slate-900">담당자별 SR 총 건수</h3>
+                    <p class="text-[10px] font-bold text-slate-400 uppercase">Total SR Count by Assignee</p>
+                </div>
+            </div>
+            <div class="h-[400px] w-full">
+                <canvas id="srCountChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Chart 4: System Distribution -->
+        <div class="bg-white rounded-[2rem] border border-slate-200 shadow-sm p-8 flex flex-col gap-6">
+            <div class="flex items-center gap-3">
+                <div class="size-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
+                    <span class="material-symbols-outlined">pie_chart</span>
+                </div>
+                <div>
+                    <h3 class="text-base font-bold text-slate-900">시스템별 SR 현황</h3>
+                    <p class="text-[10px] font-bold text-slate-400 uppercase">SR Distribution by System</p>
+                </div>
+            </div>
+            <div class="h-[400px] w-full">
+                <canvas id="systemPieChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Chart 2: Effort -->
+        <div class="bg-white rounded-[2rem] border border-slate-200 shadow-sm p-8 flex flex-col gap-6 lg:col-span-2">
+            <div class="flex items-center gap-3">
+                <div class="size-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                    <span class="material-symbols-outlined">timeline</span>
+                </div>
+                <div>
+                    <h3 class="text-base font-bold text-slate-900">월별 담당자별 투입공수</h3>
+                    <p class="text-[10px] font-bold text-slate-400 uppercase">Monthly Effort by Assignee</p>
+                </div>
+            </div>
+            <div class="h-[400px] w-full">
+                <canvas id="effortChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Chart 3: Delay -->
+        <div class="bg-white rounded-[2rem] border border-slate-200 shadow-sm p-8 flex flex-col gap-6 lg:col-span-2">
+            <div class="flex items-center gap-3">
+                <div class="size-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
+                    <span class="material-symbols-outlined">running_with_errors</span>
+                </div>
+                <div>
+                    <h3 class="text-base font-bold text-slate-900">월별 담당자별 지연 건수</h3>
+                    <p class="text-[10px] font-bold text-slate-400 uppercase">Monthly Delay by Assignee</p>
+                </div>
+            </div>
+            <div class="h-[400px] w-full">
+                <canvas id="delayChart"></canvas>
+            </div>
+        </div>
     </div>
-  </form>
-
-  <!-- 차트 1 -->
-  <div class="mb-5 chart-container">
-    <canvas id="srCountChart"></canvas>
-  </div>
-
-  <!-- 차트 2 -->
-  <div class="mb-5 chart-container">
-    <canvas id="effortChart"></canvas>
-  </div>
-
-  <!-- 차트 3 -->
-  <div class="mb-5 chart-container">
-    <canvas id="delayChart"></canvas>
-  </div>
-
-  <!-- 차트 4 -->
-  <div class="mb-5 chart-container">
-    <canvas id="systemPieChart"></canvas>
-  </div>
 </div>
 {% endblock %}
 
@@ -51,127 +117,167 @@ SR 리포트
 {{ delay_data|json_script:"delay-data" }}
 {{ system_counts|json_script:"system-data" }}
 
-<style>s
-/* 공통 차트 container 스타일 (반응형 적용) */
-.chart-container {
-  max-width: 1200px;
-  width: 100%;
-  min-height: 400px;
-  height: 500px;
-  margin: 0 auto; /* 가운데 정렬 */
-  padding: 10px;
-  box-sizing: border-box;
-}
-</style>
-
 <script>
-const months = JSON.parse(document.getElementById('months-data').textContent);
-const countData = JSON.parse(document.getElementById('count-data').textContent);
-const effortData = JSON.parse(document.getElementById('effort-data').textContent);
-const delayData = JSON.parse(document.getElementById('delay-data').textContent);
-const systemData = JSON.parse(document.getElementById('system-data').textContent);
+document.addEventListener('DOMContentLoaded', function() {
+    const months = JSON.parse(document.getElementById('months-data').textContent);
+    const countData = JSON.parse(document.getElementById('count-data').textContent);
+    const effortData = JSON.parse(document.getElementById('effort-data').textContent);
+    const delayData = JSON.parse(document.getElementById('delay-data').textContent);
+    const systemData = JSON.parse(document.getElementById('system-data').textContent);
 
-const assignees = Object.keys(countData);
-const colors = ['#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b', '#8e44ad', '#2ecc71', '#2c3e50'];
+    const assignees = Object.keys(countData);
+    const colors = ['#0077C8', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#64748B'];
 
-// 공통 옵션 함수
-function commonOptions(titleText) {
-  return {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      title: {
-        display: true,
-        text: titleText
-      },
-      legend: {
-        position: 'bottom'
-      }
-    },
-    layout: {
-      padding: 20
+    // Common options function
+    function commonOptions(titleText) {
+        return {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        usePointStyle: true,
+                        padding: 20,
+                        font: {
+                            family: 'Manrope',
+                            size: 11,
+                            weight: '600'
+                        }
+                    }
+                },
+                tooltip: {
+                    backgroundColor: '#1e293b',
+                    padding: 12,
+                    titleFont: { size: 13, weight: '700', family: 'Manrope' },
+                    bodyFont: { size: 12, family: 'Manrope' },
+                    cornerRadius: 12,
+                    displayColors: true
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: { color: '#f1f5f9' },
+                    ticks: {
+                        font: { family: 'Manrope', size: 11, weight: '500' },
+                        color: '#64748b'
+                    }
+                },
+                x: {
+                    grid: { display: false },
+                    ticks: {
+                        font: { family: 'Manrope', size: 11, weight: '500' },
+                        color: '#64748b'
+                    }
+                }
+            }
+        };
     }
-  };
-}
 
-function createDatasets(dataObj) {
-  return assignees.map((a, idx) => ({
-    label: a,
-    backgroundColor: colors[idx % colors.length],
-    data: months.map(m => dataObj[a][m] || 0)
-  }));
-}
+    function createDatasets(dataObj) {
+        return assignees.map((a, idx) => ({
+            label: a,
+            backgroundColor: colors[idx % colors.length],
+            borderColor: colors[idx % colors.length],
+            borderRadius: 6,
+            data: months.map(m => dataObj[a][m] || 0)
+        }));
+    }
 
-// 차트 1 - SR 건수
-new Chart(document.getElementById('srCountChart'), {
-  type: 'bar',
-  data: {
-    labels: assignees,  // 담당자들을 세로축에 표시
-    datasets: [{
-      label: 'SR 건수',
-      backgroundColor: '#4e73df',
-      data: assignees.map(a => {
-        // 모든 월 데이터 합산
-        return months.reduce((sum, m) => sum + (countData[a][m] || 0), 0);
-      })
-    }]
-  },
-  options: {
-    ...commonOptions('담당자별 SR 총 건수'),
-    indexAxis: 'y'  // ★ 이 옵션이 중요! → 가로 Bar 차트로 만듦
-  }
-});
-
-// 차트 2 - 투입공수
-new Chart(document.getElementById('effortChart'), {
-  type: 'bar',
-  data: {
-    labels: months,
-    datasets: createDatasets(effortData)
-  },
-  options: commonOptions('월별 담당자별 투입공수')
-});
-
-// 차트 3 - 지연건수
-new Chart(document.getElementById('delayChart'), {
-  type: 'bar',
-  data: {
-    labels: months,
-    datasets: createDatasets(delayData)
-  },
-  options: commonOptions('월별 담당자별 지연 건수')
-});
-
-// 차트 4 - 시스템별 SR 현황 (Pie)
-const sysLabels = systemData.map(i => i.req_system || '미정');
-const sysCounts = systemData.map(i => i.count);
-
-new Chart(document.getElementById('systemPieChart'), {
-  type: 'pie',
-  data: {
-    labels: sysLabels,
-    datasets: [{
-      data: sysCounts,
-      backgroundColor: colors
-    }]
-  },
-    options: {
-    ...commonOptions('시스템별 SR 현황'),
-    plugins: {
-      datalabels: {
-        color: '#000', // 텍스트 색상
-        font: {
-          weight: 'bold',
-          size: 14
+    // Chart 1 - SR Count
+    new Chart(document.getElementById('srCountChart'), {
+        type: 'bar',
+        data: {
+            labels: assignees,
+            datasets: [{
+                label: 'SR 건수',
+                backgroundColor: '#0077C8',
+                borderRadius: 8,
+                data: assignees.map(a => {
+                    return months.reduce((sum, m) => sum + (countData[a][m] || 0), 0);
+                })
+            }]
         },
-        formatter: function(value, context) {
-          // → 원하는 텍스트 형식
-          return context.chart.data.labels[context.dataIndex];
+        options: {
+            ...commonOptions(''),
+            indexAxis: 'y',
+            plugins: {
+                ...commonOptions('').plugins,
+                legend: { display: false }
+            }
         }
-      }
-    }
-  },
-  plugins: [ChartDataLabels] // plugin 활성화
+    });
+
+    // Chart 2 - Effort
+    new Chart(document.getElementById('effortChart'), {
+        type: 'bar',
+        data: {
+            labels: months,
+            datasets: createDatasets(effortData)
+        },
+        options: commonOptions('')
+    });
+
+    // Chart 3 - Delay
+    new Chart(document.getElementById('delayChart'), {
+        type: 'bar',
+        data: {
+            labels: months,
+            datasets: createDatasets(delayData)
+        },
+        options: commonOptions('')
+    });
+
+    // Chart 4 - Pie Chart
+    const sysLabels = systemData.map(i => i.req_system || '미정');
+    const sysCounts = systemData.map(i => i.count);
+
+    new Chart(document.getElementById('systemPieChart'), {
+        type: 'doughnut',
+        data: {
+            labels: sysLabels,
+            datasets: [{
+                data: sysCounts,
+                backgroundColor: colors,
+                borderWidth: 0,
+                hoverOffset: 20
+            }]
+        },
+        options: {
+            ...commonOptions(''),
+            cutout: '70%',
+            plugins: {
+                ...commonOptions('').plugins,
+                datalabels: {
+                    color: '#fff',
+                    font: { weight: 'bold', size: 12, family: 'Manrope' },
+                    formatter: (value, ctx) => {
+                        let sum = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                        let percentage = (value * 100 / sum).toFixed(0) + "%";
+                        return value > 0 ? percentage : '';
+                    }
+                }
+            }
+        },
+        plugins: [ChartDataLabels]
+    });
 });
 </script>
+
+<style>
+    input[type="date"]::-webkit-calendar-picker-indicator {
+        background: transparent;
+        bottom: 0;
+        color: transparent;
+        cursor: pointer;
+        left: 0;
+        position: absolute;
+        right: 0;
+        top: 0;
+        width: auto;
+        height: auto;
+    }
+</style>
 {% endblock %}
+

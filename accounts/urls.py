@@ -4,6 +4,7 @@ from . import views
 urlpatterns = [
     
     path('profile/edit/', views.profile_edit, name='profile_edit'),
+    path('profile/remove-avatar/', views.remove_avatar, name='remove_avatar'),
     path('first-login-password-change/', views.first_login_password_change, name='first_login_password_change'),
     
     # 사용자 관리 (관리자 전용)
@@ -16,4 +17,5 @@ urlpatterns = [
     
     # AJAX 엔드포인트
     path('ajax/team/create/', views.team_create_ajax, name='team_create_ajax'),
+    path('ajax/users/search/', views.user_search_ajax, name='user_search_ajax'),
 ]

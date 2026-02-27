@@ -1,9 +1,12 @@
 from django import forms
 from django.contrib.auth.models import User
 from django.db import models
-from .models import Worklog, WorklogFile, WorklogTask
+from .models import Worklog, WorklogFile
 from task.models import Task
 import datetime
+
+class MultipleFileInput(forms.ClearableFileInput):
+    allow_multiple_selected = True
 
 class WorklogForm(forms.ModelForm):
     class Meta:
@@ -30,11 +33,18 @@ class WorklogForm(forms.ModelForm):
             'display_order': '표시 순서',
         }
 
+    files = forms.FileField(
+        widget=MultipleFileInput(attrs={'multiple': True, 'class': 'form-control'}),
+        label='첨부파일',
+        required=False
+    )
+
     def __init__(self, *args, **kwargs):
         import logging
         logger = logging.getLogger(__name__)
         
         user = kwargs.pop('user', None)
+        self.user = user
         logger.info(f"WorklogForm __init__ called with args: {len(args)}, kwargs: {list(kwargs.keys())}, user: {user}")
         
         try:
@@ -70,68 +80,24 @@ class WorklogForm(forms.ModelForm):
             if commit:
                 instance.save()
                 logger.info("Instance saved to database")
+                
+                # 파일 처리
+                if self.files:
+                    files = self.files.getlist('files')
+                    for f in files:
+                        WorklogFile.objects.create(
+                            worklog=instance,
+                            file=f,
+                            original_name=f.name,
+                            uploaded_by=self.user or instance.author
+                        )
+                    logger.info(f"Saved {len(files)} files for worklog {instance.pk}")
+                    
             return instance
         except Exception as e:
             logger.error(f"Error saving WorklogForm: {str(e)}", exc_info=True)
             raise
 
-class WorklogTaskForm(forms.ModelForm):
-    """워크로그에 Task를 추가하는 폼"""
-    class Meta:
-        model = WorklogTask
-        fields = ['task', 'status', 'progress', 'time_spent', 'notes']
-        widgets = {
-            'task': forms.Select(attrs={'class': 'form-control'}),
-            'status': forms.Select(attrs={'class': 'form-control'}),
-            'progress': forms.NumberInput(attrs={
-                'class': 'form-control', 
-                'min': 0, 
-                'max': 100,
-                'placeholder': '0-100'
-            }),
-            'time_spent': forms.NumberInput(attrs={
-                'class': 'form-control', 
-                'step': '0.5',
-                'placeholder': '예: 2.5'
-            }),
-            'notes': forms.Textarea(attrs={
-                'class': 'form-control', 
-                'rows': 3,
-                'placeholder': '업무 진행 상황이나 특이사항을 입력하세요...'
-            }),
-        }
-        labels = {
-            'task': '업무',
-            'status': '상태',
-            'progress': '진행률 (%)',
-            'time_spent': '소요 시간 (시간)',
-            'notes': '비고',
-        }
-
-    def __init__(self, *args, **kwargs):
-        user = kwargs.pop('user', None)
-        worklog = kwargs.pop('worklog', None)
-        super().__init__(*args, **kwargs)
-        
-        if user:
-            # 사용자가 작성했거나 담당자로 지정된 업무들
-            from django.db.models import Q
-            user_tasks = Task.objects.filter(
-                Q(author=user) | Q(assigned_to=user)
-            ).distinct().order_by('-created_at')
-            
-            # 이미 워크로그에 추가된 업무는 제외
-            if worklog:
-                existing_task_ids = WorklogTask.objects.filter(
-                    worklog=worklog
-                ).values_list('task_id', flat=True)
-                user_tasks = user_tasks.exclude(id__in=existing_task_ids)
-            
-            self.fields['task'].queryset = user_tasks
-            
-            # 업무가 없으면 빈 선택지 표시
-            if not user_tasks.exists():
-                self.fields['task'].empty_label = "추가할 수 있는 업무가 없습니다"
 
 class WorklogFileForm(forms.ModelForm):
     class Meta:

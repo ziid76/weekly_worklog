@@ -78,43 +78,6 @@ class Worklog(models.Model):
         year, week_number, _ = today.isocalendar()
         return year, week_number
 
-class WorklogTask(models.Model):
-    """워크로그와 Task를 연결하는 중간 모델"""
-    STATUS_CHOICES = (
-        ('planned', '계획됨'),
-        ('in_progress', '진행중'),
-        ('completed', '완료'),
-        ('postponed', '연기'),
-        ('cancelled', '취소'),
-    )
-    
-    worklog = models.ForeignKey(Worklog, on_delete=models.CASCADE, related_name='worklog_tasks')
-    task = models.ForeignKey('task.Task', on_delete=models.CASCADE, related_name='worklog_entries')
-    status = models.CharField("상태", max_length=20, choices=STATUS_CHOICES, default='planned')
-    progress = models.IntegerField("진행률", default=0, help_text="0-100 사이의 값")
-    notes = models.TextField("비고", blank=True)
-    time_spent = models.DecimalField("소요 시간(시간)", max_digits=5, decimal_places=2, null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        unique_together = ('worklog', 'task')
-        ordering = ['task__priority', 'task__title']
-
-    def __str__(self):
-        return f'{self.worklog} - {self.task.title}'
-
-    @property
-    def status_display_class(self):
-        """상태에 따른 CSS 클래스 반환"""
-        status_classes = {
-            'planned': 'secondary',
-            'in_progress': 'warning',
-            'completed': 'success',
-            'postponed': 'info',
-            'cancelled': 'danger',
-        }
-        return status_classes.get(self.status, 'secondary')
 
 class WorklogFile(models.Model):
     worklog = models.ForeignKey(Worklog, on_delete=models.CASCADE, related_name='files')

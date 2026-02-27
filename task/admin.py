@@ -7,8 +7,8 @@ from monitor.models import OperationLog, OperationLogAttachment
 
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
-    list_display = ['name', 'color_display', 'task_count', 'created_at']
-    list_filter = ['created_at']
+    list_display = ['name', 'is_key_task', 'color_display', 'task_count', 'created_at']
+    list_filter = ['is_key_task', 'created_at']
     search_fields = ['name']
     ordering = ['name']
     
@@ -43,11 +43,11 @@ class TaskFileInline(admin.TabularInline):
 class TaskAdmin(admin.ModelAdmin):
     list_display = [
         'title', 'author', 'status_display', 'priority_display', 
-        'category', 'due_date_display', 'assigned_users', 'created_at'
+        'category', 'start_date', 'due_date_display', 'assigned_users', 'created_at'
     ]
     list_filter = [
         'status', 'priority', 'category', 'created_at', 
-        'due_date', 'team'
+        'start_date', 'due_date', 'team'
     ]
     search_fields = ['title', 'description', 'author__username']
     ordering = ['-created_at']
@@ -66,7 +66,7 @@ class TaskAdmin(admin.ModelAdmin):
             'fields': ('assigned_to', 'team')
         }),
         ('일정', {
-            'fields': ('due_date',)
+            'fields': ('start_date', 'due_date')
         }),
         ('시간 정보', {
             'fields': ('created_at', 'updated_at'),

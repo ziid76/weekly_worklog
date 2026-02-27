@@ -12,10 +12,10 @@ class TeamMembershipInline(admin.TabularInline):
 @admin.register(Team)
 class TeamAdmin(admin.ModelAdmin):
     list_display = [
-        'name', 'created_by', 'member_count', 'leader_count', 
+        'name', 'created_by', 'is_sr_team', 'member_count', 'leader_count', 
         'task_count', 'created_at'
     ]
-    list_filter = ['created_at', 'created_by']
+    list_filter = ['created_at', 'created_by', 'is_sr_team']
     search_fields = ['name', 'description', 'created_by__username']
     ordering = ['name']
     date_hierarchy = 'created_at'
@@ -23,7 +23,7 @@ class TeamAdmin(admin.ModelAdmin):
     
     fieldsets = (
         ('기본 정보', {
-            'fields': ('name', 'description', 'created_by')
+            'fields': ('name', 'description', 'created_by', 'is_sr_team')
         }),
         ('시간 정보', {
             'fields': ('created_at',),

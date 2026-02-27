@@ -12,13 +12,14 @@ class TaskForm(forms.ModelForm):
 
     class Meta:
         model = Task
-        fields = ['title', 'description', 'status', 'priority', 'category', 'due_date', 'team', 'assigned_to','progress']
+        fields = ['title', 'description', 'status', 'priority', 'category', 'start_date', 'due_date', 'team', 'assigned_to','progress']
         widgets = {
             'title': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '업무명을 입력하세요'}),
             'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 4, 'placeholder': '업무 설명을 입력하세요'}),
             'status': forms.Select(attrs={'class': 'form-control'}),
             'priority': forms.Select(attrs={'class': 'form-control'}),
             'category': forms.Select(attrs={'class': 'form-control'}),
+            'start_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
             'due_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
             'progress': forms.TextInput(attrs={'class': 'form-control', 'type': 'number', 'min': 0, 'max': 100, 'step': 5}),
             'team': forms.Select(attrs={'class': 'form-control'}),
@@ -48,10 +49,11 @@ class TaskForm(forms.ModelForm):
 class CategoryForm(forms.ModelForm):
     class Meta:
         model = Category
-        fields = ['name', 'color']
+        fields = ['name', 'color', 'is_key_task']
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '카테고리명'}),
             'color': forms.TextInput(attrs={'class': 'form-control', 'type': 'color'}),
+            'is_key_task': forms.CheckboxInput(attrs={'class': 'w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary'}),
         }
 
 class TaskCommentForm(forms.ModelForm):

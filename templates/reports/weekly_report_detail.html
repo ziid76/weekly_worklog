@@ -1,4 +1,4 @@
-{% extends 'base.html' %}
+{% extends 'basic.html' %}
 {% load markdown_extras %}
 
 {% block page_name %}
@@ -6,628 +6,433 @@
 {% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-end align-items-center mb-4">
-
-    <div class="scl-btn-group ms-auto">
-        {% if user.profile.current_team_role == 'leader' %}
-        {% if report.editable %}
-        <button class="scl-btn" onclick="close_report()">
-            <i class="fas fa-close me-2"></i> 마감처리
-        </button>
-        {% else %}
-        <button class="scl-btn" disabled>
-            입력마감
-        </button>
-        {% endif %}
-        {% else %}
-        {% if not report.editable %}
-        <button class="scl-btn" disabled>
-            입력마감
-        </button>
-        {% endif %}
-        {% endif %}
-        <button class="scl-btn scl-btn-outline d-none d-md-block" onclick="openWorklogSummaryPopup()">
-            <i class="fas fa-table"></i> 전체화면 보기
-        </button>
-        <button class="scl-btn scl-btn-outline d-none d-md-block"
-            onclick="window.location.href='{% url 'export_weekly_report_excel' report.id %}'">
-            <i class="fas fa-file-excel"></i> Excel
-        </button>
-        <button class="scl-btn scl-btn-outline d-none d-md-block"
-            onclick="window.location.href='{% url 'export_weekly_report_pptx' report.id %}'">
-            <i class="fas fa-file-powerpoint"></i> PPT
-        </button>
-    </div>
-</div>
-
-<div class="row mb-4">
-    <div class="col-md-12">
-        <div class="card bg-light">
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-4">
-                        <strong>기간:</strong> {{ report.week_start_date|date:"Y년 m월 d일" }} ~
-                        {{ report.week_end_date|date:"Y년 m월 d일" }}
-                    </div>
-                    <div class="col-md-4">
-                        <strong>작성자 수:</strong> {{ worklog_count }}명
-                    </div>
-                    <div class="col-md-4">
-                        <strong>생성일:</strong> {{ report.created_at|date:"Y-m-d H:i" }}
-                    </div>
-                </div>
-            </div>
+<div class="flex flex-col gap-8 pb-20">
+    <!-- Header Actions -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div class="flex flex-col gap-1">
+            <h1 class="text-3xl font-extrabold tracking-tight text-slate-900">{{ report.month_week_display}} {{report.team}} 주간보고서</h1>
+            <p class="text-slate-500 font-medium text-sm">
+                기간: <span class="font-bold text-slate-700">{{ report.week_start_date|date:"Y.m.d" }} ~ {{ report.week_end_date|date:"Y.m.d" }}</span>
+                <span class="mx-2 text-slate-300">|</span>
+                작성자: <span class="font-bold text-slate-700">{{ worklog_count }}명</span>
+            </p>
         </div>
-    </div>
-</div>
-
-<!-- 작성자별 워크로그 집계 -->
-<div class="card mb-4">
-    <div class="card-header">
-        <h5 class="card-title mb-0">
-            <i class="fas fa-users me-2"></i> {{ report.month_week_display}}
-        </h5>
-    </div>
-    <div class="card-body">
-        <div class="d-none d-md-block">
-            <div class="table-3-wrapper">
-                <div class="cell cell-2 p-3 col-2 border bg-light text-center fw-bold">담당자</div>
-                <div class="cell cell-5 p-3 col-5 border bg-light text-center fw-bold">금주 실적 ({{
-                    report.week_start_date|date:"m월 d일" }} ~ {{ report.week_end_date|date:"m월 d일" }})</div>
-                <div class="cell cell-default p-3 col-5 border bg-light text-center fw-bold">차주 계획 ({{
-                    report.next_week_start_date|date:"m월 d일" }} ~ {{ report.next_week_end_date|date:"m월 d일" }})</div>
-
-                {% if worklog_entries %}
-                {% for entry in worklog_entries %}
-                <div class="cell cell-2 p-3 col-2 border">
-                    <div class="d-flex flex-column gap-1">
-                        <div class="d-flex align-items-center gap-2">
-                            <span class="fw-semibold mb-0"><i class="fas fa-user me-1"></i>
-                                {{ entry.author_name }}
-                            </span>
-                            {% if can_manage_personal_comments %}
-                            <button type="button"
-                                class="scl-btn-outline scl-btn-sm rounded-circle d-inline-flex align-items-center justify-content-center personal-comment-trigger"
-                                onclick="openPersonalCommentModal({{ entry.author_id }}, '{{ entry.author_name|escapejs }}')"
-                                title="업무 코멘트 추가" aria-label="업무 코멘트 추가">
-                                <i class="fas fa-plus"></i>
-                            </button>
-                            {% endif %}
-                        </div>
-                        {% if entry.author.profile.position %}
-                        <small class="text-muted">{{ entry.author.profile.position }}</small>
-                        {% endif %}
-                        {% if entry.author.profile.department_display %}
-                        <small class="text-muted">{{ entry.author.profile.department_display }}</small>
-                        {% endif %}
-                    </div>
-                </div>
-                <div class="cell cell-5 p-3 col-5 border">
-                    <div class="markdown-content rendered-content">
-                        {% if entry.worklog.this_week_work %}
-                        {{ entry.worklog.this_week_work|markdown }}
-                        {% else %}
-                        <p class="text-muted">작성된 내용이 없습니다.</p>
-                        {% endif %}
-                    </div>
-                    <pre
-                        class="d-none">{% if entry.worklog.this_week_work %}{{ entry.worklog.this_week_work }}{% endif %}</pre>
-                </div>
-                <div class="cell cell-default p-3 col-5 border">
-                    <div class="markdown-content">
-                        {% if entry.worklog.next_week_plan %}
-                        {{ entry.worklog.next_week_plan|markdown }}
-                        {% else %}
-                        <p class="text-muted">작성된 계획이 없습니다.</p>
-                        {% endif %}
-                    </div>
-                    <pre
-                        class="d-none">{% if entry.worklog.next_week_plan %}{{ entry.worklog.next_week_plan }}{% endif %}</pre>
-                </div>
-                <div class="cell cell-12 p-3 col-12 border-top-0 border personal-comment-cell {% if not entry.personal_comments %}d-none{% endif %}"
-                    data-personal-comment-wrapper="{{ entry.author_id }}">
-                    <div class="d-flex align-items-center text-muted small mb-2">
-                        <i class="fas fa-comment-dots me-2"></i>
-                        <span>업무 코멘트</span>
-                    </div>
-                    <div class="personal-comment-list mt-2" id="personal-comments-{{ entry.author_id }}">
-                        {% include 'reports/personal_comment_list.html' with comments=entry.personal_comments %}
-                    </div>
-                </div>
-
-                {% endfor %}
+        
+        <div class="flex items-center gap-2 flex-wrap">
+            {% if user.profile.current_team_role == 'leader' %}
+                {% if report.editable %}
+                <button class="px-4 py-2 bg-rose-50 text-rose-600 rounded-xl text-xs font-bold border border-rose-100 hover:bg-rose-100 transition-colors" onclick="close_report()">
+                    <i class="fas fa-close me-2"></i> 마감처리
+                </button>
                 {% else %}
-                <div class="cell cell-12 p-5 col-12 border text-center text-muted">
-                    작성된 워크로그가 없습니다.
-                </div>
+                <button class="px-4 py-2 bg-slate-100 text-slate-400 rounded-xl text-xs font-bold cursor-not-allowed" disabled>
+                    입력마감
+                </button>
                 {% endif %}
+            {% else %}
+                {% if not report.editable %}
+                <button class="px-4 py-2 bg-slate-100 text-slate-400 rounded-xl text-xs font-bold cursor-not-allowed" disabled>
+                    입력마감
+                </button>
+                {% endif %}
+            {% endif %}
+
+            <button class="hidden md:flex items-center gap-2 px-4 py-2 border border-slate-200 rounded-xl text-slate-600 text-xs font-bold hover:bg-slate-50 transition-colors" onclick="openWorklogSummaryPopup()">
+                <i class="fas fa-table"></i> 전체화면
+            </button>
+            <button class="hidden md:flex items-center gap-2 px-4 py-2 border border-slate-200 rounded-xl text-slate-600 text-xs font-bold hover:bg-slate-50 transition-colors"
+                onclick="window.location.href='{% url 'export_weekly_report_excel' report.id %}'">
+                <i class="fas fa-file-excel"></i> Excel
+            </button>
+            <button class="hidden md:flex items-center gap-2 px-4 py-2 border border-slate-200 rounded-xl text-slate-600 text-xs font-bold hover:bg-slate-50 transition-colors"
+                onclick="window.location.href='{% url 'export_weekly_report_pptx' report.id %}'">
+                <i class="fas fa-file-powerpoint"></i> PPT
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Report Grid -->
+    <div class="bg-white rounded-md border border-slate-200 shadow-sm overflow-hidden">
+        <!-- Header Row (Desktop) -->
+        <div class="hidden md:grid grid-cols-12 bg-slate-50 border-b border-slate-200 text-sm font-bold text-slate-500">
+            <div class="col-span-2 p-4 text-center border-r border-slate-100">담당자</div>
+            <div class="col-span-10 grid grid-cols-2 text-center">
+                 <div class="p-4 border-r border-slate-100">금주 실적 ({{ report.week_start_date|date:"m/d" }} ~ {{ report.week_end_date|date:"m/d" }})</div>
+                 <div class="p-4">차주 계획 ({{ report.next_week_start_date|date:"m/d" }} ~ {{ report.next_week_end_date|date:"m/d" }})</div>
             </div>
         </div>
-        <div class="d-block d-md-none">
+
+        <!-- Content Rows -->
+        <div class="divide-y divide-slate-100">
             {% if worklog_entries %}
             {% for entry in worklog_entries %}
-            <div class="border rounded p-3 mb-3 table-3-mobile">
-                <div class="row">
-                    <div class="col-md-2">
-                        <div class="d-flex align-items-center justify-content-between">
-                            <h6 class="text-primary mb-0">
-                                <i class="fas fa-user"></i> {{ entry.author_name }}
-                            </h6>
-                            {% if can_manage_personal_comments %}
-                            <button type="button"
-                                class="scl-btn-outline scl-btn-sm rounded-circle d-inline-flex align-items-center justify-content-center personal-comment-trigger"
-                                onclick="openPersonalCommentModal({{ entry.author_id }}, '{{ entry.author_name|escapejs }}')"
-                                title="업무 코멘트 추가" aria-label="업무 코멘트 추가">
-                                <i class="fas fa-plus"></i>
-                            </button>
+            <div class="md:grid md:grid-cols-12 group">
+                <!-- Author Column -->
+                <div class="col-span-2 p-6 md:border-r border-slate-100 bg-slate-50/30 flex flex-col gap-3">
+                    <div class="flex items-center gap-2">
+                        <div class="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 font-bold text-xs">
+                            {{ entry.author_name|slice:":1" }}
+                        </div>
+                        <div class="flex flex-col">
+                            <span class="text-sm font-bold text-slate-900">{{ entry.author_name }}</span>
+                            {% if entry.author.profile.position %}
+                            <span class="text-[10px] text-slate-500">{{ entry.author.profile.position }}</span>
                             {% endif %}
                         </div>
-                        {% if entry.author.profile.position %}
-                        <small class="text-muted d-block">{{ entry.author.profile.position }}</small>
-                        {% endif %}
-                        {% if entry.author.profile.department_display %}
-                        <small class="text-muted d-block">{{ entry.author.profile.department_display }}</small>
+                        {% if can_manage_personal_comments %}
+                        <button type="button"
+                            class="ml-auto w-6 h-6 rounded-full flex items-center justify-center border border-slate-200 text-slate-400 hover:text-primary hover:border-primary transition-colors text-xs"
+                            onclick="openPersonalCommentModal({{ entry.author_id }}, '{{ entry.author_name|escapejs }}')"
+                            title="업무 코멘트 추가">
+                            <i class="fas fa-plus"></i>
+                        </button>
                         {% endif %}
                     </div>
-                    <div class="col-md-5">
-                        <strong class="text-success">금주 실적:</strong>
-                        <!-- 마크다운 렌더링 뷰 -->
-                        <div class="mt-2 p-2 bg-light rounded rendered-content">
+                    <div class="flex flex-col items-center gap-2">
+                        {% if entry.has_ai_review %}
+                        <button type="button" 
+                            class="w-fit px-2 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 text-[10px] font-bold hover:bg-indigo-100 transition-colors border border-indigo-100" 
+                            onclick="openAiReviewModal({{ entry.author_id }}, '{{ entry.author_name|escapejs }}')">
+                            <i class="fas fa-robot me-1"></i> AI 리뷰 보기
+                        </button>
+                        {% else %}
+                        <button type="button" class="w-fit px-2 py-1.5 rounded-lg bg-slate-100 text-slate-400 text-[10px] font-bold cursor-not-allowed border border-slate-200" disabled>
+                            리뷰 미생성
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Worklog Content -->
+                <div class="col-span-10 grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-slate-100">
+                    <!-- This Week -->
+                    <div class="p-6 relative">
+                        <span class="md:hidden text-xs font-bold text-emerald-600 mb-2 block">금주 실적</span>
+                        <div class="markdown-content prose prose-slate prose-sm max-w-none">
                             {% if entry.worklog.this_week_work %}
-                            <div class="markdown-content">
-                                {{ entry.worklog.this_week_work|markdown }}
-                            </div>
+                            {{ entry.worklog.this_week_work|markdown }}
                             {% else %}
-                            <span class="text-muted">작성된 내용이 없습니다.</span>
+                            <p class="text-slate-400 italic text-sm">작성된 내용이 없습니다.</p>
                             {% endif %}
                         </div>
-                        <!-- 원본 텍스트 뷰 (숨김) -->
-                        <div class="mt-2 p-2 bg-light rounded raw-content d-none">
-                            <pre
-                                class="mb-0"><code>{{ entry.worklog.this_week_work|default:"작성된 내용이 없습니다." }}</code></pre>
-                        </div>
                     </div>
-                    <div class="col-md-5">
-                        <strong class="text-success">차주 계획:</strong>
-                        <!-- 마크다운 렌더링 뷰 -->
-                        <div class="mt-2 p-2 bg-light rounded rendered-content">
+                    <!-- Next Week -->
+                    <div class="p-6 relative">
+                        <span class="md:hidden text-xs font-bold text-sky-600 mb-2 block">차주 계획</span>
+                        <div class="markdown-content prose prose-slate prose-sm max-w-none">
                             {% if entry.worklog.next_week_plan %}
-                            <div class="markdown-content">
-                                {{ entry.worklog.next_week_plan|markdown }}
-                            </div>
+                            {{ entry.worklog.next_week_plan|markdown }}
                             {% else %}
-                            <span class="text-muted">작성된 계획이 없습니다.</span>
+                            <p class="text-slate-400 italic text-sm">작성된 계획이 없습니다.</p>
                             {% endif %}
                         </div>
-                        <!-- 원본 텍스트 뷰 (숨김) -->
-                        <div class="mt-2 p-2 bg-light rounded raw-content d-none">
-                            <pre
-                                class="mb-0"><code>{{ entry.worklog.next_week_plan|default:"작성된 계획이 없습니다." }}</code></pre>
-                        </div>
                     </div>
-                    <div class="col-12 mt-3 personal-comment-cell {% if not entry.personal_comments %}d-none{% endif %}"
-                        data-personal-comment-wrapper="{{ entry.author_id }}">
-                        <div class="d-flex align-items-center text-muted small mb-2">
-                            <i class="fas fa-comment-dots me-2"></i>
-                            <span>업무 코멘트</span>
-                        </div>
-                        <div class="personal-comment-list mt-2" id="personal-comments-{{ entry.author_id }}">
-                            {% include 'reports/partials/personal_comment_list.html' with
-                            comments=entry.personal_comments %}
-                        </div>
+                </div>
+
+                <!-- Personal Comments Row (Full Width in grid) -->
+                <div class="col-span-12 bg-amber-50/50 p-4 border-t border-slate-100 personal-comment-cell {% if not entry.personal_comments %}hidden{% endif %}"
+                    data-personal-comment-wrapper="{{ entry.author_id }}">
+                    <div class="flex items-start gap-3">
+                         <span class="material-symbols-outlined text-amber-400 text-[20px] mt-0.5">format_quote</span>
+                         <div class="flex-1">
+                             <h5 class="text-xs font-bold text-amber-600 mb-1">업무 코멘트</h5>
+                             <div class="personal-comment-list space-y-2" id="personal-comments-{{ entry.author_id }}">
+                                {% include 'reports/personal_comment_list.html' with comments=entry.personal_comments %}
+                             </div>
+                         </div>
                     </div>
                 </div>
             </div>
             {% endfor %}
             {% else %}
-            <div class="text-center p-5">
-                <p class="h5 text-muted">해당 주차에 작성된 워크로그가 없습니다.</p>
+            <div class="p-10 text-center text-slate-400">
+                <p>작성된 워크로그가 없습니다.</p>
             </div>
             {% endif %}
         </div>
-
     </div>
-</div>
 
-<!-- 코멘트 섹션 -->
-<div class="card">
-    <div class="card-header">
-        <h5 class="card-title mb-0">
-            <i class="fas fa-comments me-2"></i> Comment
-        </h5>
-    </div>
-    <div class="card-body">
-        <!-- 기존 코멘트 표시 -->
-        {% if comments %}
-        {% for comment in comments %}
-        <div class="border-bottom pb-3 mb-3">
-            <div class="d-flex justify-content-between">
-                <strong>
-                    {% if comment.author.profile %}
-                    {{ comment.author.profile.get_korean_name }}
-                    {% else %}
-                    {{ comment.author.username }}
-                    {% endif %}
-                </strong>
-                <small class="text-muted">{{ comment.created_at|date:"Y-m-d H:i" }}</small>
+    <!-- General Comments Section -->
+    <div class="bg-white rounded-[24px] border border-slate-200 shadow-sm p-6 overflow-hidden">
+        <h3 class="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
+            <i class="fas fa-comments text-slate-400"></i> Comments
+        </h3>
+        
+        <div class="space-y-6 mb-8">
+            {% if comments %}
+            {% for comment in comments %}
+            <div class="flex gap-4">
+                <div class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-sm shrink-0">
+                     {{ comment.author.profile.display_name|slice:":1" }}
+                </div>
+                <div class="flex-1 space-y-1">
+                    <div class="flex items-baseline justify-between">
+                        <span class="text-sm font-bold text-slate-900">{{ comment.author.profile.display_name }}</span>
+                        <span class="text-xs text-slate-400">{{ comment.created_at|date:"Y-m-d H:i" }}</span>
+                    </div>
+                    <div class="text-sm text-slate-600 bg-slate-50 p-3 rounded-tr-2xl rounded-br-2xl rounded-bl-2xl">
+                        {{ comment.content|markdown }}
+                    </div>
+                </div>
             </div>
-            <div class="mt-2 markdown-content">{{ comment.content|markdown }}</div>
+            {% endfor %}
+            {% else %}
+            <p class="text-slate-400 text-sm italic">등록된 코멘트가 없습니다.</p>
+            {% endif %}
         </div>
-        {% endfor %}
-        {% else %}
-        <p class="text-muted">코멘트가 없습니다.</p>
-        {% endif %}
 
-        <!-- 코멘트 작성 폼 -->
-        <form method="post" class="mt-4">
+        <form method="post" class="relative">
             {% csrf_token %}
-            <div class="mb-3">
-                {{ form.content }}
-                <small class="form-text text-muted">마크다운 문법을 사용할 수 있습니다.</small>
+            <div class="relative">
+                {{ form.content }} 
+                <!-- Ensure Styled Widget in forms.py or manually styling here if widget is basic -->
+                <!-- Assuming form.content renders a textarea. We might need to style it via CSS or JS if it doesn't have classes -->
             </div>
-            <button type="submit" class="scl-btn">
-                <i class="fas fa-comment"></i> 코멘트 추가
-            </button>
+            <div class="mt-2 flex justify-end">
+                <button type="submit" class="px-6 py-2 bg-slate-900 text-white rounded-xl text-sm font-bold hover:bg-slate-800 transition-colors">
+                    등록
+                </button>
+            </div>
         </form>
     </div>
+
 </div>
 
+<!-- Modals -->
 {% if can_manage_personal_comments %}
-<div class="modal fade" id="personalCommentModal" tabindex="-1" aria-labelledby="personalCommentModalLabel"
-    aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <form id="personalCommentForm" method="post">
-                {% csrf_token %}
-                <input type="hidden" name="target_user_id" id="personalCommentTargetInput">
-                <div class="modal-header">
-                    <div>
-                        <h5 class="modal-title" id="personalCommentModalLabel">
-                            <i class="fas fa-comment-dots me-2"></i>업무 코멘트 작성
-                        </h5>
-                        <small class="text-muted" id="personalCommentModalLabelName"></small>
+<div id="personalCommentModal" class="hidden relative z-50" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <div class="fixed inset-0 bg-slate-900/20 backdrop-blur-sm transition-opacity" onclick="closePersonalCommentModal()"></div>
+    <div class="fixed inset-0 z-10 overflow-y-auto">
+        <div class="flex min-h-full items-center justify-center p-4 text-center sm:p-0">
+            <div class="relative transform overflow-hidden rounded-md bg-white text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-lg border border-slate-100">
+                <form id="personalCommentForm" method="post" class="p-6">
+                    {% csrf_token %}
+                    <input type="hidden" name="target_user_id" id="personalCommentTargetInput">
+                    
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <h3 class="text-lg font-bold text-slate-900" id="modal-title">업무 코멘트 작성</h3>
+                            <p class="text-sm text-slate-500 mt-1" id="personalCommentModalLabelName"></p>
+                        </div>
+                        <button type="button" class="text-slate-400 hover:text-slate-600" onclick="closePersonalCommentModal()">
+                            <span class="material-symbols-outlined">close</span>
+                        </button>
                     </div>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="alert alert-danger d-none" id="personalCommentError"></div>
-                    <div class="alert alert-success d-none" id="personalCommentSuccess"></div>
-                    <div class="mb-3">
+
+                    <div id="personalCommentFeedback" class="hidden mb-4 p-3 rounded-md text-sm"></div>
+
+                    <div class="mb-2">
                         {{ personal_comment_form.content }}
+                        <!-- Ensure this textarea has Tailwind classes in forms.py or add via JS -->
                     </div>
-                    <small class="text-muted"><i class="fas fa-info-circle me-1"></i>등록된 코멘트는 다음 주 담당자의 주간업무 작성 시 안내로
-                        표시됩니다.</small>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="scl-btn scl-btn-outline" data-bs-dismiss="modal">취소</button>
-                    <button type="submit" class="scl-btn">저장</button>
-                </div>
-            </form>
+                    
+                    <p class="text-xs text-slate-400 mb-6 bg-slate-50 p-3 rounded-lg flex items-start gap-2">
+                        <span class="material-symbols-outlined text-[14px] mt-0.5">info</span>
+                        등록된 코멘트는 다음 주 담당자의 주간업무 작성 시 안내로 표시됩니다.
+                    </p>
+
+                    <div class="flex justify-end gap-3">
+                        <button type="button" class="px-4 py-2 rounded-xl text-slate-600 font-bold hover:bg-slate-50 transition-colors text-sm" onclick="closePersonalCommentModal()">
+                            취소
+                        </button>
+                        <button type="submit" class="px-4 py-2 rounded-xl bg-primary text-white font-bold hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20 text-sm">
+                            저장
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 </div>
 {% endif %}
 
-<div class="mt-4">
-    <a href="{% url 'weekly_report_list' %}" class="sscl-btn cl-btn-outline">
-        <i class="fas fa-arrow-left"></i> 목록으로
-    </a>
+<!-- AI Review Modal -->
+<div id="aiReviewModal" class="hidden relative z-50">
+    <div class="fixed inset-0 bg-slate-900/20 backdrop-blur-sm transition-opacity" onclick="closeAiReviewModal()"></div>
+    <div class="fixed inset-0 z-10 overflow-y-auto">
+        <div class="flex min-h-full items-center justify-center p-4 text-center">
+            <div class="relative transform overflow-hidden rounded-[32px] bg-white text-left shadow-2xl transition-all w-full max-w-5xl h-[80vh] flex flex-col border border-slate-100">
+                <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                    <h3 class="text-lg font-bold text-slate-900 flex items-center gap-2" id="aiReviewModalLabel">
+                        <i class="fas fa-robot text-primary"></i> AI 리뷰 결과
+                    </h3>
+                    <button type="button" class="w-8 h-8 rounded-full flex items-center justify-center bg-white border border-slate-200 text-slate-400 hover:text-slate-600 hover:shadow-sm transition-all" onclick="closeAiReviewModal()">
+                        <span class="material-symbols-outlined text-[20px]">close</span>
+                    </button>
+                </div>
+                <div class="flex-1 bg-white relative overflow-hidden">
+                     <div id="aiReviewContent" class="absolute inset-0 w-full h-full p-0">
+                        <!-- iframe container -->
+                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
+
 {% endblock %}
 
 {% block extra_js %}
 <script>
-    let isRawView = false;
-
-    {% if can_manage_personal_comments %}
-    let personalCommentModal = null;
-    const personalCommentModalElement = document.getElementById('personalCommentModal');
-    const personalCommentForm = document.getElementById('personalCommentForm');
-    const personalCommentError = document.getElementById('personalCommentError');
-    const personalCommentSuccess = document.getElementById('personalCommentSuccess');
-    const personalCommentTargetInput = document.getElementById('personalCommentTargetInput');
-    const personalCommentContent = document.getElementById('personalCommentContent');
-
-    function resetPersonalCommentFeedback() {
-        if (personalCommentError) {
-            personalCommentError.classList.add('d-none');
-            personalCommentError.textContent = '';
-        }
-        if (personalCommentSuccess) {
-            personalCommentSuccess.classList.add('d-none');
-            personalCommentSuccess.textContent = '';
-        }
-    }
-
-    function showPersonalCommentFeedback(type, message) {
-        if (type === 'error' && personalCommentError) {
-            personalCommentError.textContent = message;
-            personalCommentError.classList.remove('d-none');
-        }
-        if (type === 'success' && personalCommentSuccess) {
-            personalCommentSuccess.textContent = message;
-            personalCommentSuccess.classList.remove('d-none');
-        }
-    }
-
-    function openPersonalCommentModal(userId, authorName) {
-        if (!personalCommentModalElement || !personalCommentForm) {
-            return;
-        }
-
-        if (!personalCommentModal) {
-            personalCommentModal = new bootstrap.Modal(personalCommentModalElement);
-        }
-
-        resetPersonalCommentFeedback();
-        const labelName = document.getElementById('personalCommentModalLabelName');
-        if (labelName) {
-            labelName.textContent = authorName;
-        }
-        if (personalCommentTargetInput) {
-            personalCommentTargetInput.value = userId;
-        }
-        if (personalCommentContent) {
-            personalCommentContent.value = '';
-        }
-
-        personalCommentModal.show();
-    }
-
-    if (personalCommentModalElement) {
-        personalCommentModalElement.addEventListener('hidden.bs.modal', () => {
-            if (personalCommentForm) {
-                personalCommentForm.reset();
+    // Custom Modal Logic for Service/Report Apps
+    
+    // AI Review Modal
+    function openAiReviewModal(userId, userName) {
+        const modal = document.getElementById('aiReviewModal');
+        const contentDiv = document.getElementById('aiReviewContent');
+        const modalTitle = document.getElementById('aiReviewModalLabel');
+        
+        modalTitle.innerHTML = `<i class="fas fa-robot text-primary me-2"></i>AI 리뷰 결과 - ${userName}`;
+        contentDiv.innerHTML = '<div class="flex justify-center items-center h-full"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>';
+        
+        modal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+        
+        const reportId = {{ report.id }};
+        const url = `/reports/weekly/${reportId}/review/${userId}/`;
+        
+        fetch(url, {
+            method: 'GET',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const iframe = document.createElement('iframe');
+                iframe.style.width = '100%';
+                iframe.style.height = '100%';
+                iframe.style.border = 'none';
+                contentDiv.innerHTML = '';
+                contentDiv.appendChild(iframe);
+                
+                const doc = iframe.contentWindow.document;
+                doc.open();
+                doc.write(data.html);
+                doc.close();
+            } else {
+                contentDiv.innerHTML = `<div class="p-8 text-center text-slate-500">${data.message}</div>`;
             }
-            resetPersonalCommentFeedback();
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            contentDiv.innerHTML = '<div class="p-8 text-center text-rose-500">리뷰 정보를 불러오는 중 오류가 발생했습니다.</div>';
         });
     }
 
-    if (personalCommentForm) {
-        personalCommentForm.addEventListener('submit', function (event) {
-            event.preventDefault();
-            resetPersonalCommentFeedback();
+    function closeAiReviewModal() {
+        document.getElementById('aiReviewModal').classList.add('hidden');
+        document.body.style.overflow = '';
+    }
 
-            const submitButton = personalCommentForm.querySelector('button[type="submit"]');
-            const originalText = submitButton ? submitButton.innerHTML : '';
-            if (submitButton) {
-                submitButton.disabled = true;
-                submitButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>저장 중';
-            }
+    // Personal Comment Modal
+    {% if can_manage_personal_comments %}
+    const pcModal = document.getElementById('personalCommentModal');
+    const pcFeedback = document.getElementById('personalCommentFeedback');
+    
+    function openPersonalCommentModal(userId, authorName) {
+        document.getElementById('personalCommentModalLabelName').textContent = authorName;
+        document.getElementById('personalCommentTargetInput').value = userId;
+        document.getElementById('personalCommentContent').value = '';
+        pcFeedback.classList.add('hidden');
+        
+        pcModal.classList.remove('hidden');
+    }
 
-            const formData = new FormData(personalCommentForm);
+    function closePersonalCommentModal() {
+        pcModal.classList.add('hidden');
+    }
 
+    const pcForm = document.getElementById('personalCommentForm');
+    if (pcForm) {
+        pcForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const submitBtn = pcForm.querySelector('button[type="submit"]');
+            const originalText = submitBtn.textContent;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="animate-spin inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2"></span>저장 중...';
+
+            const formData = new FormData(pcForm);
+            
             fetch('{% url "add_personal_comment" report.id %}', {
                 method: 'POST',
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRFToken': personalCommentForm.querySelector('input[name="csrfmiddlewaretoken"]').value
+                    'X-CSRFToken': pcForm.querySelector('input[name="csrfmiddlewaretoken"]').value
                 },
                 body: formData
             })
-                .then(response => response.json().then(data => ({ ok: response.ok, data })))
-                .then(({ ok, data }) => {
-                    if (!ok || !data.success) {
-                        showPersonalCommentFeedback('error', data && data.error ? data.error : '코멘트 저장 중 오류가 발생했습니다.');
-                        return;
-                    }
-
+            .then(response => response.json().then(data => ({ ok: response.ok, data })))
+            .then(({ ok, data }) => {
+                if (!ok || !data.success) {
+                    pcFeedback.className = "mb-4 p-3 rounded-lg text-sm bg-rose-50 text-rose-600 block";
+                    pcFeedback.textContent = data.error || '오류가 발생했습니다.';
+                } else {
                     const container = document.getElementById(`personal-comments-${data.target_user_id}`);
                     if (container) {
                         container.innerHTML = data.html;
-                        const commentCell = container.closest('.personal-comment-cell');
-                        if (commentCell) {
-                            commentCell.classList.remove('d-none');
-                        }
+                        container.closest('.personal-comment-cell').classList.remove('hidden');
                     }
-
-                    showPersonalCommentFeedback('success', '업무 코멘트가 저장되었습니다.');
-                    setTimeout(() => {
-                        if (personalCommentModal) {
-                            personalCommentModal.hide();
-                        }
-                    }, 600);
-                })
-                .catch(() => {
-                    showPersonalCommentFeedback('error', '코멘트 저장 중 오류가 발생했습니다.');
-                })
-                .finally(() => {
-                    if (submitButton) {
-                        submitButton.disabled = false;
-                        submitButton.innerHTML = originalText;
-                    }
-                });
+                    document.getElementById('personalCommentContent').value = '';
+                    closePersonalCommentModal();
+                    // Optionally show global toast
+                }
+            })
+            .catch(() =>{
+                pcFeedback.className = "mb-4 p-3 rounded-lg text-sm bg-rose-50 text-rose-600 block";
+                pcFeedback.textContent = '통신 오류가 발생했습니다.';
+            })
+            .finally(() => {
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalText;
+            });
         });
     }
     {% endif %}
 
-    function toggleRawView() {
-        const renderedContents = document.querySelectorAll('.rendered-content');
-        const rawContents = document.querySelectorAll('.raw-content');
-        const toggleText = document.getElementById('toggleText');
-
-        if (isRawView) {
-            // 렌더링 뷰로 전환
-            renderedContents.forEach(el => el.classList.remove('d-none'));
-            rawContents.forEach(el => el.classList.add('d-none'));
-            toggleText.textContent = '원본 보기';
-            isRawView = false;
-        } else {
-            // 원본 뷰로 전환
-            renderedContents.forEach(el => el.classList.add('d-none'));
-            rawContents.forEach(el => el.classList.remove('d-none'));
-            toggleText.textContent = '렌더링 보기';
-            isRawView = true;
-        }
-    }
-
-    function exportToExcel() {
-        // 간단한 CSV 형태로 내보내기
-        let csvContent = "작성자,이번주업무,다음주계획\n";
-
-        {% for entry in worklog_entries %}
-        csvContent += "{{ entry.author_name|escapejs }}," +
-            "{{ entry.worklog.this_week_work|escapejs|linebreaksbr|striptags }}" + "," +
-            "{{ entry.worklog.next_week_plan|escapejs|linebreaksbr|striptags }}" + "\n";
-        {% endfor %}
-
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement("a");
-        const url = URL.createObjectURL(blob);
-        link.setAttribute("href", url);
-        link.setAttribute("download", "{{ year }}년_{{ week_number }}주차_주간리포트.csv");
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    }
-
     function openWorklogSummaryPopup() {
-        // 팝업 창 열기
         const url = "{% url 'worklog_summary_popup' year=report.year week_number=report.week_number %}";
         const teamParam = "{% if selected_team %}team={{ selected_team.id }}{% endif %}";
         const fullUrl = teamParam ? `${url}?${teamParam}` : url;
-
-        // 화면 크기에 맞게 팝업 창 크기 설정
         const width = window.innerWidth * 0.9;
         const height = window.innerHeight * 0.9;
         const left = (window.innerWidth - width) / 2;
         const top = (window.innerHeight - height) / 2;
-
-        window.open(
-            fullUrl,
-            "작성자별 워크로그 집계",
-            `width=${width},height=${height},top=${top},left=${left},resizable=yes,scrollbars=yes,status=no,toolbar=no,menubar=no,location=no`
-        );
+        window.open(fullUrl, "작성자별 워크로그 집계", `width=${width},height=${height},top=${top},left=${left},resizable=yes,scrollbars=yes`);
     }
-</script>
-
-<script>
 
     function close_report() {
         if (confirm('입력을 마감하시겠습니까?')) {
-            // AJAX로 상태 업데이트
-            $.ajax({
-                url: '{% url "confirm_closing_api"  %}',
+            fetch('{% url "confirm_closing_api" %}', {
                 method: 'POST',
-                data: {
-                    'pk': '{{report.pk}}',
-                    'csrfmiddlewaretoken': '{{ csrf_token }}'
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': '{{ csrf_token }}'
                 },
-                success: function (response) {
-                    location.reload();
-                },
-                error: function () {
-                    alert('마감처리에 실패했습니다.');
-                }
-            });
+                body: `pk={{report.pk}}`
+            })
+            .then(res => {
+                if(res.ok) location.reload();
+                else alert('마감처리에 실패했습니다.');
+            })
+            .catch(() => alert('오류가 발생했습니다.'));
         }
     }
 </script>
 
 <style>
-    .markdown-content {
-        line-height: 1.5;
-    }
-
-    .markdown-content h1,
-    .markdown-content h2,
-    .markdown-content h3 {
-        margin-top: 1rem;
-        margin-bottom: 0.5rem;
-    }
-
-    .markdown-content h1 {
-        font-size: 1.25rem;
-        border-bottom: 2px solid #eee;
-        padding-bottom: 0.25rem;
-    }
-
-    .markdown-content h2 {
-        font-size: 1.1rem;
-        border-bottom: 1px solid #eee;
-        padding-bottom: 0.2rem;
-    }
-
-    .markdown-content h3 {
-        font-size: 1rem;
-    }
-
-    .markdown-content ul,
-    .markdown-content ol {
-        padding-left: 1.5rem;
-        margin: 0.5rem 0;
-    }
-
-    .markdown-content li {
-        margin-bottom: 0.25rem;
-    }
-
-    .markdown-content p {
-        margin-bottom: 0.5rem;
-    }
-
-    .markdown-content blockquote {
-        border-left: 4px solid #ddd;
-        padding-left: 0.75rem;
-        margin: 0.5rem 0;
-        color: #666;
-        font-style: italic;
-    }
-
-    .markdown-content code {
-        background-color: #f8f9fa;
-        padding: 0.1rem 0.3rem;
-        border-radius: 0.2rem;
-        font-size: 0.875em;
-    }
-
-    .markdown-content pre {
-        background-color: #f8f9fa;
-        padding: 0.75rem;
-        border-radius: 0.375rem;
-        overflow-x: auto;
-        font-size: 0.875em;
-    }
-
-    .markdown-content table {
-        border-collapse: collapse;
-        width: 100%;
-        margin: 0.5rem 0;
-        font-size: 0.875em;
-    }
-
-    .markdown-content table th,
-    .markdown-content table td {
-        border: 1px solid #ddd;
-        padding: 0.375rem;
-        text-align: left;
-    }
-
-    .markdown-content table th {
-        background-color: #f8f9fa;
-        font-weight: bold;
-    }
-
-    .markdown-content input[type="checkbox"] {
-        margin-right: 0.375rem;
-    }
-
-    .personal-comment-trigger {
-        width: 28px;
-        height: 28px;
-        padding: 0;
-    }
-
-    .personal-comment-trigger i {
-        font-size: 0.75rem;
-        line-height: 1;
-    }
-
-    @media print {
-        .btn-group {
-            display: none !important;
-        }
-    }
+    /* Custom Markdown Styles to match Tailwind Typography nicely */
+    .markdown-content ul { list-style-type: disc; padding-left: 1.5rem; margin: 0.5em 0; }
+    .markdown-content ol { list-style-type: decimal; padding-left: 1.5rem; margin: 0.5em 0; }
+    .markdown-content blockquote { border-left: 4px solid #e2e8f0; padding-left: 1rem; color: #64748b; font-style: italic; }
+    .markdown-content code { background-color: #f1f5f9; padding: 0.2rem 0.4rem; border-radius: 0.25rem; font-size: 0.875em; color: #0f172a; }
+    .markdown-content pre { background-color: #1e293b; color: #f8fafc; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; margin: 1em 0; }
+    .markdown-content pre code { background-color: transparent; padding: 0; color: inherit; }
+    .markdown-content h1, .markdown-content h2, .markdown-content h3 { font-weight: 700; color: #0f172a; margin-top: 1.5em; margin-bottom: 0.5em; }
+    .markdown-content h1 { font-size: 1.5em; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.3em; }
+    .markdown-content h2 { font-size: 1.25em; }
+    .markdown-content a { color: #3b82f6; text-decoration: underline; }
+    .markdown-content table { width: 100%; border-collapse: collapse; margin: 1em 0; }
+    .markdown-content th, .markdown-content td { border: 1px solid #e2e8f0; padding: 0.5rem; text-align: left; }
+    .markdown-content th { background-color: #f8fafc; font-weight: 600; }
 </style>
 {% endblock %}

@@ -9,15 +9,40 @@ class System(models.Model):
         ('SUSP', '중단'),
         ('DISC', '폐기'),
     )
+    TYPE_CHOICES = (
+        ('SAM', '일반'),
+        ('SEC', '보안'),
+    )
 
     name = models.CharField(max_length=100, verbose_name='시스템명')
-    code = models.CharField(max_length=50, unique=True, verbose_name='시스템코드')
+    system_type = models.CharField(max_length=10, choices=TYPE_CHOICES, default='SAM', verbose_name='시스템구분')
+    code = models.CharField(max_length=50, unique=True, verbose_name='시스템코드', blank=True)
     description = models.TextField(blank=True, verbose_name='설명')
     manager = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='담당자', related_name='managed_systems')
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='OPER', verbose_name='상태')
     launch_date = models.DateField(null=True, blank=True, verbose_name='오픈일')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    def save(self, *args, **kwargs):
+        if not self.code:
+            # 채번 로직: SAM-NNN 또는 SEC-NNN
+            prefix = self.system_type
+            last_system = System.objects.filter(code__startswith=f"{prefix}-").order_by('-code').first()
+            
+            if last_system:
+                try:
+                    # 마지막 번호 추출 (SAM-005 -> 5)
+                    last_num = int(last_system.code.split('-')[1])
+                    new_num = last_num + 1
+                except (IndexError, ValueError):
+                    new_num = 1
+            else:
+                new_num = 1
+            
+            self.code = f"{prefix}-{new_num:03d}"
+            
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.name
@@ -34,6 +59,7 @@ class Contract(models.Model):
         ('BUILD', '구축'),
         ('MAINT', '유지보수'),
         ('LICENSE', '라이선스'),
+        ('USEGE', '사용료'),
         ('ETC', '기타'),
     )
 
@@ -47,6 +73,9 @@ class Contract(models.Model):
     content = models.TextField(blank=True, verbose_name='계약내용')
     file = models.FileField(upload_to='contracts/%Y/%m/', null=True, blank=True, verbose_name='계약서 파일')
     related_contracts = models.ManyToManyField('self', blank=True, symmetrical=True, verbose_name='연관계약')
+    is_regular_inspection = models.BooleanField(default=False, verbose_name='정기점검 대상')
+    inspection_schedule = models.JSONField(default=list, blank=True, verbose_name='정기점검 스케줄')
+    manager = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='담당자', related_name='managed_contracts')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -77,6 +106,24 @@ class ContractAttachment(models.Model):
     class Meta:
         verbose_name = '계약 첨부파일'
         verbose_name_plural = '계약 첨부파일 목록'
+        ordering = ['-uploaded_at']
+
+
+class SystemAttachment(models.Model):
+    """시스템 첨부파일"""
+    system = models.ForeignKey(System, on_delete=models.CASCADE, related_name='attachments', verbose_name='시스템')
+    file = models.FileField(upload_to='systems/%Y/%m/', verbose_name='파일')
+    filename = models.CharField(max_length=255, verbose_name='파일명')
+    uploaded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='업로더')
+    uploaded_at = models.DateTimeField(auto_now_add=True, verbose_name='업로드일시')
+    description = models.TextField(blank=True, verbose_name='설명')
+
+    def __str__(self):
+        return f"{self.system.name} - {self.filename}"
+
+    class Meta:
+        verbose_name = '시스템 첨부파일'
+        verbose_name_plural = '시스템 첨부파일 목록'
         ordering = ['-uploaded_at']
 
 

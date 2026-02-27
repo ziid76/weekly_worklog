@@ -5,10 +5,7 @@ import os
 
 # --- 설정 변수 ---
 BASE_URL = "https://api.kakaowork.com/v1"
-# 중요: 실제 운영 환경에서는 API 토큰을 코드에 직접 하드코딩하지 않는 것이 좋습니다.
-# 환경 변수나 별도의 설정 파일을 사용하는 것을 권장합니다.
-BEARER_TOKEN = "ee849873.7ca4173b8adb45d9b3d6e284200a4798"
-# BEARER_TOKEN = os.getenv("KAKAOWORK_TOKEN") 
+BEARER_TOKEN = os.getenv("KAKAOWORK_TOKEN") 
 
 # --- API 요청 헤더 ---
 HEADERS = {

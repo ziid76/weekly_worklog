@@ -1,55 +1,89 @@
-{% extends 'base.html' %}
+{% extends 'basic.html' %}
 
-{% block title %}카테고리 관리 - 업무 관리 시스템{% endblock %}
+{% block page_name %}카테고리 관리{% endblock %}
 
 {% block content %}
+<div class="flex flex-col gap-8">
+    <!-- Header Section -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div class="flex flex-col gap-1">
+            <h1 class="text-3xl font-extrabold tracking-tight text-slate-900">카테고리 설정</h1>
+            <p class="text-slate-500 font-medium text-sm">업무 분류를 위한 카테고리를 관리합니다.</p>
+        </div>
+        <div class="flex items-center gap-3">
+            <a href="{% url 'category_create' %}" class="flex items-center gap-2 px-6 py-2.5 rounded-full bg-primary text-white font-bold hover:bg-primary/90 transition-all text-sm shadow-lg shadow-primary/20">
+                <span class="material-symbols-outlined text-[18px]">add</span>
+                카테고리 추가
+            </a>
+        </div>
+    </div>
 
-<div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                <h4 class="card-title mb-0"><i class="fas fa-tags me-2"></i>카테고리 관리</h4>
-                <a href="{% url 'category_create' %}" class="scl-btn"><i class="fas fa-plus"></i>새 카테고리 추가</a>
-            </div>
-    <div class="card-body">
-        <div class="table-responsive">
-            <table class="table table-hover">
+    <!-- Table Section -->
+    <div class="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden text-slate-900">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
                 <thead>
-                    <tr>
-                        <th>색상</th>
-                        <th>카테고리명</th>
-                        <th>생성일</th>
-                        <th>작업</th>
+                    <tr class="bg-slate-50/50 border-b border-slate-100">
+                        <th class="px-8 py-5 text-[10px] font-bold text-slate-400 uppercase tracking-widest">색상</th>
+                        <th class="px-8 py-5 text-[10px] font-bold text-slate-400 uppercase tracking-widest">카테고리명</th>
+                        <th class="px-8 py-5 text-[10px] font-bold text-slate-400 uppercase tracking-widest">중점과제</th>
+                        <th class="px-8 py-5 text-[10px] font-bold text-slate-400 uppercase tracking-widest">생성일</th>
+                        <th class="px-8 py-5 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">작업</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody class="divide-y divide-slate-50">
                     {% for category in categories %}
-                        <tr>
-                            <td>
-                                <span class="badge" style="background-color: {{ category.color }}; width: 20px; height: 20px; border-radius: 50%;">&nbsp;</span>
-                            </td>
-                            <td>
-                                <span class="badge" style="background-color: {{ category.color }}">
-                                    {{ category.name }}
-                                </span>
-                            </td>
-                            <td>{{ category.created_at|date:"Y-m-d" }}</td>
-                            <td>
-                                <div class="btn-group btn-group-sm">
-                                    <button class="scl-btn scl-btn-sm" onclick="editCategory({{ category.id }}, '{{ category.name }}', '{{ category.color }}')">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                    <button class="scl-btn-outline scl-btn-sm" onclick="deleteCategory({{ category.id }}, '{{ category.name }}')">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
+                    <tr class="hover:bg-slate-50/50 transition-colors group">
+                        <td class="px-8 py-5">
+                            <div class="w-6 h-6 rounded-full border-2 border-white shadow-sm ring-1 ring-slate-100" style="background-color: {{ category.color }}"></div>
+                        </td>
+                        <td class="px-8 py-5">
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold text-white shadow-sm" style="background-color: {{ category.color }}">
+                                {{ category.name }}
+                            </span>
+                        </td>
+                        <td class="px-8 py-5 text-xs font-bold text-slate-500">
+                            {% if category.is_key_task %}
+                                <span class="inline-flex items-center px-2 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-black">Y</span>
+                            {% else %}
+                                <span class="text-slate-300">-</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-8 py-5 text-xs font-bold text-slate-500">
+                            {{ category.created_at|date:"Y.m.d" }}
+                        </td>
+                        <td class="px-8 py-5 text-right">
+                            <div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button type="button" 
+                                        data-id="{{ category.id }}" 
+                                        data-name="{{ category.name }}" 
+                                        data-color="{{ category.color }}"
+                                        onclick="handleEdit(this)"
+                                        class="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-primary hover:border-primary transition-all">
+                                    <span class="material-symbols-outlined text-[16px]">edit</span>
+                                </button>
+                                <button type="button" 
+                                        data-id="{{ category.id }}" 
+                                        data-name="{{ category.name }}"
+                                        onclick="handleDelete(this)"
+                                        class="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-rose-500 hover:border-rose-500 transition-all">
+                                    <span class="material-symbols-outlined text-[16px]">delete</span>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
                     {% empty %}
-                        <tr>
-                            <td colspan="4" class="text-center p-5">
-                                <p class="h5 text-muted">카테고리가 없습니다.</p>
-                                <p class="text-muted">'새 카테고리 추가'를 클릭하여 시작하세요.</p>
-                            </td>
-                        </tr>
+                    <tr>
+                        <td colspan="5" class="px-8 py-20 text-center">
+                            <div class="flex flex-col items-center justify-center gap-4 text-slate-300">
+                                <span class="material-symbols-outlined text-5xl">category</span>
+                                <div class="flex flex-col gap-1">
+                                    <p class="text-sm font-bold text-slate-500">등록된 카테고리가 없습니다.</p>
+                                    <p class="text-xs text-slate-400">새로운 카테고리를 추가하여 업무를 분류해보세요.</p>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
                     {% endfor %}
                 </tbody>
             </table>
@@ -57,58 +91,65 @@
     </div>
 </div>
 
-<!-- 편집 모달 -->
-<div class="modal fade" id="editModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">카테고리 편집</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+<!-- Edit Modal -->
+<div id="editModal" class="fixed inset-0 z-[100] hidden overflow-hidden">
+    <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity" onclick="closeModal()"></div>
+    <div class="flex min-h-full items-center justify-center p-4">
+        <div class="relative w-full max-w-md bg-white rounded-[2.5rem] shadow-2xl overflow-hidden border border-slate-100">
+            <div class="px-8 py-6 border-b border-slate-50 bg-slate-50/50 flex items-center justify-between">
+                <h3 class="text-lg font-extrabold text-slate-900 tracking-tight">카테고리 편집</h3>
+                <button onclick="closeModal()" class="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
             </div>
-            <form id="editForm">
-                <div class="modal-body">
-                    {% csrf_token %}
-                    <div class="mb-3">
-                        <label for="editName" class="form-label">카테고리명</label>
-                        <input type="text" class="form-control" id="editName" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="editColor" class="form-label">색상</label>
-                        <input type="color" class="form-control" id="editColor" required>
-                    </div>
+            <form id="editForm" class="p-8 flex flex-col gap-6">
+                {% csrf_token %}
+                <div class="flex flex-col gap-2 text-slate-900">
+                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">카테고리명</label>
+                    <input type="text" id="editName" required class="w-full h-12 bg-slate-50 border border-slate-200 rounded-2xl px-4 text-sm font-bold text-slate-700 focus:bg-white focus:ring-4 focus:ring-primary/10 focus:border-primary/30 transition-all outline-none">
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="scl-btn-outline" data-bs-dismiss="modal">취소</button>
-                    <button type="submit" class="scl-btn">저장</button>
+                <div class="flex flex-col gap-2 text-slate-900">
+                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">색상 선택</label>
+                    <input type="color" id="editColor" required class="w-full h-12 bg-slate-50 border border-slate-200 rounded-2xl px-1 py-1 cursor-pointer focus:bg-white transition-all outline-none">
+                </div>
+
+                <div class="flex items-center gap-3 pt-4">
+                    <button type="button" onclick="closeModal()" class="flex-1 h-12 rounded-2xl bg-slate-100 text-slate-500 font-bold text-sm hover:bg-slate-200 transition-all">취소</button>
+                    <button type="submit" class="flex-1 h-12 rounded-2xl bg-slate-900 text-white font-bold text-sm hover:bg-slate-800 transition-all shadow-lg shadow-slate-200">저장하기</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
-{% endblock %}
 
-{% block extra_js %}
 <script>
 let currentCategoryId = null;
 
-function editCategory(id, name, color) {
-    currentCategoryId = id;
-    document.getElementById('editName').value = name;
-    document.getElementById('editColor').value = color;
-    new bootstrap.Modal(document.getElementById('editModal')).show();
+function handleEdit(btn) {
+    currentCategoryId = btn.dataset.id;
+    document.getElementById('editName').value = btn.dataset.name;
+    document.getElementById('editColor').value = btn.dataset.color;
+    document.getElementById('editModal').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
 }
 
-function deleteCategory(id, name) {
+function handleDelete(btn) {
+    const id = btn.dataset.id;
+    const name = btn.dataset.name;
     if (confirm(`'${name}' 카테고리를 삭제하시겠습니까?`)) {
-        // 실제 삭제 로직은 별도 구현 필요
-        alert('삭제 기능은 추후 구현 예정입니다.');
+        alert('삭제 기능은 백엔드 구현이 필요합니다.');
     }
+}
+
+function closeModal() {
+    document.getElementById('editModal').classList.add('hidden');
+    document.body.style.overflow = '';
 }
 
 document.getElementById('editForm').addEventListener('submit', function(e) {
     e.preventDefault();
-    // 실제 편집 로직은 별도 구현 필요
-    alert('편집 기능은 추후 구현 예정입니다.');
+    alert('편집 기능은 백엔드 구현이 필요합니다.');
+    closeModal();
 });
 </script>
 {% endblock %}

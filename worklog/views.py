@@ -7,9 +7,9 @@ from django.views.generic import ListView, CreateView, UpdateView, DeleteView, D
 from django.contrib import messages
 from django.http import HttpResponse, JsonResponse
 from django.db.models import Q
-from .models import Worklog, WorklogFile, WorklogTask
+from .models import Worklog, WorklogFile
 from reports.models import WeeklyReport, WeeklyReportPersonalComment
-from .forms import WorklogForm, WorklogFileForm, WorklogTaskForm
+from .forms import WorklogForm, WorklogFileForm
 from task.models import Task
 from app.services import generate_writing_guide
 import json
@@ -311,6 +311,9 @@ class WorklogCreateView(LoginRequiredMixin, CreateView):
             logger.info("Calling super().form_valid()")
             result = super().form_valid(form)
             
+            # 리포트 자동 생성/확인
+            WeeklyReport.ensure_report(form.instance.year, form.instance.week_number, self.request.user)
+            
             messages.success(self.request, '주간업무가 성공적으로 생성되었습니다.')
             logger.info("Worklog created successfully")
             return result
@@ -323,107 +326,6 @@ class WorklogCreateView(LoginRequiredMixin, CreateView):
     def get_success_url(self):
         return reverse('worklog_list')
 
-
-
-@login_required
-def worklog_add_task(request, worklog_id):
-    """주간업무에 Task 추가"""
-    print(f"DEBUG: worklog_add_task called with worklog_id={worklog_id}")
-    print(f"DEBUG: request.method={request.method}")
-    
-    try:
-        worklog = get_object_or_404(Worklog, id=worklog_id, author=request.user)
-        print(f"DEBUG: Found worklog: {worklog}")
-        
-        if request.method == 'POST':
-            form = WorklogTaskForm(request.POST, user=request.user, worklog=worklog)
-            print(f"DEBUG: Form created, is_valid={form.is_valid()}")
-            
-            if form.is_valid():
-                worklog_task = form.save(commit=False)
-                worklog_task.worklog = worklog
-                worklog_task.save()
-                messages.success(request, f'업무 "{worklog_task.task.title}"가 주간업무에 추가되었습니다.')
-                print(f"DEBUG: Task added successfully: {worklog_task.task.title}")
-            else:
-                messages.error(request, '업무 추가에 실패했습니다.')
-                print(f"DEBUG: Form errors: {form.errors}")
-        
-        return redirect('worklog_update', pk=worklog.id)
-        
-    except Exception as e:
-        print(f"DEBUG: Exception occurred: {e}")
-        messages.error(request, f'오류가 발생했습니다: {str(e)}')
-        return redirect('worklog_list')
-
-@login_required
-def worklog_remove_task(request, worklog_id, task_id):
-    """주간업무에서 Task 제거"""
-    try:
-        worklog = get_object_or_404(Worklog, id=worklog_id, author=request.user)
-        worklog_task = get_object_or_404(WorklogTask, worklog=worklog, task_id=task_id)
-        
-        if request.method == 'POST':
-            task_title = worklog_task.task.title
-            worklog_task.delete()
-            messages.success(request, f'업무 "{task_title}"가 주간업무에서 제거되었습니다.')
-        
-        return redirect('worklog_update', pk=worklog.id)
-        
-    except Exception as e:
-        messages.error(request, f'업무 제거 중 오류가 발생했습니다: {str(e)}')
-        return redirect('worklog_list')
-
-@login_required
-def worklog_update_task(request, worklog_id, task_id):
-    """주간업무 Task 상태 업데이트"""
-    try:
-        worklog = get_object_or_404(Worklog, id=worklog_id, author=request.user)
-        worklog_task = get_object_or_404(WorklogTask, worklog=worklog, task_id=task_id)
-        
-        if request.method == 'POST':
-            form = WorklogTaskForm(request.POST, instance=worklog_task, user=request.user, worklog=worklog)
-            if form.is_valid():
-                form.save()
-                messages.success(request, '업무 상태가 업데이트되었습니다.')
-            else:
-                messages.error(request, '업무 상태 업데이트에 실패했습니다.')
-        
-        return redirect('worklog_update', pk=worklog.id)
-        
-    except Exception as e:
-        messages.error(request, f'업무 상태 업데이트 중 오류가 발생했습니다: {str(e)}')
-        return redirect('worklog_list')
-
-@login_required
-def get_user_tasks_api(request):
-    """사용자의 업무 목록을 JSON으로 반환 (AJAX용)"""
-    search = request.GET.get('search', '')
-    
-    # 사용자가 작성했거나 담당자로 지정된 업무들
-    tasks = Task.objects.filter(
-        Q(author=request.user) | Q(assigned_to=request.user)
-    ).distinct()
-    
-    if search:
-        tasks = tasks.filter(
-            Q(title__icontains=search) | Q(description__icontains=search)
-        )
-    
-    tasks = tasks.order_by('-created_at')[:20]  # 최근 20개만
-    
-    task_list = []
-    for task in tasks:
-        task_list.append({
-            'id': task.id,
-            'title': task.title,
-            'status': task.get_status_display(),
-            'priority': task.get_priority_display(),
-            'due_date': task.due_date.strftime('%Y-%m-%d') if task.due_date else None,
-            'category': task.category.name if task.category else None,
-        })
-    
-    return JsonResponse({'tasks': task_list})
 
 @login_required
 def copy_worklog_api(request, worklog_id):
@@ -486,6 +388,8 @@ class WorklogUpdateView(LoginRequiredMixin, UpdateView):
 
     def form_valid(self, form):
         response = super().form_valid(form)
+        # 리포트 자동 생성/확인 (수정 시에도 혹시 누락되었을 경우를 대비)
+        WeeklyReport.ensure_report(self.object.year, self.object.week_number, self.request.user)
         messages.success(self.request, '주간업무가 성공적으로 수정되었습니다.')
         return response
 
@@ -554,12 +458,8 @@ def download_worklog_file(request, file_id):
         if not content_type:
             content_type = 'application/octet-stream'
         
-        response = HttpResponse(worklog_file.file.read(), content_type=content_type)
-        
-        # 파일명 인코딩 처리 (한글 및 특수문자 지원)
-        encoded_filename = quote(worklog_file.original_name.encode('utf-8'))
-        response['Content-Disposition'] = f'attachment; filename*=UTF-8\'\'{encoded_filename}'
-        
+        from django.http import FileResponse
+        response = FileResponse(worklog_file.file.open('rb'), content_type=content_type, as_attachment=True, filename=worklog_file.original_name)
         return response
     except Exception as e:
         messages.error(request, '파일 다운로드 중 오류가 발생했습니다.')

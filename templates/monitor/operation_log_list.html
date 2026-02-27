@@ -1,376 +1,423 @@
-{% extends "base.html" %}
+{% extends 'basic.html' %}
 {% load static %}
 {% load monitor_filters %}
 
-{% block page_name %}
-시스템점검일지 목록
-{% endblock %}
+{% block page_name %}시스템점검일지 목록{% endblock %}
 
 {% block content %}
-  <div class="d-flex justify-content-start mb-3 border bg-white p-3">
-      <form method="get" id="monthForm">
-          <label for="monthPicker" class="me-2 fw-bold">조회 월</label>
-          <input type="month" id="monthPicker" name="month" value="{{ selected_month }}" class="form-control d-inline-block" style="width:200px;">
-      </form>
-  </div>
-  <div class="table-responsive border bg-white p-3 mb-3">
-
-    <div class="   border bg-white p-3 table-responsive mt-2">
-      <table id="monitor_table" class="display nowrap text-center">
-          <thead>
-              <tr>
-                  <th>일자</th>
-                  <th>완료여부</th>
-                  <th>담당자</th>
-                  {% for category in categories %}
-                  <th>{{ category.name }}</th>
-                  {% endfor %}
-                  <th>검토완료일시</th>
-                  <th>승인일시</th>
-              </tr>
-          </thead>
-          <tbody>
-          {% for log in logs %}
-              <tr>
-                  <td class=""> <a href="{% url 'operation_log_detail' log.id %}"><button class="scl-btn scl-btn-thin-outline scl-btn-sm rounded-pill" >{{ log.date }} </button></a></td>
-                  <td><span style="color: 
-                    {% if  log.approved %}Mediumslateblue{% else %}{% if  log.completed %}Limegreen{% else %}{% if log.check_complete %}Tomato {% else %} Tan {% endif %}{% endif %} 
-                    {% endif %};"><i class="fas fa-regular fa-circle legend-icon"></i></span>
-                  </td>
-                  
-                  <td>{{ log.duty_user.profile.display_name }}</td>
-                  
-                  {% for category in categories %}
-                    {% with entry=log_entries_map|get_item:log.id|get_item:category.id %}
-                    <td>
-                        {% if entry and entry.is_checked %}
-                          {% if entry.has_trouble %}
-                          <button class="scl-btn-icon-red scl-btn-28">
-                          {% else %}
-                          <button class="scl-btn-icon scl-btn-28">
-                          {% endif %}
-                          <span class="material-icons">check</span></button>
-                        {% else %}
-                        <button type="button" class="scl-btn-icon-outline scl-btn-28" data-bs-toggle="modal" data-bs-target="#monitoringModal" data-month="{{selected_month}}" data-id="{{ log.id }}" data-category="{{ category.id }}"><span class="material-icons">add</span></button>                
-                        {% endif %}
-                    </td>
-                    {% endwith %}
-                  {% endfor %}
-                  
-                  <td>{{ log.completed_at|date:'Y-m-d H:i' }}</td>
-                  <td>{{ log.approved_at|date:'Y-m-d H:i' }}</td>
-              </tr>
-          {% empty %}
-              <tr><td colspan="12" class="text-center">데이터가 없습니다.</td></tr>
-          {% endfor %}
-          </tbody>
-      </table>
-    </div>
-    <div class="legend p-3">
-      <div class="legend-item">
-        <i class="fas fa-circle legend-icon" style="color:Mediumslateblue;"></i>
-        최종완료
-      </div>
-      <div class="legend-item">
-        <i class="fas fa-circle legend-icon" style="color: Limegreen;"></i>
-        승인요청
-      </div>
-      <div class="legend-item">
-        <i class="fas fa-circle legend-icon" style="color: tomato;"></i>
-        점검완료
-      </div>
-      <div class="legend-item">
-        <i class="fas fa-circle legend-icon" style="color: Tan;"></i>
-        점검 중
-      </div>
-    </div>
-  </div>
-
-<div class="modal fade" id="monitoringModal" tabindex="-1" aria-labelledby="monitoringModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered modal-xl">
-    <div class="modal-content custom-modal">
-      <form id="operationLogForm" method="post" action="{% url 'operation_log_add' %}" enctype="multipart/form-data">
-        {% csrf_token %}
-        <div class="modal-header border-0 pb-0">
-          <h5 class="modal-title fw-semibold" id="monitoringModalLabel">일일점검</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+<div class="flex flex-col gap-8">
+    <!-- Header/Filter Section -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div class="flex flex-col gap-1">
+            <h1 class="text-3xl font-extrabold tracking-tight text-slate-900">시스템점검일지</h1>
+            <p class="text-slate-500 font-medium text-sm">일일 시스템 점검 현황 및 결과를 확인합니다.</p>
         </div>
 
-        <div class="modal-body">
-          <!-- 카테고리 정보 -->
-          <input type="hidden" name="selected_month" id="modalSelectedMonth">
-          <input type="hidden" name="log_id" id="modalHiddenId">
-          <input type="hidden" name="category_id" id="modalHiddenCategory">
-          
-          <!-- 점검내용 -->
-          <section class="section-block">
-            <h6 class="section-title">점검내용</h6>
-              <input class="form-check-input" type="checkbox" value="1" id="hasTrouble" name="has_trouble">
-              <label class="form-check-label fw-medium" for="hasTrouble">
-                <h6>장애/오류 발생</h6>
-             </label>
-            <div class="form-group mt-3">
-              <textarea id="monitor_log" name="monitor_log" class="form-control rounded-3" rows="6">{{desc|safe}}</textarea>
-            </div>
-          </section>
-          
-          <!-- 하위 카테고리 -->
-          <section class="section-block mt-3" id="subcategoriesSection" style="display: none;">
-            <h6 class="section-title">하위 점검항목</h6>
-            <div class="mt-3" id="subcategoriesContainer">
-              <!-- 하위 카테고리 항목들이 여기에 동적으로 추가됩니다 -->
-            </div>
-          </section>
-
-          <!-- 첨부파일 -->
-          <section class="section-block mt-3">
-            <h6 class="section-title">첨부파일</h6>
-            <div class="mt-3">
-              <input type="file" id="fileInput" name="attachments" class="form-control d-none">
-              <button type="button" class="scl-btn scl-btn-outline scl-btn-sm mt-2" id="addFileBtn">파일 추가</button>
-              <ul class="list-group mt-2" id="fileList"></ul>
-            </div>
-          </section>
-
-          <!-- 점검완료 체크 -->
-          <section class="section-block mt-3">
-            <div class="form-check d-flex justify-content-center gap-3">
-              <input class="form-check-input" type="checkbox" value="1" id="checkComplete" name="is_checked" checked>
-              <label class="form-check-label fw-medium" for="checkComplete">
-                <h6>일일점검을 완료하였습니다.</h6>
-              </label>
-            </div>
-          </section>
+    <!-- Legend Section -->
+    <div class="flex flex-wrap items-center bg-white gap-6 px-8 py-4 rounded-2xl border border-slate-100">
+        <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)]"></span>
+            <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">최종완료</span>
         </div>
-
-        <div class="modal-footer border-0 pt-0">
-          <button type="button" class="scl-btn scl-btn-outline scl-btn-sm" data-bs-dismiss="modal">취소</button>
-          <button type="submit" class="scl-btn scl-btn-primary scl-btn-sm">저장</button>
+        <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></span>
+            <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">승인요청</span>
         </div>
-      </form>
+        <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]"></span>
+            <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">점검완료</span>
+        </div>
+        <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-slate-300"></span>
+            <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">점검 중</span>
+        </div>
     </div>
-  </div>
+    <div class="bg-white px-6 py-3 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
+            <form method="get" id="monthForm" class="flex items-center gap-3">
+                <label for="monthPicker" class="text-xs font-bold text-slate-400 uppercase tracking-wider">조회 월</label>
+                <input type="month" id="monthPicker" name="month" value="{{ selected_month }}" 
+                       class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-sm font-bold text-slate-700 focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-all">
+            </form>
+        </div>
+    </div>
+
+    <!-- Table Section -->
+    <div class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden text-slate-900">
+        <div class="overflow-x-auto">
+            <table id="monitor_table" class="w-full text-center border-collapse">
+                <thead class="bg-slate-50 text-slate-500 text-[10px] uppercase font-bold tracking-wider border-b border-slate-200">
+                    <tr>
+                        <th class="px-6 py-4">일자</th>
+                        <th class="px-6 py-4">담당자</th>
+                        {% for category in categories %}
+                        <th class="px-6 py-4">{{ category.name }}</th>
+                        {% endfor %}
+                        <th class="px-6 py-4">검토완료</th>
+                        <th class="px-6 py-4">최종승인</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 text-sm">
+                    {% for log in logs %}
+                    <tr class="hover:bg-slate-50/50 transition-colors group">
+                        <td class="px-6 py-4 whitespace-nowrap text-center">
+                            <a href="{% url 'operation_log_detail' log.id %}" 
+                               class="inline-flex items-center px-4 py-2 rounded-full border border-slate-200  
+
+                                {% if log.approved %}
+                                bg-indigo-500 text-white
+                                {% elif log.completed %}
+                                bg-emerald-500 text-white
+                                {% elif log.check_complete %}
+                                bg-rose-500 text-white
+                                {% else %}
+                                 bg-slate-50 text-slate-600
+                                {% endif %}
+
+
+ font-bold hover:transition-all text-xs">
+                                {{ log.date }}
+                            </a>
+                        </td>
+                        <td class="px-6 py-4 text-center whitespace-nowrap">
+                            <div class="flex items-center justify-center gap-2">
+                                <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-xs border border-slate-200">
+                                    {{ log.duty_user.username|slice:":1"|upper }}
+                                </div>
+                                <span class="font-bold text-slate-700 text-xs">{{ log.duty_user.profile.display_name }}</span>
+                            </div>
+                        </td>
+                        {% for category in categories %}
+                            {% with entry=log_entries_map|get_item:log.id|get_item:category.id %}
+                            <td class="px-6 py-4 whitespace-nowrap text-center">
+                                {% if entry and entry.is_checked %}
+                                    <button class="w-8 h-8 rounded-full inline-flex items-center justify-center transition-all {% if entry.has_trouble %}bg-rose-50 text-rose-500 border border-rose-100 font-extrabold{% else %}bg-emerald-50 text-emerald-500 border border-emerald-100{% endif %}">
+                                        <span class="material-symbols-outlined text-[18px]">check</span>
+                                    </button>
+                                {% else %}
+                                    <button type="button" 
+                                            class="w-8 h-8 rounded-full inline-flex items-center justify-center border border-slate-200 text-slate-300 hover:border-primary hover:text-primary hover:bg-primary/5 transition-all group-hover:border-slate-300 group-hover:text-slate-400" 
+                                            onclick="openMonitoringModal(this)" 
+                                            data-month="{{ selected_month }}" data-id="{{ log.id }}" 
+                                            data-category="{{ category.id }}" data-category-name="{{ category.name }}">
+                                        <span class="material-symbols-outlined text-[18px]">add</span>
+                                    </button>                
+                                {% endif %}
+                            </td>
+                            {% endwith %}
+                        {% endfor %}
+                        <td class="px-6 py-4 whitespace-nowrap text-slate-500 font-bold text-[11px] font-mono text-center">
+                            {{ log.completed_at|date:'m-d H:i'|default:"-" }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-slate-500 font-bold text-[11px] font-mono text-center">
+                            {{ log.approved_at|date:'m-d H:i'|default:"-" }}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="{{ categories.count|add:5 }}" class="px-6 py-20 text-center">
+                            <div class="flex flex-col items-center gap-3">
+                                <span class="material-symbols-outlined text-slate-200 text-6xl">event_busy</span>
+                                <p class="text-slate-400 font-bold">점검 로그 데이터가 없습니다.</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+
+</div>
+
+<!-- Refactored Monitoring Modal -->
+<div id="monitoringModal" class="relative z-50 hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <!-- Backdrop -->
+    <div class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm transition-opacity" onclick="closeMonitoringModal()"></div>
+
+    <!-- Modal Panel -->
+    <div class="fixed inset-0 z-10 w-screen overflow-y-auto">
+        <div class="flex min-h-full items-center justify-center p-4 text-center sm:p-0">
+            <div class="relative transform overflow-hidden rounded-[2rem] bg-white text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-4xl border border-slate-100">
+                <form id="operationLogForm" method="post" action="{% url 'operation_log_add' %}" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <div class="border-b border-slate-100 bg-slate-50/50 px-8 py-6 flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center">
+                                <span class="material-symbols-outlined text-primary text-[24px]">task_alt</span>
+                            </div>
+                            <h3 class="text-xl font-extrabold text-slate-900 tracking-tight" id="modal-title">일일 시스템 점검</h3>
+                        </div>
+                        <button type="button" class="text-slate-400 hover:text-slate-500 transition-colors" onclick="closeMonitoringModal()">
+                            <span class="material-symbols-outlined">close</span>
+                        </button>
+                    </div>
+
+                    <div class="p-8 space-y-8">
+                        <input type="hidden" name="selected_month" id="modalSelectedMonth">
+                        <input type="hidden" name="log_id" id="modalHiddenId">
+                        <input type="hidden" name="category_id" id="modalHiddenCategory">
+                        
+                        <!-- 점검내용 Section -->
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between">
+                                <h6 class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-[18px]">history_edu</span>
+                                    점검 결과
+                                </h6>
+                                <label class="flex items-center gap-2 cursor-pointer group">
+                                    <span class="text-xs font-bold text-slate-600 group-hover:text-rose-500 transition-colors">장애/오류 발생</span>
+                                    <input type="checkbox" value="1" name="has_trouble" class="w-4 h-4 rounded border-slate-200 text-rose-500 focus:ring-rose-200 transition-all">
+                                </label>
+                            </div>
+                            <div class="border border-slate-200 rounded-md overflow-hidden shadow-sm">
+                                <textarea id="monitor_log" name="monitor_log" class="form-control">{{ desc|safe }}</textarea>
+                            </div>
+                        </div>
+                        
+                        <!-- 하위 카테고리 Section -->
+                        <div id="subcategoriesSection" style="display: none;" class="space-y-4 pt-6 border-t border-slate-100">
+                            <h6 class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                                <span class="material-symbols-outlined text-[18px]">list_alt</span>
+                                세부 점검 항목
+                            </h6>
+                            <div id="subcategoriesContainer" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <!-- Dynamically added -->
+                            </div>
+                        </div>
+
+                        <!-- 첨부파일 Section -->
+                        <div class="space-y-4 pt-6 border-t border-slate-100">
+                            <div class="flex items-center justify-between">
+                                <h6 class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-[18px]">attach_file</span>
+                                    첨부파일
+                                </h6>
+                                <button type="button" id="addFileBtn" 
+                                        class="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-100 transition-all">
+                                    <span class="material-symbols-outlined text-[16px]">add</span>
+                                    파일 추가
+                                </button>
+                            </div>
+                            <input type="file" id="fileInput" name="attachments" class="hidden">
+                            <div id="fileList" class="flex flex-wrap gap-2">
+                                <!-- Dynamically added tags -->
+                            </div>
+                        </div>
+
+                        <!-- Confirmation -->
+                        <div class="pt-8 border-t border-slate-100">
+                            <label class="flex items-center justify-center gap-3 p-4 bg-emerald-50 rounded-md border border-emerald-100 cursor-pointer group">
+                                <input type="checkbox" value="1" id="checkComplete" name="is_checked" checked 
+                                       class="w-5 h-5 rounded border-emerald-300 text-emerald-600 focus:ring-emerald-200 transition-all">
+                                <span class="text-sm font-bold text-emerald-700">본 일일 점검을 완료하였음을 확약합니다.</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="border-t border-slate-100 bg-slate-50/50 px-8 py-5 flex justify-end gap-3">
+                        <button type="button" class="px-6 py-2.5 rounded-full border border-slate-200 text-slate-600 hover:bg-slate-50 font-bold transition-all text-sm" onclick="closeMonitoringModal()">취소</button>
+                        <button type="submit" class="px-8 py-2.5 rounded-full bg-slate-900 text-white hover:bg-slate-800 font-bold shadow-lg shadow-slate-200/50 transition-all text-sm">
+                            저장하기
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}
+
 {% block extra_js %}
-
 <script>
-document.getElementById('monthPicker').addEventListener('change', function(){
-    document.getElementById('monthForm').submit();
-});
-</script>
-    <script type="text/javascript">
+    document.getElementById('monthPicker').addEventListener('change', function(){
+        document.getElementById('monthForm').submit();
+    });
 
-        $(document).ready(function() {
-                //var fontList = ['맑은 고딕','NotoSansKR'];
-                $('#monitor_log').summernote({ 
-                    height: 300,                 // 에디터 높이
-                    //minHeight: null,             // 최소 높이
-                    //maxHeight: null,             // 최대 높이
-                    focus: true,                  // 에디터 로딩후 포커스를 맞출지 여부
-                    lang: "ko-KR",                    // 한글 설정
-                    placeholder: '점검결과를 입력해주세요.'   , //placeholder 설정
-                    //fontNames: fontList,
-                    //fontNamesIgnoreCheck: fontList,
-                    toolbar: [
-                    //['style', ['style']],
-                    ['font', ['bold', 'underline', 'clear']],
-                    //['fontname', ['fontname']], // Add fontname to toolbar
-                    ['color', ['color']],
-                    ['para', ['ul', 'ol']],
-                    ['table', ['table']],
-                    ['insert', ['link', 'picture']],
-                    //['view', ['fullscreen', 'codeview', 'help']],
-                ],
-                });
-                $('p').css('margin-bottom','0')
-        });
-    </script>
-        <script>
-        document.addEventListener('DOMContentLoaded', () => {
-
-            const fileInput = document.getElementById('fileInput');
-            const fileList = document.getElementById('fileList');
-            const addFileBtn = document.getElementById('addFileBtn');
-            const form = document.getElementById('operationLogForm');
-            let selectedFiles = []; // 사용자가 선택한 파일들을 저장할 배열
-
-            addFileBtn.addEventListener('click', () => {
-              fileInput.click();
-            });
-
-            fileInput.addEventListener('change', () => {
-              const files = Array.from(fileInput.files);
-              files.forEach(file => {
-                if (selectedFiles.some(f => f.name === file.name)) {
-                  alert(`${file.name} 은 이미 추가되었습니다.`);
-                  return;
+    $(document).ready(function() {
+        $('#monitor_log').summernote({ 
+            height: 250,
+            lang: "ko-KR",
+            dialogsInBody: true,
+            toolbar: [
+                ['style', ['bold', 'underline', 'clear']],
+                ['color', ['color']],
+                ['para', ['ul', 'ol']],
+                ['insert', ['link', 'picture']],
+            ],
+            styleTags: ['p', 'h4', 'h5', 'h6'],
+            callbacks: {
+                onInit: function() {
+                    $('.note-editor').addClass('border-0 shadow-none');
+                    $('.note-toolbar').addClass('bg-slate-50 border-b border-slate-100 rounded-t-md px-4 py-2');
+                    $('.note-editing-area').addClass('bg-white');
+                    $('.note-statusbar').hide();
                 }
+            }
+        });
 
+        // Fix for focus conflict when opening Summernote dialogs inside a modal
+        $(document).on('show.bs.modal', function() {
+            $(this).removeAttr('tabindex');
+        });
+    });
+
+    // Custom Modal Functions
+    function openMonitoringModal(button) {
+        // Extract data
+        const month = button.getAttribute('data-month');
+        const id = button.getAttribute('data-id');
+        const category = button.getAttribute('data-category');
+        const categoryName = button.getAttribute('data-category-name');
+
+        // Set inputs
+        document.getElementById('modalSelectedMonth').value = month;
+        document.getElementById('modalHiddenId').value = id;
+        document.getElementById('modalHiddenCategory').value = category;
+        
+        // Update Modal Title
+        document.getElementById('modal-title').textContent = categoryName;
+
+        // Load specific category data
+        loadSubcategories(category);
+
+        // Show modal
+        const modal = document.getElementById('monitoringModal');
+        modal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeMonitoringModal() {
+        const modal = document.getElementById('monitoringModal');
+        modal.classList.add('hidden');
+        document.body.style.overflow = '';
+        
+        // Optional: clear form
+    }
+
+    // Close on Escape
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            closeMonitoringModal();
+        }
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const fileInput = document.getElementById('fileInput');
+        const fileListDisplay = document.getElementById('fileList');
+        const addFileBtn = document.getElementById('addFileBtn');
+        const form = document.getElementById('operationLogForm');
+        let selectedFiles = [];
+
+        addFileBtn.addEventListener('click', () => fileInput.click());
+
+        fileInput.addEventListener('change', () => {
+            const files = Array.from(fileInput.files);
+            files.forEach(file => {
+                if (selectedFiles.some(f => f.name === file.name)) {
+                    alert(`${file.name}은(는) 이미 추가되었습니다.`);
+                    return;
+                }
                 selectedFiles.push(file);
-
-                const li = document.createElement('li');
-                li.className = "list-group-item d-flex justify-content-between align-items-center";
-                li.textContent = file.name;
-
-                const removeBtn = document.createElement('button');
-                removeBtn.className = "scl-btn scl-btn-outline scl-btn-sm";
-                removeBtn.textContent = "삭제";
-                removeBtn.addEventListener('click', () => {
-                    selectedFiles = selectedFiles.filter(f => f.name !== file.name);
-                    updateFileList();
-                  li.remove();
-                });
-
-                li.appendChild(removeBtn);
-                fileList.appendChild(li);
-              });
-              fileInput.value = '';
+                renderFileList();
             });
-              function updateFileList() {
-                fileList.innerHTML = ""; // 리스트 초기화
-                selectedFiles.forEach(file => {
-                  const li = document.createElement('li');
-                  li.className = "list-group-item d-flex justify-content-between align-items-center";
-                  li.textContent = file.name;
+            fileInput.value = '';
+        });
 
-                  const removeBtn = document.createElement('button');
-                  removeBtn.className = "scl-btn scl-btn-outline scl-btn-sm";
-                  removeBtn.textContent = "삭제";
-                  removeBtn.addEventListener('click', () => {
-                      selectedFiles = selectedFiles.filter(f => f.name !== file.name);
-                      updateFileList();
-                    li.remove();
-                  });
+        function renderFileList() {
+            fileListDisplay.innerHTML = selectedFiles.map((file, index) => `
+                <div class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 border border-slate-200 text-xs font-bold text-slate-600">
+                    <span class="max-w-[150px] truncate text-[11px]">${file.name}</span>
+                    <button type="button" class="remove-file text-slate-400 hover:text-rose-500 transition-colors" data-index="${index}">
+                        <span class="material-symbols-outlined text-[16px]">close</span>
+                    </button>
+                </div>
+            `).join('');
 
-                  li.appendChild(removeBtn);
-                  fileList.appendChild(li);
+            document.querySelectorAll('.remove-file').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const idx = e.currentTarget.dataset.index;
+                    selectedFiles.splice(idx, 1);
+                    renderFileList();
                 });
-              }
+            });
+        }
 
-            form.addEventListener('submit', (e) => {
-              e.preventDefault();
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const formData = new FormData(form);
+            selectedFiles.forEach(file => formData.append('attachments', file));
 
-              const formData = new FormData(form);
-
-              selectedFiles.forEach(file => {
-                formData.append('attachments', file);
-              });
-
-              fetch(form.action, {
+            fetch(form.action, {
                 method: 'POST',
                 body: formData,
                 headers: {
-                  'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
                 }
-              })
-              .then(response => {
-                if (response.redirected) {
-                  window.location.href = response.url;
-                } else {
-                  return response.text();
-                }
-              })
-              .catch(error => {
-                console.error('업로드 실패:', error);
-                alert("저장 중 오류가 발생했습니다.");
-              });
-            });
-          });
-    </script>
-<script>
-    const monitoringModal = document.getElementById('monitoringModal');
-    monitoringModal.addEventListener('show.bs.modal', function (event) {
-        const button = event.relatedTarget;
-        const selectedMonth = button.getAttribute('data-month');
-        const logId = button.getAttribute('data-id');
-        const categoryId = button.getAttribute('data-category');
-        
-        // hidden input 값 업데이트 (서버로 전송용)
-        document.getElementById('modalSelectedMonth').value = selectedMonth;
-        document.getElementById('modalHiddenId').value = logId;
-        document.getElementById('modalHiddenCategory').value = categoryId;
-        
-        // 하위 카테고리 로드
-        loadSubcategories(categoryId);
+            })
+            .then(response => {
+                if (response.redirected) window.location.href = response.url;
+                else return response.text();
+            })
+            .catch(error => alert("저장 중 오류가 발생했습니다."));
+        });
     });
-    
-    function loadSubcategories(categoryId) {
+
+    function loadSubcategories(categoryId) { // Updated to simple function called by openMonitoringModal
         fetch(`/monitor/ops/subcategories/?category_id=${categoryId}`)
             .then(response => response.json())
             .then(data => {
-                const subcategoriesContainer = document.getElementById('subcategoriesContainer');
-                subcategoriesContainer.innerHTML = '';
-                
+                const container = document.getElementById('subcategoriesContainer');
+                container.innerHTML = '';
                 if (data.subcategories && data.subcategories.length > 0) {
                     document.getElementById('subcategoriesSection').style.display = 'block';
-                    
-                    data.subcategories.forEach(subcategory => {
-                        const subcategoryDiv = document.createElement('div');
-                        subcategoryDiv.className = 'card mb-3 p-3';
-                        
-                        const header = document.createElement('div');
-                        header.className = 'd-flex justify-content-between align-items-center mb-2';
-                        
-                        const title = document.createElement('h6');
-                        title.className = 'mb-0';
-                        title.textContent = subcategory.name;
-                        
-                        const checkboxDiv = document.createElement('div');
-                        checkboxDiv.className = 'form-check';
-                        
-                        const checkbox = document.createElement('input');
-                        checkbox.type = 'checkbox';
-                        checkbox.className = 'form-check-input';
-                        checkbox.id = `subcategory_check_${subcategory.id}`;
-                        checkbox.name = `subcategory_${subcategory.id}`;
-                        checkbox.value = '1';
-                        
-                        const label = document.createElement('label');
-                        label.className = 'form-check-label';
-                        label.htmlFor = `subcategory_check_${subcategory.id}`;
-                        label.textContent = '점검완료';
-                        
-                        checkboxDiv.appendChild(checkbox);
-                        checkboxDiv.appendChild(label);
-                        
-                        header.appendChild(title);
-                        header.appendChild(checkboxDiv);
-                        
-                        const textarea = document.createElement('textarea');
-                        textarea.className = 'form-control';
-                        textarea.name = `subcategory_result_${subcategory.id}`;
-                        textarea.rows = 3;
-                        textarea.placeholder = '점검 결과를 입력하세요';
-                        
-                        subcategoryDiv.appendChild(header);
-                        subcategoryDiv.appendChild(textarea);
-                        
-                        subcategoriesContainer.appendChild(subcategoryDiv);
+                    data.subcategories.forEach(sub => {
+                        const div = document.createElement('div');
+                        div.className = 'bg-slate-50/50 rounded-2xl border border-slate-200 p-4 space-y-3';
+                        div.innerHTML = `
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-bold text-slate-700">${sub.name}</span>
+                                <label class="flex items-center gap-1.5 cursor-pointer">
+                                    <input type="checkbox" name="subcategory_${sub.id}" value="1" class="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary/20">
+                                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">완료</span>
+                                </label>
+                            </div>
+                            <textarea name="subcategory_result_${sub.id}" rows="2" 
+                                      class="w-full bg-white border border-slate-100 rounded-xl px-3 py-2 text-xs font-medium focus:ring-1 focus:ring-primary outline-none" 
+                                      placeholder="점검 결과 입력..."></textarea>
+                        `;
+                        container.appendChild(div);
                     });
                 } else {
                     document.getElementById('subcategoriesSection').style.display = 'none';
                 }
-            })
-            .catch(error => {
-                console.error('하위 카테고리 로드 실패:', error);
-                document.getElementById('subcategoriesSection').style.display = 'none';
             });
     }
-</script>
 
-<script>
-$(document).ready(function() {
-  $('#monitor_table').DataTable( {
-      "searching":   false,
-      "paging":   false,
-      "info":     false,
-      "ordering": false,
-      "language": {
-          "url": "https://cdn.datatables.net/plug-ins/1.11.3/i18n/ko.json"
-      }
-  } );
-} );
+    // DataTable Initialization (Disabled default styling)
+    $(document).ready(function() {
+        $('#monitor_table').DataTable({
+            "searching": false,
+            "paging": false,
+            "info": false,
+            "ordering": false,
+            "language": { "url": "https://cdn.datatables.net/plug-ins/1.11.3/i18n/ko.json" }
+        });
+    });
 </script>
-
+<style>
+    /* Summernote Custom UI overrides */
+    .note-editor.note-frame { border: none !important; }
+    .note-placeholder { padding: 1rem !important; font-size: 0.875rem !important; font-weight: 500 !important; color: #94a3b8 !important; }
+    .note-editable { padding: 1.5rem !important; font-size: 0.875rem !important; line-height: 1.6 !important; min-height: 150px !important; }
+    
+    /* Fix Summernote dialog z-index when inside Tailwind modal */
+    .note-modal {
+        z-index: 10001 !important;
+    }
+    .note-modal-backdrop {
+        z-index: 10000 !important;
+    }
+</style>
 {% endblock %}
+

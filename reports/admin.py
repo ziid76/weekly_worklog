@@ -1,7 +1,13 @@
 from django.contrib import admin
 from django.utils.html import format_html
 from django.urls import reverse
-from .models import WeeklyReport, WeeklyReportComment, ReportReview
+from .models import (
+    WeeklyReport, 
+    WeeklyReportComment, 
+    WeeklyReportPersonalComment,
+    ReportReview,
+    TeamPerformanceAnalysis
+)
 
 @admin.register(ReportReview)
 class ReportReviewAdmin(admin.ModelAdmin):
@@ -128,3 +134,61 @@ class WeeklyReportCommentAdmin(admin.ModelAdmin):
     def content_preview(self, obj):
         return obj.content[:100] + '...' if len(obj.content) > 100 else obj.content
     content_preview.short_description = '댓글 내용'
+
+
+@admin.register(WeeklyReportPersonalComment)
+class WeeklyReportPersonalCommentAdmin(admin.ModelAdmin):
+    list_display = [
+        'report_display', 'target_user', 'created_by', 'content_preview', 'created_at'
+    ]
+    list_filter = ['created_at', 'target_user', 'created_by']
+    search_fields = ['content', 'report__title', 'target_user__username', 'created_by__username']
+    ordering = ['-created_at']
+    date_hierarchy = 'created_at'
+    
+    fieldsets = (
+        ('기본 정보', {
+            'fields': ('report', 'target_user', 'created_by')
+        }),
+        ('코멘트 내용', {
+            'fields': ('content',)
+        }),
+        ('타임스탬프', {
+            'fields': ('created_at',),
+            'classes': ('collapse',)
+        }),
+    )
+    readonly_fields = ['created_at']
+    
+    def report_display(self, obj):
+        url = reverse('admin:reports_weeklyreport_change', args=[obj.report.id])
+        return format_html(
+            '<a href="{}">{} - {}년 {}주차</a>', 
+            url, obj.report.title, obj.report.year, obj.report.week_number
+        )
+    report_display.short_description = '리포트'
+    
+    def content_preview(self, obj):
+        return obj.content[:100] + '...' if len(obj.content) > 100 else obj.content
+    content_preview.short_description = '코멘트 내용'
+
+@admin.register(TeamPerformanceAnalysis)
+class TeamPerformanceAnalysisAdmin(admin.ModelAdmin):
+    list_display = ('team', 'start_week', 'end_week', 'analysis_date', 'created_at')
+    list_filter = ('team', 'analysis_date', 'start_week', 'end_week')
+    search_fields = ('team__name', 'start_week', 'end_week')
+    ordering = ('-created_at',)
+    readonly_fields = ('created_at', 'analysis_data', 'analysis_date')
+    
+    fieldsets = (
+        ('기본 정보', {
+            'fields': ('team', 'analysis_date', ('start_week', 'end_week'))
+        }),
+        ('분석 데이터', {
+            'fields': ('analysis_data',)
+        }),
+        ('타임스탬프', {
+            'fields': ('created_at',),
+            'classes': ('collapse',)
+        }),
+    )

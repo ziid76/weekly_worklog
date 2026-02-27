@@ -1,49 +1,57 @@
 <!-- System Selector Modal -->
-<div class="modal fade" id="systemSelectorModal" tabindex="-1" aria-labelledby="systemSelectorModalLabel"
-    aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="systemSelectorModalLabel">시스템 선택</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <!-- Search Input -->
-                <div class="mb-3">
-                    <div class="input-group">
-                        <input type="text" id="systemSearchInput" class="form-control" placeholder="시스템명, 코드, 설명 검색">
-                        <button class="btn btn-outline-primary" type="button" id="systemSearchBtn">
-                            <i class="fas fa-search"></i> 검색
-                        </button>
+<div id="systemSelectorModal" class="hidden relative z-50" aria-labelledby="systemSelectorModalLabel" role="dialog" aria-modal="true" data-contract-id="{{ contract.id }}">
+    <!-- Backdrop -->
+    <div class="fixed inset-0 bg-slate-900/20 backdrop-blur-sm transition-opacity" onclick="closeSystemSelectorModal()"></div>
+
+    <div class="fixed inset-0 z-10 overflow-y-auto">
+        <div class="flex min-h-full items-center justify-center p-4 text-center sm:p-0">
+            <!-- Modal Panel -->
+            <div class="relative transform overflow-hidden rounded-md bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-4xl border border-slate-100">
+                <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                    <h3 class="text-lg font-bold text-slate-900" id="systemSelectorModalLabel">시스템 선택</h3>
+                    <button type="button" class="text-slate-400 hover:text-slate-500 transition-colors" onclick="closeSystemSelectorModal()">
+                        <span class="material-symbols-outlined text-[24px]">close</span>
+                    </button>
+                </div>
+                
+                <div class="p-6">
+                    <!-- Search Input -->
+                    <div class="mb-6">
+                        <div class="relative group">
+                            <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors">search</span>
+                            <input type="text" id="systemSearchInput" 
+                                   class="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3 pl-12 pr-4 text-sm text-slate-900 focus:border-primary focus:ring-1 focus:ring-primary placeholder:text-slate-400 outline-none transition-all shadow-sm" 
+                                   placeholder="시스템명, 코드, 설명 검색...">
+                        </div>
+                    </div>
+
+                    <!-- Systems Table -->
+                    <div class="bg-white rounded-md border border-slate-200 overflow-hidden shadow-sm min-h-[300px]">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead class="bg-slate-50 text-slate-500 text-sm uppercase font-bold tracking-wider border-b border-slate-200">
+                                    <tr>
+                                        <th class="px-6 py-3 text-center">선택</th>
+                                        <th class="px-6 py-3">시스템 정보</th>
+                                        <th class="px-6 py-3 text-center">코드</th>
+                                        <th class="px-6 py-3 text-center">담당자</th>
+                                        <th class="px-6 py-3 text-center">상태</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="systemSearchResults" class="divide-y divide-slate-100 text-sm text-slate-700">
+                                    <tr>
+                                        <td colspan="5" class="px-6 py-12 text-center text-slate-400">
+                                            <div class="flex flex-col items-center gap-2">
+                                                <span class="material-symbols-outlined animate-spin text-primary">loading</span>
+                                                <p>검색하려면 키워드를 입력하거나 '검색'을 시작하세요.</p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
-
-                <!-- Systems Table -->
-                <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead>
-                            <tr>
-                                <th>시스템명</th>
-                                <th>코드</th>
-                                <th>담당자</th>
-                                <th>상태</th>
-                                <th>선택</th>
-                            </tr>
-                        </thead>
-                        <tbody id="systemSearchResults">
-                            <tr>
-                                <td colspan="5" class="text-center py-3">검색 중...</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <!-- Pagination -->
-                <nav aria-label="System pagination">
-                    <ul class="pagination justify-content-center" id="systemPagination">
-                        <!-- Pagination will be dynamically generated -->
-                    </ul>
-                </nav>
             </div>
         </div>
     </div>
@@ -51,238 +59,197 @@
 
 <script>
     (function () {
-        let currentPage = 1;
-        let searchQuery = '';
         let selectedSystems = [];
-        const multiSelect = {{ multi_select|default:'false'|lower }};
-
         const modal = document.getElementById('systemSelectorModal');
+        const contractId = modal.dataset.contractId;
         const searchInput = document.getElementById('systemSearchInput');
-        const searchBtn = document.getElementById('systemSearchBtn');
         const searchResults = document.getElementById('systemSearchResults');
-        const pagination = document.getElementById('systemPagination');
 
-        // Load systems when modal opens
-        modal.addEventListener('shown.bs.modal', function () {
-            currentPage = 1;
-            searchQuery = '';
+        // Open Modal Function
+        window.openSystemSelectorModal = function() {
+            modal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
             searchInput.value = '';
-            loadSystems();
-        });
+            loadSystems(); // Initial load
+        };
 
-        // Search with debouncing on input
+        // Close Modal Function
+        window.closeSystemSelectorModal = function() {
+            modal.classList.add('hidden');
+            document.body.style.overflow = '';
+        };
+
+        // Search with debouncing
         let searchTimeout;
         searchInput.addEventListener('input', function () {
             clearTimeout(searchTimeout);
             searchTimeout = setTimeout(function () {
-                searchQuery = searchInput.value.trim();
-                currentPage = 1;
                 loadSystems();
             }, 300);
         });
 
-        // Search on button click
-        searchBtn.addEventListener('click', function () {
-            searchQuery = searchInput.value.trim();
-            currentPage = 1;
-            loadSystems();
-        });
-
-        // Search on Enter key
-        searchInput.addEventListener('keypress', function (e) {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                searchQuery = searchInput.value.trim();
-                currentPage = 1;
-                loadSystems();
-            }
-        });
-
         // Load systems via AJAX
         function loadSystems() {
-            searchResults.innerHTML = '<tr><td colspan="5" class="text-center py-3">로딩 중...</td></tr>';
+            const searchQuery = searchInput.value.trim();
+            if (searchResults) {
+                searchResults.innerHTML = `<tr><td colspan="5" class="px-6 py-12 text-center text-slate-400"><div class="flex flex-col items-center gap-2"><span class="material-symbols-outlined animate-spin text-primary">loading</span><p>데이터를 가져오는 중...</p></div></td></tr>`;
+            }
             
-            const url = `/assets/systems/search/?q=${encodeURIComponent(searchQuery)}&page=${currentPage}&page_size=10`;
+            // If contractId is present, use the contract-specific search (which excludes already linked systems)
+            // Otherwise use the general search
+            const url = contractId && contractId !== 'None'
+                ? `/assets/contracts/${contractId}/search-systems/?q=${encodeURIComponent(searchQuery)}`
+                : `/assets/systems/search/?q=${encodeURIComponent(searchQuery)}&page_size=20`;
 
             fetch(url)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Network response was not ok');
-                    }
-                    return response.json();
-                })
+                .then(response => response.json())
                 .then(data => {
-                    console.log('Loaded systems:', data);
-                    renderSystems(data.systems);
-                    renderPagination(data.pagination);
+                    // Handle different response formats
+                    const systems = data.systems || [];
+                    renderSystems(systems);
                 })
                 .catch(error => {
-                    console.error('Error:', error);
-                    searchResults.innerHTML = '<tr><td colspan="5" class="text-center py-3 text-danger">시스템을 불러오는 중 오류가 발생했습니다</td></tr>';
+                    console.error('System search error:', error);
+                    if (searchResults) {
+                        searchResults.innerHTML = '<tr><td colspan="5" class="px-6 py-12 text-center text-red-500">오류가 발생했습니다.</td></tr>';
+                    }
                 });
         }
 
-        // Render systems table
         function renderSystems(systems) {
+            if (!searchResults) return;
             if (systems.length === 0) {
-                searchResults.innerHTML = '<tr><td colspan="5" class="text-center py-3">검색 결과가 없습니다</td></tr>';
+                searchResults.innerHTML = '<tr><td colspan="5" class="px-6 py-12 text-center text-slate-400 font-medium">검색 결과가 없습니다.</td></tr>';
                 return;
             }
 
             searchResults.innerHTML = systems.map(system => `
-                <tr>
-                    <td>${system.name}</td>
-                    <td>${system.code}</td>
-                    <td>${system.manager_name || '-'}</td>
-                    <td>${system.status}</td>
-                    <td>
-                        <button type="button" class="btn btn-sm btn-primary select-system-btn" 
-                                data-system-id="${system.id}" 
-                                data-system-name="${system.name}"
-                                data-system-code="${system.code}">
-                            <i class="fas fa-check"></i> 선택
+                <tr class="hover:bg-slate-50 transition-colors group cursor-pointer" onclick="selectSystemFromRow('${system.id}', '${system.name.replace(/'/g, "\\'")}', '${system.code.replace(/'/g, "\\'")}')">
+                    <td class="px-6 py-4 text-center">
+                        <button type="button" class="p-2 text-slate-300 group-hover:text-primary transition-all">
+                            <span class="material-symbols-outlined">add_circle</span>
                         </button>
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="flex items-center gap-3">
+                            <span class="size-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                                <span class="material-symbols-outlined text-[20px]">settings_suggest</span>
+                            </span>
+                            <span class="font-bold text-slate-900">${system.name}</span>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 text-center text-slate-500 font-medium">${system.code}</td>
+                    <td class="px-6 py-4 text-center">
+                        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600">${system.manager_name || '-'}</span>
+                    </td>
+                    <td class="px-6 py-4 text-center">
+                        <span class="px-2 py-0.5 rounded text-[10px] font-bold ${system.status_code === 'OPER' ? 'bg-green-50 text-green-600' : 'bg-slate-100 text-slate-600'}">${system.status}</span>
                     </td>
                 </tr>
             `).join('');
-
-            // Add event listeners to select buttons
-            document.querySelectorAll('.select-system-btn').forEach(btn => {
-                btn.addEventListener('click', function () {
-                    const systemId = this.getAttribute('data-system-id');
-                    const systemName = this.getAttribute('data-system-name');
-                    const systemCode = this.getAttribute('data-system-code');
-                    selectSystem(systemId, systemName, systemCode);
-                });
-            });
         }
 
-        // Render pagination
-        function renderPagination(paginationData) {
-            if (paginationData.total_pages <= 1) {
-                pagination.innerHTML = '';
+        window.selectSystemFromRow = function(id, name, code) {
+            selectSystem({ id, name, code });
+        };
+
+        function selectSystem(systemData) {
+            if (selectedSystems.find(s => s.id === systemData.id)) {
+                alert('이미 선택된 시스템입니다.');
                 return;
             }
 
-            let paginationHTML = '';
-
-            // Previous button
-            if (paginationData.has_previous) {
-                paginationHTML += `
-                    <li class="page-item">
-                        <a class="page-link" href="#" data-page="${paginationData.previous_page}">이전</a>
-                    </li>
-                `;
-            }
-
-            // Page numbers
-            for (let i = 1; i <= paginationData.total_pages; i++) {
-                if (i === paginationData.current_page) {
-                    paginationHTML += `<li class="page-item active"><span class="page-link">${i}</span></li>`;
-                } else if (
-                    i === 1 ||
-                    i === paginationData.total_pages ||
-                    (i >= paginationData.current_page - 2 && i <= paginationData.current_page + 2)
-                ) {
-                    paginationHTML += `<li class="page-item"><a class="page-link" href="#" data-page="${i}">${i}</a></li>`;
-                } else if (
-                    i === paginationData.current_page - 3 ||
-                    i === paginationData.current_page + 3
-                ) {
-                    paginationHTML += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
-                }
-            }
-
-            // Next button
-            if (paginationData.has_next) {
-                paginationHTML += `
-                    <li class="page-item">
-                        <a class="page-link" href="#" data-page="${paginationData.next_page}">다음</a>
-                    </li>
-                `;
-            }
-
-            pagination.innerHTML = paginationHTML;
-
-            // Add event listeners to pagination links
-            pagination.querySelectorAll('a.page-link').forEach(link => {
-                link.addEventListener('click', function (e) {
-                    e.preventDefault();
-                    currentPage = parseInt(this.getAttribute('data-page'));
-                    loadSystems();
+            // If we are in edit mode (contractId exists), save to database immediately
+            if (contractId && contractId !== 'None') {
+                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+                
+                fetch(`/assets/contracts/${contractId}/add-system/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: `system_id=${systemData.id}`
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        selectedSystems.push(systemData);
+                        updateSelectedSystemsDisplay();
+                        closeSystemSelectorModal();
+                    } else {
+                        alert(data.error || '시스템 추가 중 오류가 발생했습니다.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Add system error:', error);
+                    alert('서버와 통신 중 오류가 발생했습니다.');
                 });
-            });
-        }
-
-        // Select system
-        function selectSystem(systemId, systemName, systemCode) {
-            if (multiSelect) {
-                // Multi-select mode (for Hardware/Software)
-                if (!selectedSystems.find(s => s.id === systemId)) {
-                    selectedSystems.push({ id: systemId, name: systemName, code: systemCode });
-                    updateSelectedSystemsDisplay();
-                }
             } else {
-                // Single-select mode (for Contract)
-                selectedSystems = [{ id: systemId, name: systemName, code: systemCode }];
+                // If in create mode, just update local state
+                selectedSystems.push(systemData);
                 updateSelectedSystemsDisplay();
-                // Close modal after selection
-                bootstrap.Modal.getInstance(modal).hide();
+                closeSystemSelectorModal();
             }
         }
 
-        // Update selected systems display
         function updateSelectedSystemsDisplay() {
             const displayContainer = document.getElementById('selectedSystemsDisplay');
-            const hiddenInput = document.getElementById('id_system');
-
-            if (!multiSelect) {
-                // Single select - update hidden input and display
-                if (selectedSystems.length > 0) {
-                    hiddenInput.value = selectedSystems[0].id;
-                    displayContainer.innerHTML = `
-                        <span class="badge bg-light text-dark border text-decoration-none me-1">
-                            ${selectedSystems[0].name} (${selectedSystems[0].code})
-                            <button type="button" class="btn-close btn-close-sm ms-1" onclick="clearSelectedSystem()" aria-label="제거" style="font-size: 0.7em;"></button>
-                        </span>
-                    `;
-                } else {
-                    hiddenInput.value = '';
-                    displayContainer.innerHTML = '<small class="text-muted">선택된 시스템이 없습니다</small>';
+            if (displayContainer) {
+                // Update hidden select for form submission
+                const hiddenInput = document.getElementById('id_systems');
+                if (hiddenInput) {
+                    hiddenInput.innerHTML = selectedSystems.map(s => `<option value="${s.id}" selected>${s.name}</option>`).join('');
                 }
-            } else {
-                // Multi select - update hidden inputs and display
-                const systemsInput = document.getElementById('id_systems');
-                systemsInput.innerHTML = selectedSystems.map(s =>
-                    `<option value="${s.id}" selected>${s.name}</option>`
-                ).join('');
 
                 if (selectedSystems.length > 0) {
                     displayContainer.innerHTML = selectedSystems.map((s, index) => `
-                        <span class="badge bg-light text-dark border text-decoration-none me-1 mb-1">
-                            ${s.name} (${s.code})
-                            <button type="button" class="btn-close btn-close-sm ms-1" onclick="removeSelectedSystem(${index})" aria-label="제거" style="font-size: 0.7em;"></button>
-                        </span>
+                        <div class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900 text-white text-xs font-bold shadow-sm group">
+                            <span>${s.name} (${s.code})</span>
+                            <button type="button" onclick="handleRemoveSystem('${s.id}', ${index})" class="text-white/50 hover:text-white transition-colors">
+                                <span class="material-symbols-outlined text-sm text-white">close</span>
+                            </button>
+                        </div>
                     `).join('');
                 } else {
-                    displayContainer.innerHTML = '<small class="text-muted">선택된 시스템이 없습니다</small>';
+                    displayContainer.innerHTML = '<p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">시스템이 선택되지 않았습니다.</p>';
                 }
             }
         }
 
-        // Clear selected system (single select)
-        window.clearSelectedSystem = function () {
-            selectedSystems = [];
-            updateSelectedSystemsDisplay();
+        window.handleRemoveSystem = function (systemId, index) {
+            // If we are in edit mode, remove from database
+            if (contractId && contractId !== 'None') {
+                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+                
+                fetch(`/assets/contracts/${contractId}/remove-system/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: `system_id=${systemId}`
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        selectedSystems.splice(index, 1);
+                        updateSelectedSystemsDisplay();
+                    } else {
+                        alert(data.error || '시스템 해제 중 오류가 발생했습니다.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Remove system error:', error);
+                    alert('서버와 통신 중 오류가 발생했습니다.');
+                });
+            } else {
+                // In create mode, just remove from local state
+                selectedSystems.splice(index, 1);
+                updateSelectedSystemsDisplay();
+            }
         };
 
-        // Remove selected system (multi select)
-        window.removeSelectedSystem = function (index) {
-            selectedSystems.splice(index, 1);
-            updateSelectedSystemsDisplay();
-        };
-
-        // Initialize from existing selection
         window.initializeSystemSelector = function (initialSystems) {
             selectedSystems = initialSystems || [];
             updateSelectedSystemsDisplay();

@@ -6,6 +6,7 @@ class Team(models.Model):
     description = models.TextField("팀 설명", blank=True)
     created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='created_teams')
     members = models.ManyToManyField(User, through='TeamMembership', related_name='teams')
+    is_sr_team = models.BooleanField("SR 접수 처리 팀 여부", default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

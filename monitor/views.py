@@ -79,9 +79,15 @@ def operation_log_detail(request, pk):
     
     for category in categories:
         entry = LogEntry.objects.filter(operation_log=log, category=category).first()
-        if not entry:
-            entry = None
         log_entries[category.id] = entry
+
+    # Group attachments by category
+    attachments_by_category = {}
+    for attachment in log.attachments.all():
+        cat_id = attachment.category_id if attachment.category_id else 'unassigned'
+        if cat_id not in attachments_by_category:
+            attachments_by_category[cat_id] = []
+        attachments_by_category[cat_id].append(attachment)
     
     return render(request, 'monitor/operation_log_detail.html', {
         'log': log,
@@ -90,6 +96,7 @@ def operation_log_detail(request, pk):
         'step': current_step+1,
         'categories': categories,
         'log_entries': log_entries,
+        'attachments_by_category': attachments_by_category,
     })
 
 
@@ -246,12 +253,25 @@ def operation_log_add(request):
         
         # Handle file attachments
         for file_ in request.FILES.getlist('attachments'):
-            OperationLogAttachment.objects.create(record=log, file=file_)
+            OperationLogAttachment.objects.create(
+                record=log, 
+                category=category, 
+                file=file_
+            )
     if seleced_month:
         url = reverse('operation_log_list')  # URL 패턴 이름 사용
         return redirect(f"{url}?month={seleced_month}")
 
     return redirect('operation_log_list')
+
+
+@login_required
+def operation_calendar(request):
+    month = request.GET.get('month')
+    if not month:
+        month = datetime.today().strftime('%Y-%m')
+
+    return render(request, 'monitor/operation_calendar.html', {'selected_month': month})
 
 
 @login_required
@@ -310,6 +330,48 @@ def get_table_data(request):
     return JsonResponse(data)
 
 
+def get_calendar_data(request):
+    month = request.GET.get('month')
+    if not month:
+        month = datetime.today().strftime('%Y-%m')
+
+    users = User.objects.all()
+    options = [{"label": user.profile.display_name, "value": user.id} for user in users]
+
+    year, mon = map(int, month.split('-'))
+    num_days = monthrange(year, mon)[1]
+
+    records = OperationLog.objects.filter(
+        date__year=year, date__month=mon
+    ).select_related('duty_user', 'duty_user__profile')
+    
+    record_map = {}
+    for r in records:
+        if r.duty_user:
+            record_map[r.date] = {
+                'id': r.duty_user.id,
+                'name': r.duty_user.profile.display_name
+            }
+
+    data_list = []
+    for day in range(1, num_days + 1):
+        d = date(year, mon, day)
+        user_info = record_map.get(d)
+        data_list.append({
+            'date': d.strftime('%Y-%m-%d'),
+            'user_id': user_info['id'] if user_info else None,
+            'user_name': user_info['name'] if user_info else None
+        })
+
+    data = {
+        "month": month,
+        "data": data_list,
+        'options': options,
+    }
+
+    return JsonResponse(data)
+
+
 @csrf_exempt
 def save_table_data(request):
     if request.method == 'POST':
@@ -328,7 +390,16 @@ def save_table_data(request):
                 continue
 
             if not user_id:
+                # If user_id is empty/null, clear the duty_user
+                try:
+                    record = OperationLog.objects.get(date=dt)
+                    if record.duty_user:
+                        record.duty_user = None
+                        record.save()
+                except OperationLog.DoesNotExist:
+                    pass
                 continue
+
             duty_user = get_object_or_404(User, pk=user_id)
             record, created = OperationLog.objects.get_or_create(
                 date=dt,

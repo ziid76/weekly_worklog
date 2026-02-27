@@ -3,9 +3,9 @@ from django.contrib.admin import AdminSite
 from django.utils.html import format_html
 
 class CustomAdminSite(AdminSite):
-    site_header = '업무관리시스템 관리자'
-    site_title = '업무관리시스템 Admin'
-    index_title = '업무관리시스템 관리 대시보드'
+    site_header = 'ITMS 관리자'
+    site_title = 'ITMS Admin'
+    index_title = 'ITMS 관리 대시보드'
     
     def index(self, request, extra_context=None):
         """
@@ -40,6 +40,6 @@ class CustomAdminSite(AdminSite):
 admin_site = CustomAdminSite(name='custom_admin')
 
 # Django의 기본 admin 사이트 설정 변경
-admin.site.site_header = '업무관리시스템 관리자'
-admin.site.site_title = '업무관리시스템 Admin'
-admin.site.index_title = '업무관리시스템 관리 대시보드'
+admin.site.site_header = 'ITMS 관리자'
+admin.site.site_title = 'ITMS Admin'
+admin.site.index_title = 'ITMS 관리 대시보드'

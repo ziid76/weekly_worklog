@@ -8,4 +8,7 @@ urlpatterns = [
     path('send-review-notifications/', views.send_review_notifications, name='send_review_notifications'),
     path('generate-missing-reviews/', views.generate_missing_reviews, name='generate_missing_reviews'),
     path('check-monitor-notifications/', views.check_monitor_notifications, name='check_monitor_notifications'),
+    path('analyze-team-performance/', views.analyze_team_performance, name='analyze_team_performance'),
+    path('operation-status/', views.get_operation_status, name='get_operation_status'),
+    path('get-logs/', views.get_batch_logs, name='get_batch_logs'),
 ]

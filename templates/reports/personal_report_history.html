@@ -1,159 +1,222 @@
-{% extends "base.html" %}
+{% extends "basic.html" %}
 {% load static %}
 {% load markdown_extras %}
 
+{% block page_name %}주간업무 개인별 조회{% endblock %}
 
-{% block page_name %}
-    주간업무 개인별 조회
-{% endblock %}
 {% block content %}
-<div class="container-fluid">
-    <h1 class="h3 mb-4 text-gray-800"></h1>
+<div class="flex flex-col gap-8">
+    <!-- Header Section -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div class="flex flex-col gap-1">
+            <h1 class="text-3xl font-extrabold tracking-tight text-slate-900">주간업무 개인별 조회</h1>
+            <p class="text-slate-500 font-medium text-sm">팀원별 주간업무 이력을 조회하고 AI 분석을 수행합니다.</p>
+        </div>
+    </div>
 
     <!-- Filter Form -->
-    <div class="container-fluid border bg-white p-3 mb-4">
-        <form method="get" action="{% url 'personal_report_history' %}" class="row g-2 align-items-center w-100">
-            <div class="col-md-2 d-flex align-items-center gap-2">
-                <label for="user_id" class="fw-bold mb-0" style="white-space: nowrap; min-width: 50px;">팀원:</label>
-                <select name="user_id" id="user_id" class="form-select">
-                    <option value="">담당자선택</option>
-                    {% for member in team_members %}
-                    <option value="{{ member.id }}" {% if selected_user_id|stringformat:"s" == member.id|stringformat:"s" %}selected{% endif %}>
-                        {{ member.profile.display_name }}
-                    </option>
-                    {% endfor %}
-                </select>
-            </div>
+    <div class="bg-white rounded-[32px] border border-slate-200 shadow-sm overflow-hidden">
+        <div class="px-6 py-4 bg-slate-50/50 border-b border-slate-200 flex items-center gap-2">
+            <span class="material-symbols-outlined text-slate-400 text-[20px]">filter_list</span>
+            <h2 class="text-sm font-bold text-slate-900">조회 조건 설정</h2>
+        </div>
+        <div class="p-6">
+            <form method="get" action="{% url 'personal_report_history' %}" class="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+                <div class="md:col-span-2 flex flex-col gap-1.5">
+                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">팀원</label>
+                    <select name="user_id" id="user_id" class="w-full bg-slate-50/50 border border-slate-200 rounded-2xl px-4 py-3 text-slate-900 font-medium focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all outline-none appearance-none">
+                        <option value="">담당자선택</option>
+                        {% for member in team_members %}
+                        <option value="{{ member.id }}" {% if selected_user_id|stringformat:"s" == member.id|stringformat:"s" %}selected{% endif %}>
+                            {{ member.profile.display_name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
 
-            <div class="col-md-7 d-flex align-items-center gap-2">
-                <label for="start_year" class="fw-bold mb-0" style="white-space: nowrap; min-width: 50px;">기간:</label>
-                <select name="start_year" id="start_year" class="form-select">
-                    {% for year in year_choices %}
-                    <option value="{{ year }}" {% if start_year|stringformat:"s" == year|stringformat:"s" %}selected{% endif %}>{{ year }}년</option>
-                    {% endfor %}
-                </select>
-                <select name="start_week" id="start_week" class="form-select">
-                </select>
-                
-                <span class="mx-1">~</span>
-                
-                <select name="end_year" id="end_year" class="form-select">
-                    {% for year in year_choices %}
-                    <option value="{{ year }}" {% if end_year|stringformat:"s" == year|stringformat:"s" %}selected{% endif %}>{{ year }}년</option>
-                    {% endfor %}
-                </select>
-                <select name="end_week" id="end_week" class="form-select">
-                </select>
-            </div>
+                <div class="md:col-span-7 grid grid-cols-1 sm:grid-cols-5 gap-2 items-end">
+                    <div class="flex flex-col gap-1.5">
+                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">시작년도</label>
+                        <select name="start_year" id="start_year" class="w-full bg-slate-50/50 border border-slate-200 rounded-2xl px-4 py-3 text-slate-900 font-medium focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all outline-none appearance-none">
+                            {% for year in year_choices %}
+                            <option value="{{ year }}" {% if start_year|stringformat:"s" == year|stringformat:"s" %}selected{% endif %}>{{ year }}년</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="flex flex-col gap-1.5">
+                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">시작주차</label>
+                        <select name="start_week" id="start_week" class="w-full bg-slate-50/50 border border-slate-200 rounded-2xl px-4 py-3 text-slate-900 font-medium focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all outline-none appearance-none">
+                        </select>
+                    </div>
+                    
+                    <div class="flex items-center justify-center">
+                        <span class="text-slate-400 font-bold">~</span>
+                    </div>
+                    
+                    <div class="flex flex-col gap-1.5">
+                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">종료년도</label>
+                        <select name="end_year" id="end_year" class="w-full bg-slate-50/50 border border-slate-200 rounded-2xl px-4 py-3 text-slate-900 font-medium focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all outline-none appearance-none">
+                            {% for year in year_choices %}
+                            <option value="{{ year }}" {% if end_year|stringformat:"s" == year|stringformat:"s" %}selected{% endif %}>{{ year }}년</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="flex flex-col gap-1.5">
+                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">종료주차</label>
+                        <select name="end_week" id="end_week" class="w-full bg-slate-50/50 border border-slate-200 rounded-2xl px-4 py-3 text-slate-900 font-medium focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all outline-none appearance-none">
+                        </select>
+                    </div>
+                </div>
 
-            <div class="col-md-3 d-flex justify-content-end gap-2">
-                <button type="submit" class="scl-btn" style="min-width: 80px;">조회</button>
-                <button type="button" id="ai-analysis-btn" class="scl-btn scl-btn--warning" style="min-width: 80px;" {% if not selected_user_id %}disabled{% endif %}>AI 분석</button>
-            </div>
-        </form>
+                <div class="md:col-span-3 flex gap-2">
+                    <button type="submit" class="flex-1 h-[50px] rounded-2xl bg-slate-900 text-white font-bold text-sm shadow-lg shadow-slate-200 hover:bg-slate-800 transition-all flex items-center justify-center gap-2">
+                        <span class="material-symbols-outlined text-[18px]">search</span>
+                        조회
+                    </button>
+                    <button type="button" id="ai-analysis-btn" class="flex-1 h-[50px] rounded-2xl bg-amber-500 text-white font-bold text-sm shadow-lg shadow-amber-200 hover:bg-amber-600 transition-all flex items-center justify-center gap-2 disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none" {% if not selected_user_id %}disabled{% endif %}>
+                        <span class="material-symbols-outlined text-[18px]">psychology</span>
+                        AI 분석
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 
     {% if selected_user_id and worklogs_data %}
     <!-- Report Content -->
-    <div class="card shadow mb-4">
-        <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-            <h6 class="m-0 font-weight-bold text-primary">조회 결과</h6>
-            <div>
-                <button id="btn-format1" class="scl-btn scl-btn-sm active">금주/차주</button>
-                <button id="btn-format2" class="scl-btn scl-btn-sm scl-btn-outline">전주/금주</button>
+    <div class="bg-white rounded-[32px] border border-slate-200 shadow-sm overflow-hidden">
+        <div class="px-6 py-4 bg-slate-50/50 border-b border-slate-200 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-slate-400 text-[20px]">analytics</span>
+                <h2 class="text-sm font-bold text-slate-900">조회 결과</h2>
+            </div>
+            <div class="flex gap-1">
+                <button id="btn-format1" class="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold transition-all">금주/차주</button>
+                <button id="btn-format2" class="px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-600 text-xs font-bold hover:bg-slate-50 transition-all">전주/금주</button>
             </div>
         </div>
-        <div class="card-body">
+        
+        <div class="p-6">
             <!-- Format 1: This Week / Next Week -->
             <div id="format1-table">
-                <div class="table-3-wrapper">
-                    <div class="cell cell-2 p-3 col-2 border bg-light text-center fw-bold">주차</div>
-                    <div class="cell cell-5 p-3 col-5 border bg-light text-center fw-bold">금주 실적</div>
-                    <div class="cell cell-default p-3 col-5 border bg-light text-center fw-bold">차주 계획</div>
-                    {% for data in worklogs_data %}
-                        <div class="cell cell-2 p-3 col-2 border">{{ data.worklog.year }}년 {{ data.worklog.week_number }}주차</div>
-                        <div class="cell cell-5 p-3 col-5 border">
-                            <div class="markdown-content">
-                                {% if data.worklog.this_week_work %}
-                                    {{ data.worklog.this_week_work|markdown }}
-                                {% else %}
-                                    <p class="text-muted">작성된 내용이 없습니다.</p>
-                                {% endif %}
-                            </div>
-                        </div>
-                        <div class="cell cell-default p-3 col-5 border">
-                            <div class="markdown-content">
-                                {% if data.worklog.next_week_plan %}
-                                    {{ data.worklog.next_week_plan|markdown }}
-                                {% else %}
-                                    <p class="text-muted">작성된 계획이 없습니다.</p>
-                                {% endif %}
-                            </div>
-                        </div>
-                    {% endfor %}
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="bg-slate-50 border-b border-slate-100">
+                            <tr>
+                                <th class="py-4 px-6 text-[10px] uppercase tracking-wider font-bold text-slate-400 w-32">주차</th>
+                                <th class="py-4 px-6 text-[10px] uppercase tracking-wider font-bold text-slate-400">금주 실적</th>
+                                <th class="py-4 px-6 text-[10px] uppercase tracking-wider font-bold text-slate-400">차주 계획</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 bg-white">
+                            {% for data in worklogs_data %}
+                            <tr class="hover:bg-slate-50/50 transition-colors">
+                                <td class="py-4 px-6">
+                                    <span class="text-sm font-bold text-slate-900">{{ data.worklog.year }}년 {{ data.worklog.week_number }}주차</span>
+                                </td>
+                                <td class="py-4 px-6">
+                                    <div class="markdown-content prose prose-slate prose-sm max-w-none">
+                                        {% if data.worklog.this_week_work %}
+                                            {{ data.worklog.this_week_work|markdown }}
+                                        {% else %}
+                                            <p class="text-slate-400 italic">작성된 내용이 없습니다.</p>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                                <td class="py-4 px-6">
+                                    <div class="markdown-content prose prose-slate prose-sm max-w-none">
+                                        {% if data.worklog.next_week_plan %}
+                                            {{ data.worklog.next_week_plan|markdown }}
+                                        {% else %}
+                                            <p class="text-slate-400 italic">작성된 계획이 없습니다.</p>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
             <!-- Format 2: Previous Week Plan / This Week -->
             <div id="format2-table" style="display: none;">
-                <div class="table-3-wrapper">
-                    <div class="cell cell-2 p-3 col-2 border bg-light text-center fw-bold">주차</div>
-                    <div class="cell cell-5 p-3 col-5 border bg-light text-center fw-bold">전주 계획</div>
-                    <div class="cell cell-default p-3 col-5 border bg-light text-center fw-bold">금주 실적</div>
-                     {% for data in worklogs_data %}
-                        <div class="cell cell-2 p-3 col-2 border">{{ data.worklog.year }}년 {{ data.worklog.week_number }}주차</div>
-                        <div class="cell cell-5 p-3 col-5 border">
-                            <div class="markdown-content">
-                                {% if data.previous_week_plan %}
-                                    {{ data.previous_week_plan|markdown }}
-                                {% else %}
-                                    <p class="text-muted">작성된 내용이 없습니다.</p>
-                                {% endif %}
-                            </div>
-                        </div>
-                        <div class="cell cell-default p-3 col-5 border">
-                            <div class="markdown-content">
-                                {% if data.worklog.this_week_work %}
-                                    {{ data.worklog.this_week_work|markdown }}
-                                {% else %}
-                                    <p class="text-muted">작성된 계획이 없습니다.</p>
-                                {% endif %}
-                            </div>
-                        </div>
-                    {% endfor %}
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="bg-slate-50 border-b border-slate-100">
+                            <tr>
+                                <th class="py-4 px-6 text-[10px] uppercase tracking-wider font-bold text-slate-400 w-32">주차</th>
+                                <th class="py-4 px-6 text-[10px] uppercase tracking-wider font-bold text-slate-400">전주 계획</th>
+                                <th class="py-4 px-6 text-[10px] uppercase tracking-wider font-bold text-slate-400">금주 실적</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 bg-white">
+                            {% for data in worklogs_data %}
+                            <tr class="hover:bg-slate-50/50 transition-colors">
+                                <td class="py-4 px-6">
+                                    <span class="text-sm font-bold text-slate-900">{{ data.worklog.year }}년 {{ data.worklog.week_number }}주차</span>
+                                </td>
+                                <td class="py-4 px-6">
+                                    <div class="markdown-content prose prose-slate prose-sm max-w-none">
+                                        {% if data.previous_week_plan %}
+                                            {{ data.previous_week_plan|markdown }}
+                                        {% else %}
+                                            <p class="text-slate-400 italic">작성된 내용이 없습니다.</p>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                                <td class="py-4 px-6">
+                                    <div class="markdown-content prose prose-slate prose-sm max-w-none">
+                                        {% if data.worklog.this_week_work %}
+                                            {{ data.worklog.this_week_work|markdown }}
+                                        {% else %}
+                                            <p class="text-slate-400 italic">작성된 계획이 없습니다.</p>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
     </div>
     {% elif selected_user_id %}
-    <div class="alert alert-warning">선택된 기간에 해당하는 주간업무 데이터가 없습니다.</div>
+    <div class="bg-amber-50 border border-amber-200 rounded-[24px] p-6 flex items-center gap-3">
+        <span class="material-symbols-outlined text-amber-600 text-[24px]">warning</span>
+        <p class="text-amber-800 font-medium">선택된 기간에 해당하는 주간업무 데이터가 없습니다.</p>
+    </div>
     {% endif %}
 </div>
 
 <!-- AI Analysis Modal -->
-<div class="modal fade" id="ai-analysis-modal" tabindex="-1" aria-labelledby="aiAnalysisModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-xl modal-dialog-scrollable">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="aiAnalysisModalLabel">AI 주간업무 분석 결과</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <div id="ai-analysis-loading" class="text-center">
-            <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Loading...</span>
+<div id="ai-analysis-modal" class="hidden relative z-50" aria-labelledby="aiAnalysisModalLabel" role="dialog" aria-modal="true">
+    <div class="fixed inset-0 bg-slate-900/20 backdrop-blur-sm transition-opacity"></div>
+    <div class="fixed inset-0 z-10 overflow-y-auto">
+        <div class="flex min-h-full items-center justify-center p-4 text-center">
+            <div class="relative transform overflow-hidden rounded-[32px] bg-white text-left shadow-2xl transition-all w-full max-w-5xl h-[80vh] flex flex-col border border-slate-100">
+                <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                    <h3 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-primary">psychology</span>
+                        AI 주간업무 분석 결과
+                    </h3>
+                    <button type="button" class="w-8 h-8 rounded-full flex items-center justify-center bg-white border border-slate-200 text-slate-400 hover:text-slate-600 hover:shadow-sm transition-all" onclick="closeAiAnalysisModal()">
+                        <span class="material-symbols-outlined text-[20px]">close</span>
+                    </button>
+                </div>
+                <div class="flex-1 p-6 overflow-y-auto">
+                    <div id="ai-analysis-loading" class="flex flex-col items-center justify-center h-full text-slate-400">
+                        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
+                        <p class="text-sm font-medium">Gemini가 주간업무를 분석하고 있습니다. 잠시만 기다려주세요...</p>
+                    </div>
+                    <div id="ai-analysis-result" style="display: none;">
+                        <!-- Results will be populated here by JavaScript -->
+                    </div>
+                </div>
             </div>
-            <p class="mt-2">Gemini가 주간업무를 분석하고 있습니다. 잠시만 기다려주세요...</p>
         </div>
-        <div id="ai-analysis-result" style="display: none;">
-            <!-- Results will be populated here by JavaScript -->
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="scl-btn scl-btn-sm scl-btn-outline" data-bs-dismiss="modal">닫기</button>
-      </div>
     </div>
-  </div>
 </div>
 {% endblock %}
 
@@ -170,19 +233,15 @@ document.addEventListener('DOMContentLoaded', function() {
         btnFormat1.addEventListener('click', function() {
             tableFormat1.style.display = 'block';
             tableFormat2.style.display = 'none';
-            btnFormat1.classList.add('active');
-            btnFormat1.classList.remove('scl-btn-outline');
-            btnFormat2.classList.remove('active');
-            btnFormat2.classList.add('scl-btn-outline');
+            btnFormat1.className = 'px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold transition-all';
+            btnFormat2.className = 'px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-600 text-xs font-bold hover:bg-slate-50 transition-all';
         });
 
         btnFormat2.addEventListener('click', function() {
             tableFormat1.style.display = 'none';
             tableFormat2.style.display = 'block';
-            btnFormat2.classList.add('active');
-            btnFormat2.classList.remove('scl-btn-outline');
-            btnFormat1.classList.remove('active');
-            btnFormat1.classList.add('scl-btn-outline');
+            btnFormat2.className = 'px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold transition-all';
+            btnFormat1.className = 'px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-600 text-xs font-bold hover:bg-slate-50 transition-all';
         });
     }
 
@@ -221,9 +280,21 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // AI Analysis
     const aiAnalysisBtn = document.getElementById('ai-analysis-btn');
-    const aiAnalysisModal = new bootstrap.Modal(document.getElementById('ai-analysis-modal'));
+    const aiAnalysisModal = document.getElementById('ai-analysis-modal');
     const analysisResultDiv = document.getElementById('ai-analysis-result');
     const analysisLoadingDiv = document.getElementById('ai-analysis-loading');
+
+    function openAiAnalysisModal() {
+        aiAnalysisModal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeAiAnalysisModal() {
+        aiAnalysisModal.classList.add('hidden');
+        document.body.style.overflow = '';
+    }
+
+    window.closeAiAnalysisModal = closeAiAnalysisModal;
 
     function getIsoWeekDate(y, w, d) {
         var simple = new Date(Date.UTC(y, 0, 1 + (w - 1) * 7));
@@ -249,10 +320,10 @@ document.addEventListener('DOMContentLoaded', function() {
             const endWeek = document.getElementById('end_week').value;
 
             analysisResultDiv.style.display = 'none';
-            analysisLoadingDiv.style.display = 'block';
-            aiAnalysisModal.show();
+            analysisLoadingDiv.style.display = 'flex';
+            openAiAnalysisModal();
 
-            const asOfDate = getIsoWeekDate(parseInt(endYear), parseInt(endWeek), 7); // Get Sunday of the week
+            const asOfDate = getIsoWeekDate(parseInt(endYear), parseInt(endWeek), 7);
             const asOfDateString = asOfDate.toISOString().split('T')[0];
 
             fetch(`/me/review?user_id=${selectedUserId}&as_of=${asOfDateString}`)
@@ -266,14 +337,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     analysisLoadingDiv.style.display = 'none';
                     analysisResultDiv.innerHTML = formatAnalysisResult(data);
                     analysisResultDiv.style.display = 'block';
-
-                    // Initialize tooltips for the new content
-                    const tooltipTriggerList = analysisResultDiv.querySelectorAll('[data-bs-toggle="tooltip"]');
-                    [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl, { html: true }));
                 })
                 .catch(error => {
                     analysisLoadingDiv.style.display = 'none';
-                    analysisResultDiv.innerHTML = `<div class="alert alert-danger">분석 중 오류가 발생했습니다: ${error.message}</div>`;
+                    analysisResultDiv.innerHTML = `<div class="bg-rose-50 border border-rose-200 rounded-2xl p-4 text-rose-800">분석 중 오류가 발생했습니다: ${error.message}</div>`;
                     analysisResultDiv.style.display = 'block';
                 });
         });
@@ -282,55 +349,43 @@ document.addEventListener('DOMContentLoaded', function() {
     function formatMonthWeek(isoDate) {
         if (!isoDate) return '';
         try {
-            // AI가 반환하는 날짜 문자열(예: '2025-10-06')을 파싱합니다.
             const d = new Date(isoDate);
-            // UTC 기준 월/일을 사용하여 시간대 문제를 방지합니다.
             const month = d.getUTCMonth() + 1;
             const date = d.getUTCDate();
             const weekOfMonth = Math.ceil(date / 7);
             return `${month}월 ${weekOfMonth}주차`;
         } catch (e) {
-            return isoDate; // 오류 발생 시 원본 문자열 반환
+            return isoDate;
         }
     }
 
     function formatAnalysisResult(data) {
         if (data.error) {
-            return `<div class="alert alert-warning"><strong>AI 분석 실패</strong><br>${data.error}</div>`;
+            return `<div class="bg-amber-50 border border-amber-200 rounded-2xl p-4"><strong class="text-amber-800">AI 분석 실패</strong><br><span class="text-amber-700">${data.error}</span></div>`;
         }
 
-        let html = `<h6 class="m-0 font-weight-bold text-primary">${data.summary}</h6><hr>`;
+        let html = `<h2 class="text-xl font-bold text-slate-900 mb-6">${data.summary}</h2>`;
 
         // Metrics
-        html += '<h5>주요 지표</h5><div class="row text-center mb-3">';
+        html += '<h3 class="text-lg font-bold text-slate-900 mb-4">주요 지표</h3><div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">';
         const metrics = data.metrics;
 
         const createMetricCard = (title, metric) => {
-            const detailsHtml = (metric && metric.details && metric.details.length > 0) ? `<ul class="list-unstyled mb-0 text-start">${metric.details.map(d => `<li>- ${d}</li>`).join('')}</ul>` : '상세 내역 없음';
             const metricValue = (metric && metric.value !== undefined) ? metric.value : 0;
-            const safeDetailsHtml = detailsHtml.replace(/"/g, '&quot;');
-
             return `
-                <div class="col">
-                    <div class="card p-2" data-bs-toggle="tooltip" title="${safeDetailsHtml}">
-                        <h6>${title}</h6>
-                        <h3>${metricValue}</h3>
-                    </div>
+                <div class="bg-slate-50 rounded-2xl p-4 text-center border border-slate-200">
+                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">${title}</h4>
+                    <div class="text-2xl font-black text-slate-900">${metricValue}</div>
                 </div>
             `;
         };
         
         const createRateMetricCard = (title, metric) => {
-            const detailsHtml = (metric && metric.details && metric.details.length > 0) ? `<ul class="list-unstyled mb-0 text-start">${metric.details.map(d => `<li>- ${d}</li>`).join('')}</ul>` : '상세 내역 없음';
             const metricValue = (metric && metric.value !== undefined) ? metric.value : 0;
-            const safeDetailsHtml = detailsHtml.replace(/"/g, '&quot;');
-
             return `
-                <div class="col">
-                    <div class="card p-2" data-bs-toggle="tooltip" title="${safeDetailsHtml}">
-                        <h6>${title}</h6>
-                        <h3>${(metricValue).toFixed(0)}%</h3>
-                    </div>
+                <div class="bg-slate-50 rounded-2xl p-4 text-center border border-slate-200">
+                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">${title}</h4>
+                    <div class="text-2xl font-black text-slate-900">${(metricValue).toFixed(0)}%</div>
                 </div>
             `;
         };
@@ -340,33 +395,33 @@ document.addEventListener('DOMContentLoaded', function() {
         html += createRateMetricCard('완료율', metrics.completion_rate);
         html += createMetricCard('이월', metrics.carryover_count);
         html += createMetricCard('증빙부족', metrics.missing_evidence_count);
-        html += '</div><hr>';
+        html += '</div>';
 
         // Mismatches
         if (data.mismatches && data.mismatches.length > 0) {
-            html += '<h5 class="mt-4">계획-실적 불일치</h5><ul class="list-group list-group-flush">';
+            html += '<h3 class="text-lg font-bold text-slate-900 mb-4">계획-실적 불일치</h3><div class="space-y-3 mb-8">';
             data.mismatches.forEach(item => {
-                html += `<li class="list-group-item"><strong>${formatMonthWeek(item.week)}:</strong> ${item.plan_item} <br> <span class="ps-3 text-danger">-> ${item.issue}</span></li>`;
+                html += `<div class="bg-rose-50 border border-rose-200 rounded-2xl p-4"><strong class="text-rose-800">${formatMonthWeek(item.week)}:</strong> <span class="text-rose-700">${item.plan_item}</span><br><span class="text-rose-600 text-sm">→ ${item.issue}</span></div>`;
             });
-            html += '</ul><hr>';
+            html += '</div>';
         }
 
         // Risks
         if (data.risks && data.risks.length > 0) {
-            html += '<h5 class="mt-4">리스크 및 우려사항</h5><div class="table-responsive"><table class="table table-sm table-bordered"><thead><tr><th>내용</th><th>상태</th><th>담당</th><th>조치</th><th>기한</th></tr></thead><tbody>';
+            html += '<h3 class="text-lg font-bold text-slate-900 mb-4">리스크 및 우려사항</h3><div class="overflow-x-auto mb-8"><table class="w-full text-left border-collapse bg-white rounded-2xl border border-slate-200 overflow-hidden"><thead class="bg-slate-50"><tr><th class="py-3 px-4 text-xs font-bold text-slate-400 uppercase">내용</th><th class="py-3 px-4 text-xs font-bold text-slate-400 uppercase">상태</th><th class="py-3 px-4 text-xs font-bold text-slate-400 uppercase">담당</th><th class="py-3 px-4 text-xs font-bold text-slate-400 uppercase">조치</th><th class="py-3 px-4 text-xs font-bold text-slate-400 uppercase">기한</th></tr></thead><tbody class="divide-y divide-slate-100">';
             data.risks.forEach(risk => {
-                html += `<tr><td>${risk.description}</td><td>${risk.status}</td><td>${risk.owner}</td><td>${risk.next_action}</td><td>${risk.due}</td></tr>`;
+                html += `<tr><td class="py-3 px-4 text-sm text-slate-700">${risk.description}</td><td class="py-3 px-4 text-sm text-slate-700">${risk.status}</td><td class="py-3 px-4 text-sm text-slate-700">${risk.owner}</td><td class="py-3 px-4 text-sm text-slate-700">${risk.next_action}</td><td class="py-3 px-4 text-sm text-slate-700">${risk.due}</td></tr>`;
             });
-            html += '</tbody></table></div><hr>';
+            html += '</tbody></table></div>';
         }
 
         // Recommendations
         if (data.recommendations && data.recommendations.length > 0) {
-            html += '<h5 class="mt-4">개선 권고 사항</h5><ul class="list-group">';
+            html += '<h3 class="text-lg font-bold text-slate-900 mb-4">개선 권고 사항</h3><div class="space-y-3">';
             data.recommendations.forEach(rec => {
-                html += `<li class="list-group-item">${rec}</li>`;
+                html += `<div class="bg-blue-50 border border-blue-200 rounded-2xl p-4 text-blue-800">${rec}</div>`;
             });
-            html += '</ul>';
+            html += '</div>';
         }
 
         return html;
@@ -374,5 +429,20 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
-
+<style>
+    /* Custom Markdown Styles */
+    .markdown-content ul { list-style-type: disc; padding-left: 1.5rem; margin: 0.5em 0; }
+    .markdown-content ol { list-style-type: decimal; padding-left: 1.5rem; margin: 0.5em 0; }
+    .markdown-content blockquote { border-left: 4px solid #e2e8f0; padding-left: 1rem; color: #64748b; font-style: italic; }
+    .markdown-content code { background-color: #f1f5f9; padding: 0.2rem 0.4rem; border-radius: 0.25rem; font-size: 0.875em; color: #0f172a; }
+    .markdown-content pre { background-color: #1e293b; color: #f8fafc; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; margin: 1em 0; }
+    .markdown-content pre code { background-color: transparent; padding: 0; color: inherit; }
+    .markdown-content h1, .markdown-content h2, .markdown-content h3 { font-weight: 700; color: #0f172a; margin-top: 1.5em; margin-bottom: 0.5em; }
+    .markdown-content h1 { font-size: 1.5em; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.3em; }
+    .markdown-content h2 { font-size: 1.25em; }
+    .markdown-content a { color: #3b82f6; text-decoration: underline; }
+    .markdown-content table { width: 100%; border-collapse: collapse; margin: 1em 0; }
+    .markdown-content th, .markdown-content td { border: 1px solid #e2e8f0; padding: 0.5rem; text-align: left; }
+    .markdown-content th { background-color: #f8fafc; font-weight: 600; }
+</style>
 {% endblock %}

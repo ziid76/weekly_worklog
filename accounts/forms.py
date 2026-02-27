@@ -37,15 +37,17 @@ class FirstLoginPasswordChangeForm(PasswordChangeForm):
 class UserProfileForm(forms.ModelForm):
     class Meta:
         model = UserProfile
-        fields = ['last_name_ko', 'first_name_ko', 'position', 'phone', 'default_display_order']
+        fields = ['avatar', 'last_name_ko', 'first_name_ko', 'position', 'phone', 'default_display_order']
         widgets = {
+            'avatar': forms.FileInput(attrs={'class': 'form-control', 'accept': 'image/*'}),
             'last_name_ko': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '홍'}),
             'first_name_ko': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '길동'}),
             'position': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '대리'}),
             'phone': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '010-1234-5678'}),
-            'default_display_order': forms.NumberInput(attrs={'class': 'form-control', 'min': 0, 'placeholder': '기본 표시 순서'}),
+            'default_display_order': forms.NumberInput(attrs={'class': 'form-control', 'min': 0, 'value': 0}),
         }
         labels = {
+            'avatar': '프로필 이미지',
             'last_name_ko': '성',
             'first_name_ko': '이름',
             'position': '직급',

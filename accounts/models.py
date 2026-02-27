@@ -2,6 +2,8 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from task.models import Task
+from service.models import ServiceRequest
 
 class UserProfile(models.Model):
     ROLE_CHOICES = [
@@ -11,6 +13,7 @@ class UserProfile(models.Model):
     ]
     
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
+    avatar = models.ImageField("프로필 이미지", upload_to='avatars/', blank=True, null=True)
     last_name_ko = models.CharField("성", max_length=10, blank=True)
     first_name_ko = models.CharField("이름", max_length=20, blank=True)
     position = models.CharField("직급", max_length=30, blank=True)
@@ -47,11 +50,24 @@ class UserProfile(models.Model):
 
     @property
     def task_count(self):
-        """Task 수 반환"""
+        """진행중인 Task 수 반환"""
         from task.models import Task
-        cnt = Task.objects.filter(author=self.user).count()
+        cnt = Task.objects.filter(author=self.user, status='in_progress').count()
         return cnt
-    
+   
+    @property
+    def sr_receipt_target_count(self):
+        """접수대상 SR 수 반환"""
+        cnt = ServiceRequest.objects.filter(assignee=self.user, status='N').count()
+        return cnt
+
+
+    @property
+    def sr_in_progress_count(self):
+        """처리중 SR 수 반환"""
+        cnt = ServiceRequest.objects.filter(status='P', assignee=self.user).count()
+        return cnt
+
     @property
     def primary_team(self):
         """사용자의 주요 팀 반환 (첫 번째 팀 또는 팀장인 팀)"""

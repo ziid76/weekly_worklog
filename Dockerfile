@@ -9,8 +9,10 @@ ENV TZ=Asia/Seoul
 
 WORKDIR /app
 COPY requirements.txt ./
-RUN pip install --upgrade pip
-RUN pip install --no-cache-dir -r requirements.txt
+#RUN pip install --upgrade pip
+RUN pip install --upgrade pip --trusted-host pypi.org --trusted-host files.pythonhosted.org
+#RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --trusted-host pypi.org --trusted-host files.pythonhosted.org -r requirements.txt
 RUN apt-get update && apt-get install -y vim tzdata cron 
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone && dpkg-reconfigure -f noninteractive tzdata
 RUN rm -rf /var/lib/apt/lists/*

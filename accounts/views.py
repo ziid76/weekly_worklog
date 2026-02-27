@@ -79,7 +79,7 @@ def profile_edit(request):
             logger.info(f"POST data: {request.POST}")
             
             user_form = UserUpdateForm(request.POST, instance=user)
-            profile_form = UserProfileForm(request.POST, instance=profile)
+            profile_form = UserProfileForm(request.POST, request.FILES, instance=profile)
             
             logger.info(f"User form valid: {user_form.is_valid()}")
             logger.info(f"Profile form valid: {profile_form.is_valid()}")
@@ -117,6 +117,23 @@ def profile_edit(request):
         logger.error(f"Exception in profile_edit: {str(e)}", exc_info=True)
         messages.error(request, f'오류가 발생했습니다: {str(e)}')
         return redirect('dashboard')
+
+@login_required
+def remove_avatar(request):
+    """프로필 이미지 삭제"""
+    from django.http import JsonResponse
+    if request.method == 'POST':
+        try:
+            profile = request.user.profile
+            if profile.avatar:
+                # 파일 삭제
+                profile.avatar.delete()
+                profile.save()
+                return JsonResponse({'success': True})
+            return JsonResponse({'success': False, 'error': '삭제할 이미지가 없습니다.'})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    return JsonResponse({'success': False, 'error': 'Invalid request method'})
 
 @login_required
 def profile_view(request):
@@ -236,28 +253,37 @@ def user_edit(request, user_id):
 
     if request.method == 'POST':
         user_form = UserUpdateForm(request.POST, instance=user)
-        profile_form = UserProfileForm(request.POST, instance=profile)
+        profile_form = UserProfileForm(request.POST, request.FILES, instance=profile)
 
         if user_form.is_valid() and profile_form.is_valid():
             user_form.save()
             profile_form.save()
 
-            # 팀 정보 업데이트
-            selected_teams = request.POST.getlist('teams')
-            user.teams.set(selected_teams)
+            # 팀 정보 및 역할 업데이트
+            selected_team_ids = request.POST.getlist('teams')
+            
+            # 현재 사용자의 모든 팀 멤버십 조회
+            current_memberships = TeamMembership.objects.filter(user=user)
+            current_team_ids = set(current_memberships.values_list('team_id', flat=True))
+            selected_team_ids = set(map(int, selected_team_ids))
+
+            # 삭제할 멤버십 (선택 해제된 팀)
+            teams_to_remove = current_team_ids - selected_team_ids
+            TeamMembership.objects.filter(user=user, team_id__in=teams_to_remove).delete()
+
+            # 추가 또는 업데이트할 멤버십
+            for team_id in selected_team_ids:
+                role = request.POST.get(f'team_role_{team_id}', 'member')
+                TeamMembership.objects.update_or_create(
+                    user=user,
+                    team_id=team_id,
+                    defaults={'role': role}
+                )
 
             # 권한 그룹 업데이트
             selected_groups = request.POST.getlist('groups')
             user.groups.set(selected_groups)
             
-            # 팀 역할 업데이트
-            team_role = profile_form.cleaned_data.get('team_role')
-            if team_role:
-                # 이 부분은 UserProfile 모델에 team_role 필드가 있다고 가정합니다.
-                # 실제 모델 필드에 맞게 조정해야 할 수 있습니다.
-                profile.team_role = team_role
-                profile.save()
-
             messages.success(request, f'사용자 "{user.username}" 정보가 성공적으로 업데이트되었습니다.')
             return redirect('user_detail', user_id=user.id)
         else:
@@ -268,13 +294,27 @@ def user_edit(request, user_id):
         user_form = UserUpdateForm(instance=user)
         profile_form = UserProfileForm(instance=profile)
     
-    # 템플릿에서 user_form과 form을 모두 사용할 수 있도록 컨텍스트를 구성합니다.
-    # user_edit.html 템플릿은 user_form과 form을 사용하도록 수정되었습니다.
+    # 모든 팀과 현재 사용자의 멤버십 정보를 가져옴
+    all_teams = Team.objects.all().order_by('name')
+    user_memberships = {tm.team_id: tm for tm in TeamMembership.objects.filter(user=user)}
+    
+    # 템플릿에 전달할 팀 목록 구성
+    teams_data = []
+    for team in all_teams:
+        membership = user_memberships.get(team.id)
+        teams_data.append({
+            'team': team,
+            'is_member': membership is not None,
+            'role': membership.role if membership else 'member'
+        })
+
     context = {
         'user_form': user_form,
-        'form': profile_form, # 템플릿에서 'form'을 사용하므로 이름을 맞춥니다.
+        'form': profile_form,
         'user': user,
         'profile': profile,
+        'teams_data': teams_data, # 팀 및 역할 정보 전달
+        'role_choices': TeamMembership.ROLE_CHOICES, # 역할 선택지
         'title': f'{profile.display_name} 정보 수정',
     }
     
@@ -380,3 +420,56 @@ def user_team_manage(request, user_id):
     }
     
     return render(request, 'accounts/user_team_manage.html', context)
+@login_required
+def user_search_ajax(request):
+    """AJAX로 사용자 검색"""
+    query = request.GET.get('q', '')
+    team_id = request.GET.get('team_id')
+    page = int(request.GET.get('page', 1))
+    page_size = int(request.GET.get('page_size', 10))
+    
+    users = User.objects.select_related('profile').all()
+    
+    if query:
+        users = users.filter(
+            Q(username__icontains=query) |
+            Q(first_name__icontains=query) |
+            Q(last_name__icontains=query) |
+            Q(profile__last_name_ko__icontains=query) |
+            Q(profile__first_name_ko__icontains=query)
+        ).distinct()
+        
+    if team_id:
+        users = users.filter(teams__id=team_id)
+        
+    users = users.order_by('profile__last_name_ko', 'profile__first_name_ko', 'username')
+    
+    paginator = Paginator(users, page_size)
+    try:
+        page_obj = paginator.get_page(page)
+    except:
+        return JsonResponse({'success': False, 'message': 'Invalid page'})
+        
+    user_list = []
+    for u in page_obj:
+        avatar_url = u.profile.avatar.url if u.profile.avatar else None
+        user_list.append({
+            'id': u.id,
+            'username': u.username,
+            'name': u.profile.get_korean_name if hasattr(u, 'profile') else u.username,
+            'position': u.profile.position if hasattr(u, 'profile') else '',
+            'avatar_url': avatar_url,
+        })
+        
+    return JsonResponse({
+        'success': True,
+        'users': user_list,
+        'pagination': {
+            'current_page': page_obj.number,
+            'total_pages': paginator.num_pages,
+            'has_next': page_obj.has_next(),
+            'has_previous': page_obj.has_previous(),
+            'next_page': page_obj.next_page_number() if page_obj.has_next() else None,
+            'previous_page': page_obj.previous_page_number() if page_obj.has_previous() else None,
+        }
+    })

@@ -41,7 +41,7 @@ class ServiceRequest(models.Model):
 
     S_CHOICES=(
         ("N", "서비스 생성"),
-        ("A", "요청접수"),
+        ("A", "승인 대기"),
         ("P", "처리중"),
         ("G", "처리완료"),
         ("D", "처리불가")
@@ -111,7 +111,7 @@ class ServiceRequest(models.Model):
         if self.status == 'N':
             return "서비스 생성"
         elif self.status == 'A':
-            return "요청접수"
+            return "승인 대기"
         elif self.status == 'P':
             return "처리중"
         elif self.status == 'G':
@@ -128,8 +128,17 @@ class ServiceRequest(models.Model):
         return self.steps.filter(status='A')
 
     def get_status_P(self):
-        return self.steps.filter(status='P')
+        return self.steps.filter(status='P').order_by('step_time')
     
+    def get_req_attachments(self):
+        return self.attachments.filter(file_type='REQ')
+
+    def get_rcv_attachments(self):
+        return self.attachments.filter(file_type='RCV')
+
+    def get_step_attachments(self):
+        return self.attachments.filter(file_type='STEP')
+
     def is_over_due(self):
         if self.date_of_due > date.today():
             return True
@@ -141,9 +150,19 @@ def service_directory_path(instance, filename):
 
 
 class ServiceRequestAttachment(models.Model):
+    TYPE_CHOICES = (
+        ('REQ', '요청'),
+        ('RCV', '접수'),
+        ('STEP', '진행'),
+    )
     record = models.ForeignKey(ServiceRequest, related_name='attachments', on_delete=models.CASCADE)
+    step = models.ForeignKey('ServiceRequestStep', related_name='attachments', on_delete=models.SET_NULL, null=True, blank=True)
     file = models.FileField(upload_to=service_directory_path)
+    file_type = models.CharField(max_length=4, choices=TYPE_CHOICES, default='REQ')
     uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"[{self.get_file_type_display()}] {self.file.name}"
 
 
 class ServiceRequestStep(models.Model):

@@ -6,6 +6,7 @@ import datetime
 class Category(models.Model):
     name = models.CharField("카테고리명", max_length=100)
     color = models.CharField("색상", max_length=7, default="#007bff")  # hex color
+    is_key_task = models.BooleanField("Key task", default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -35,6 +36,7 @@ class Task(models.Model):
     status = models.CharField("상태", max_length=20, choices=STATUS_CHOICES, default='todo')
     priority = models.CharField("우선순위", max_length=20, choices=PRIORITY_CHOICES, default='medium')
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="카테고리")
+    start_date = models.DateField("시작일", null=True, blank=True)
     due_date = models.DateField("마감일", null=True, blank=True)
     progress = models.IntegerField("진척율", null=True, blank=True)
     team = models.ForeignKey('teams.Team', on_delete=models.SET_NULL, null=True, blank=True, verbose_name="팀")
@@ -50,9 +52,16 @@ class Task(models.Model):
 
     @property
     def is_overdue(self):
-        """마감일이 지났는지 확인"""
-        if self.due_date and self.status != 'done':
+        """마감일이 지났는지 확인 (완료/드랍 제외)"""
+        if self.due_date and self.status not in ['done', 'dropped']:
             return timezone.now().date() > self.due_date
+        return False
+
+    @property
+    def is_delayed_start(self):
+        """시작일이 지났는데도 진행/완료/드랍되지 않은 업무인지 확인"""
+        if self.start_date and self.status == 'todo':
+            return timezone.now().date() > self.start_date
         return False
 
     @property
@@ -62,6 +71,12 @@ class Task(models.Model):
             delta = self.due_date - timezone.now().date()
             return delta.days
         return None
+
+    @property
+    def my_progress_task_count(self):
+        """나의 진행중인 Task Count"""
+        return Task.objects.filter(assigned_to=self.request.user, status='in_progress').count()
+
 
 class TaskComment(models.Model):
     task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name='comments')

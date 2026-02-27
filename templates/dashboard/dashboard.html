@@ -1,484 +1,551 @@
-{% extends 'base.html' %}
+{% extends 'basic.html' %}
+{% load static %}
 
-{% block page_name %}
-    업무현황
-{% endblock %}
+{% block title %}업무현황 - Dashboard{% endblock %}
 
 {% block content %}
-    <div class="d-flex justify-content-end align-items-center mb-4">
-
-        <div class="page-actions">
-            <a href="{% url 'task_create' %}" class="btn btn-primary">
-                <i class="fas fa-plus me-2"></i>새 업무
-            </a>
-            <a href="{% url 'worklog_list' %}" class="btn btn-outline-primary">
-                <i class="fas fa-edit me-2"></i>주간보고 작성
-            </a>
-        </div>
-    </div>
-
-<!-- 통계 카드 섹션 -->
-<div class="row g-4 mb-4">
-    <div class="col-lg-3 col-md-6">
-        <a href="{% url 'task_list' %}" class="text-decoration-none">
-            <div class="stat-card info">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div class="stat-content ">
-                        <h3 class="stat-number">{{ total_tasks|default:0 }}</h3>
-                        <p class="stat-label">전체 업무</p>
-                    </div>
-                    <div class="stat-icon">
-                        <i class="fas fa-clipboard-list fa-2x"></i>
-                    </div>
-                </div>
-                <div class="stat-footer">
-                    <small><i class="fas fa-info-circle me-1"></i>전체 등록된 업무</small>
-                </div>
+<main class="flex-1 flex flex-col min-w-0 overflow-y-auto pb-12">
+    <div class="flex flex-col gap-8 max-w-[1400px] mx-auto w-full px-4 md:px-8 py-8">
+        <!-- Header & Top Actions -->
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+            <div class="flex flex-col gap-1">
+                <h1 class="text-3xl font-extrabold tracking-tight text-slate-900">Dashboard</h1>
+                <p class="text-slate-500 font-medium">{{user.profile.display_name}}님의 업무현황입니다.</p>
             </div>
-        </a>
-    </div>
-    
-    <div class="col-lg-3 col-md-6">
-        <a href="{% url 'task_list' %}?status=todo" class="text-decoration-none">
-            <div class="stat-card warning">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div class="stat-content">
-                        <h3 class="stat-number">{{ todo_tasks|default:0 }}</h3>
-                        <p class="stat-label">대기중 업무</p>
-                    </div>
-                    <div class="stat-icon">
-                        <i class="fas fa-clock fa-2x"></i>
-                    </div>
-                </div>
-                <div class="stat-footer">
-                    <small><i class="fas fa-hourglass-start me-1"></i>시작 대기중인 업무</small>
-                </div>
-            </div>
-        </a>
-    </div>
-    
-    <div class="col-lg-3 col-md-6">
-        <a href="{% url 'task_list' %}?status=in_progress" class="text-decoration-none">
-            <div class="stat-card primary">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div class="stat-content">
-                        <h3 class="stat-number">{{ in_progress_tasks|default:0 }}</h3>
-                        <p class="stat-label">진행중 업무</p>
-                    </div>
-                    <div class="stat-icon">
-                        <i class="fas fa-spinner fa-2x"></i>
-                    </div>
-                </div>
-                <div class="stat-footer">
-                    <small><i class="fas fa-play me-1"></i>현재 진행중인 업무</small>
-                </div>
-            </div>
-        </a>
-    </div>
-    
-    <div class="col-lg-3 col-md-6">
-        <a href="{% url 'task_list' %}?status=done" class="text-decoration-none">
-            <div class="stat-card success">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div class="stat-content">
-                        <h3 class="stat-number">{{ done_tasks|default:0 }}</h3>
-                        <p class="stat-label">완료된 업무</p>
-                    </div>
-                    <div class="stat-icon">
-                        <i class="fas fa-check-circle fa-2x"></i>
-                    </div>
-                </div>
-                <div class="stat-footer">
-                    <small><i class="fas fa-trophy me-1"></i>성공적으로 완료된 업무</small>
-                </div>
-            </div>
-        </a>
-    </div>
-</div>
-
-<!-- 모니터링 및 SR 현황 섹션 -->
-<div class="row g-4 mb-4">
-    <!-- 시스템 점검 현황 (Monitor) -->
-    <div class="col-lg-8">
-        <div class="card h-100 shadow-sm" style="border: none;">
-            <div class="card-header bg-white py-3" style="border-bottom: 1px solid #dee2e6;">
-                <h5 class="card-title mb-0 fw-bold">
-                    <i class="fas fa-server me-2 text-primary"></i>시스템 점검 현황
-                </h5>
-            </div>
-            <div class="card-body p-4">
-                <div class="row" style="gap: 1.5rem 0;">
-                    <!-- 미처리 내역 -->
-                    <div class="col-md-6">
-                        <div class="h-100">
-                            <div class="d-flex align-items-center mb-3">
-                                <div class="rounded-circle p-2 me-2" style="background-color: rgba(220, 53, 69, 0.1);">
-                                    <i class="fas fa-exclamation-circle text-danger"></i>
-                                </div>
-                                <h6 class="mb-0 fw-bold text-danger">미처리 점검 내역</h6>
-                            </div>
-                            {% if monitor_pending_logs %}
-                                <div class="list-group list-group-flush">
-                                    {% for log in monitor_pending_logs %}
-                                    <a href="{% url 'operation_log_detail' log.pk %}" 
-                                       class="list-group-item list-group-item-action monitor-pending-item"
-                                       style="border: none; border-left: 3px solid #dc3545; padding: 1rem; margin-bottom: 0.5rem; background-color: #f8f9fa; border-radius: 0 0.375rem 0.375rem 0; transition: all 0.2s;">
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <div>
-                                                <div class="fw-bold text-dark mb-1" style="font-size: 0.95rem;">
-                                                    {{ log.date|date:"Y년 m월 d일" }}
-                                                </div>
-                                          </div>
-                                            <span class="badge bg-danger" style="padding: 0.5rem 0.75rem;">미완료</span>
-                                        </div>
-                                    </a>
-                                    {% endfor %}
-                                </div>
-                            {% else %}
-                                <div class="text-center rounded" style="padding: 3rem 1rem; background-color: #f8f9fa;">
-                                    <i class="fas fa-check-circle text-success mb-3" style="font-size: 3rem; opacity: 0.5;"></i>
-                                    <p class="mb-0 text-muted fw-medium">미처리된 점검 내역이 없습니다</p>
-                                </div>
-                            {% endif %}
-                        </div>
-                    </div>
-                    
-                    <!-- 향후 일정 및 평균 리드타임 (가로 배치) -->
-                    <div class="col-md-6">
-                        <div class="row g-3 h-100">
-                            <!-- 향후 일정 -->
-                            <div class="col-6">
-                                <div class="h-100 d-flex flex-column">
-                                    <div class="d-flex align-items-center mb-2">
-                                        <div class="rounded-circle p-1 me-2" style="background-color: rgba(13, 110, 253, 0.1);">
-                                            <i class="fas fa-calendar-alt text-primary" style="font-size: 0.9rem;"></i>
-                                        </div>
-                                        <h6 class="mb-0 fw-bold text-primary" style="font-size: 0.95rem;">다음 점검 일정</h6>
-                                    </div>
-                                    {% if monitor_upcoming_logs %}
-                                    <div class="flex-grow-1 rounded p-3 d-flex flex-column justify-content-center align-items-center text-center" >
-
-                                        {% for log in monitor_upcoming_logs %}
-                                                        <div class="text-center me-3 bg-white rounded shadow-sm p-2" style="min-width: 70px;">
-                                                            <small class="text-muted d-block fw-bold italic" style="font-size: 0.9rem; margin-top: 3px;">
-                                                                {{ log.date|date:"m월" }}
-                                                            </small>
-                                                            <div class="fw-bold text-primary mb-0" style="font-size: 2.2rem; line-height: 1;">
-                                                                {{ log.date|date:"d" }}
-                                                            </div>
-
-                                                            </div>
-                                                        {% if log.date == today %}
-                                                            <span class="tag tag-primary">오늘</span>
-                                                        {% else %}
-                                                            <span class="tag tag-warning">{{ log.date|timeuntil }} 남음</span>
-                                                        {% endif %}
-                                               
-                                            {% endfor %}
-                                        </div>
-                                    {% else %}
-                                        <div class="text-center rounded flex-grow-1 d-flex flex-column justify-content-center" style="background-color: #f8f9fa;">
-                                            <i class="fas fa-calendar-check text-muted mb-2" style="font-size: 1.5rem; opacity: 0.5;"></i>
-                                            <p class="mb-0 text-muted fw-medium small">일정 없음</p>
-                                        </div>
-                                    {% endif %}
-                                </div>
-                            </div>
-                            
-                            <!-- 평균 리드타임 표시 -->
-                            {% if avg_lead_time_hours is not None %}
-                            <div class="col-6">
-                                <div class="h-100 d-flex flex-column">
-                                    <div class="d-flex align-items-center mb-2">
-                                        <div class="rounded-circle p-1 me-2" style="{% if lead_time_status == 'good' %}background-color: rgba(25, 135, 84, 0.1);{% else %}background-color: rgba(255, 193, 7, 0.1);{% endif %}">
-                                            <i class="fas fa-clock {% if lead_time_status == 'good' %}text-success{% else %}text-warning{% endif %}" style="font-size: 0.9rem;"></i>
-                                        </div>
-                                        <h6 class="mb-0 fw-bold {% if lead_time_status == 'good' %}text-success{% else %}text-warning{% endif %}" style="font-size: 0.95rem;">평균 리드타임</h6>
-                                    </div>
-                                    
-                                    <div class="flex-grow-1 rounded p-3 d-flex flex-column justify-content-center align-items-center text-center" style="{% if lead_time_status == 'good' %}background-color: rgba(25, 135, 84, 0.05); border: 1px solid rgba(25, 135, 84, 0.1);{% else %}background-color: rgba(255, 193, 7, 0.05); border: 1px solid rgba(255, 193, 7, 0.1);{% endif %}">
-                                        <div class="fw-bold mb-2" style="font-size: 1.4rem; line-height: 1.2; {% if lead_time_status == 'good' %}color: #198754;{% else %}color: #ffc107;{% endif %}">
-                                            {% if avg_lead_time_hours >= 0 %}
-                                                {% if avg_lead_time_days > 0 %}
-                                                    {{ avg_lead_time_days }}일 {{ avg_lead_time_remaining_hours }}시간
-                                                {% else %}
-                                                    {{ avg_lead_time_remaining_hours }}시간
-                                                {% endif %}
-                                            {% else %}
-                                                {% if avg_lead_time_days < 0 %}
-                                                    {{ avg_lead_time_days }}일<br>{{ avg_lead_time_remaining_hours }}시간
-                                                {% else %}
-                                                    {{ avg_lead_time_remaining_hours }}시간
-                                                {% endif %}
-                                            {% endif %}
-                                        </div>
-                                        <small class="text-muted" style="font-size: 0.65rem;">마감(17시) 기준</small>
-                                        
-                                        {% if lead_time_status == 'good' %}
-                                            <span class="tag tag-success mb-2" style="padding: 0.3rem 0.5rem; font-size: 0.7rem;">
-                                                <i class="fas fa-check-circle me-1"></i>점검이 정상적으로 이루어지고 있습니다.
-                                            </span>
-                                        {% else %}
-                                            <span class="tag tag-success text-dark mb-2" style="padding: 0.3rem 0.5rem; font-size: 0.7rem;">
-                                                <i class="fas fa-exclamation-triangle me-1"></i>점검이 너무 오래걸립니다.
-                                            </span>
-                                        {% endif %}
-                                        
-                                        
-                                    </div>
-                                </div>
-                            </div>
-                            {% endif %}
-                        </div>
-                    </div>
-                </div>
+            <div class="flex flex-wrap gap-3">
+                <a href="{% url 'task_create' %}" class="px-5 py-2.5 bg-primary text-white rounded-xl text-sm font-bold shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all flex items-center gap-2 group">
+                    <span class="material-symbols-outlined text-lg group-hover:rotate-90 transition-transform">add</span>
+                    새 업무 등록
+                </a>
+                <a href="{% url 'worklog_list' %}" class="px-5 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl text-sm font-bold hover:bg-slate-50 transition-all flex items-center gap-2 shadow-sm">
+                    <span class="material-symbols-outlined text-lg">edit_note</span>
+                    주간보고 작성
+                </a>
             </div>
         </div>
-    </div>
 
-    <!-- SR 현황 (Service Request) -->
-    <div class="col-lg-4">
-        <div class="h-100 d-flex flex-column" style="gap: 1rem;">
-            <!-- SR 접수 대상 -->
-            <div class="card shadow-sm flex-fill" style="border: none;">
-                <div class="card-body p-4 rounded" style="background-color: rgba(220, 53, 69, 0.05);">
-                    <div class="d-flex align-items-start justify-content-between mb-3">
-                        <div class="flex-grow-1">
-                            <div class="d-flex align-items-center mb-2">
-                                <div class="rounded-circle p-2 me-2" style="background-color: rgba(220, 53, 69, 0.1);">
-                                    <i class="fas fa-inbox text-danger"></i>
-                                </div>
-                                <h6 class="mb-0 fw-bold text-danger">SR 접수 대상</h6>
-                            </div>
-                            <small class="text-muted d-block">접수 대기중인 요청</small>
-                        </div>
-                        <div class="text-end">
-                            <div class="fw-bold text-danger mb-0" style="font-size: 3rem; line-height: 1;">
-                                {{ sr_receipt_target_count|default:0 }}
-                            </div>
-                            <small class="text-danger fw-medium">건</small>
-                        </div>
+        <!-- Statistics Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <!-- Total Tasks -->
+            <div class="flex flex-col justify-between gap-6 rounded-2xl p-6 bg-white border border-slate-100 hover:shadow-md hover:-translate-y-1 transition-all group">
+                <div class="flex justify-between items-start">
+                    <div class="size-12 rounded-xl bg-primary text-white flex items-center justify-center">
+                            <span class="material-symbols-outlined text-2xl animate-spin-slow">sync</span>
                     </div>
-                    <div class="progress" style="height: 4px;">
-                        <div class="progress-bar bg-danger" role="progressbar" style="width: 100%"></div>
-                    </div>
+                    <div class="text-md  text-blue-600 font-semibold">Task</div>
                 </div>
-            </div>
-
-            <!-- 처리 진행 중 -->
-            <div class="card shadow-sm flex-fill" style="border: none;">
-                <div class="card-body p-4 rounded" style="background-color: rgba(13, 110, 253, 0.05);">
-                    <div class="d-flex align-items-start justify-content-between mb-3">
-                        <div class="flex-grow-1">
-                            <div class="d-flex align-items-center mb-2">
-                                <div class="rounded-circle p-2 me-2" style="background-color: rgba(13, 110, 253, 0.1);">
-                                    <i class="fas fa-cog fa-spin text-primary"></i>
-                                </div>
-                                <h6 class="mb-0 fw-bold text-primary">처리 진행 중</h6>
-                            </div>
-                            <small class="text-muted d-block">현재 처리중인 요청</small>
-                        </div>
-                        <div class="text-end">
-                            <div class="fw-bold text-primary mb-0" style="font-size: 3rem; line-height: 1;">
-                                {{ sr_in_progress_count|default:0 }}
-                            </div>
-                            <small class="text-primary fw-medium">건</small>
-                        </div>
-                    </div>
-                    <div class="progress" style="height: 4px;">
-                        <div class="progress-bar bg-primary" role="progressbar" style="width: 100%"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- 메인 컨텐츠 영역 -->
-<div class="row g-4 mt-2">
-    <!-- 최근 업무 -->
-    <div class="col-lg-8">
-        <div class="card">
-            <div class="card-header">
-                <div class="d-flex justify-content-between align-items-center">
-                    <h5 class="card-title mb-0">
-                        <i class="fas fa-tasks me-2"></i>최근 업무
-                    </h5>
-                    <a href="{% url 'task_list' %}" class="btn btn-sm btn-outline-primary">
-                        <i class="fas fa-arrow-right me-1"></i>전체보기
+            
+                <div class="flex justify-start items-center gap-2">
+                    <a href="{% url 'task_list' %}?status=in_progress">
+                        <h3 class="text-3xl font-bold tracking-tight text-primary mb-1">{{ in_progress_tasks|default:0 }}</h3>
                     </a>
+                    <span class="text-sm font-bold text-slate-400 ml-1"> / </span> 
+                    <a href="{% url 'task_list' %}">                   
+                        <span class="text-4xl font-black text-slate-900 transition-colors group-hover:text-primary">{{ total_tasks|default:0 }} </span>
+                    </a>
+                    <span class="text-sm font-bold text-slate-400 ml-1">건</span>
+                </div>                    
+
+                <p class="text-slate-500 text-sm font-medium">진행중 / 전체 업무</p>
+                
+                <div class="pt-4 border-t border-slate-50 flex items-center gap-2 text-xs text-slate-400 font-medium">
+                    <span class="material-symbols-outlined text-sm">info</span>
+                    {% if latest_review and latest_report_id %}
+                        <button onclick="openReviewModal()" class="font-bold text-left animate-gradient-x bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-600 bg-clip-text text-transparent bg-[length:200%_auto] hover:opacity-80 transition-opacity">
+                           {{ latest_review.month_week_display }} Review Update!!
+                        </button>
+                    {% else %}
+                        최근 등록된 업무 리뷰가 없습니다.
+                    {% endif %}
                 </div>
             </div>
-            <div class="card-body p-0">
-                {% if recent_tasks %}
-                    <div class="table-responsive">
-                        <table class="table table-hover mb-0 text-center">
-                            <thead class="table-light">
-                                <tr>
-                                    <th class="border-0">제목</th>
-                                    <th class="border-0">상태</th>
-                                    <th class="border-0">마감일</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for task in recent_tasks %}
-                                <tr>
-                                    <td>
-                                        <div>
-                                            <a href="{% url 'task_detail' task.pk %}" class=" text-decoration-none fw-medium text-dark ">
-                                                {{ task.title|truncatechars:50 }}
-                                            </a>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <span class="badge badge-status-{{ task.status }}">
-                                            {% if task.status == 'in_progress' %}진행중
-                                            {% elif task.status == 'todo' %}시작 전
-                                            {% elif task.status == 'done' %}완료
-                                            {% elif task.status == 'dropped' %}중단
-                                            {% else %}대기{% endif %}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        {% if task.due_date %}
-                                            <span class="text-muted">
-                                                <i class="fas fa-calendar-alt me-1"></i>
-                                                {{ task.due_date|date:"m/d" }}
-                                            </span>
-                                        {% else %}
-                                            <span class="text-muted">-</span>
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+
+            <!-- Todo Tasks -->
+            <div class="flex flex-col justify-between gap-6 rounded-2xl p-6 bg-white border border-slate-100 hover:shadow-md hover:-translate-y-1 transition-all group">
+                <div class="flex justify-between items-start">
+                    <div class="size-12 rounded-xl bg-amber-100 text-slate-500 flex items-center justify-center">
+                            <span class="material-symbols-outlined text-2xl">check_circle</span>
                     </div>
-                {% else %}
-                    <div class="empty-state">
-                        <div class="empty-icon">
-                            <i class="fas fa-inbox"></i>
+                <div class="text-md  text-amber-600 font-semibold">Monitoring</div>
+                </div>
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h3 class="text-3xl font-bold tracking-tight text-slate-900">{{ monitor_pending_logs|length|default:0 }}</h3>
+                        <p class="text-slate-500 text-sm font-medium w-[110px]">점검 미처리</p>
+                    </div>
+                    {% if monitor_pending_logs  %}
+                        {% for log in monitor_pending_logs %}
+                            <a href="{% url 'operation_log_detail' log.id %}">
+                                <span class="text-[10px] font-medium uppercase  px-2 py-1 rounded-xl bg-amber-100 text-slate-500">{{log.date|date:"m월 d일"}}</span>
+                            </a>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+                <div class="pt-4 border-t border-slate-50 flex items-center justify-between gap-2 text-xs text-slate-500 font-medium font-bold">
+                    <div class="flex items-center gap-2">                   
+                        <span class="material-symbols-outlined text-sm">event_busy</span>
+                        다음 일정 
+                    </div> 
+                    {% if monitor_upcoming %}
+                    <div class="flex items-center gap-2">
+                        <div class="size-12 rounded-xl bg-white/20 backdrop-blur-md flex flex-col items-center justify-center border border-white/30">
+                            <span class="text-[9px] text-blue-500 font-bold opacity-80 uppercase leading-none">{{ monitor_upcoming.date|date:"M" }}</span>
+                            <span class="text-xl font-black leading-none text-blue-500">{{ monitor_upcoming.date|date:"d" }}</span>
                         </div>
-                        <h6 class="empty-title">등록된 업무가 없습니다</h6>
-                        <p class="empty-description">첫 번째 업무를 등록해보세요.</p>
-                        <a href="{% url 'task_create' %}" class="btn btn-primary">
-                            <i class="fas fa-plus me-2"></i>업무 등록하기
+                        <div class="flex justify-between items-center gap-4">
+                            <div>
+                                <p class="text-sm font-bold text-blue-500">{{ monitor_upcoming.date|date:"Y년 m월 d일" }}</p>
+                                <p class="text-xs font-medium opacity-80 text-center">
+                            {% if monitor_upcoming.date == today %}Today{% else %}{{ monitor_upcoming.date|timeuntil }} 뒤{% endif %}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
+                        <div class="flex items-center gap-4 opacity-80">
+                            <p class="text-sm font-bold">일정이 없습니다</p>
+                        </div>
+                    {% endif %}
+
+                </div>
+            </div>
+
+            <!-- In Progress 
+            <a href="{% url 'task_list' %}?status=in_progress" class="flex flex-col justify-between gap-6 rounded-2xl p-6 bg-primary/5 shadow-sm border border-primary/10 hover:shadow-md hover:-translate-y-1 transition-all group">
+                <div class="flex justify-between items-start">
+                    <div class="size-12 rounded-xl bg-primary text-white flex items-center justify-center shadow-lg shadow-primary/20">
+                            <span class="material-symbols-outlined text-2xl animate-spin-slow">deployed_code_update</span>
+                    </div>
+                </div>
+                <div>
+                    <h3 class="text-3xl font-bold tracking-tight text-primary mb-1">{{ in_progress_tasks|default:0 }}</h3>
+                    <p class="text-primary/70 text-sm font-bold">진행중 업무</p>
+                </div>
+                <div class="pt-4 border-t border-primary/10 flex items-center gap-2 text-xs text-primary font-bold">
+                    <span class="material-symbols-outlined text-sm">play_circle</span>
+                    현재 처리 중인 업무
+                </div>
+            </a>
+-->
+
+
+
+
+            <!-- Service Request -->
+            <div class="flex flex-col justify-between gap-6 rounded-2xl p-6 bg-white shadow-sm border border-slate-100 hover:shadow-md hover:-translate-y-1 transition-all group">
+                <div class="flex justify-between items-start">
+                    <div class="size-12 rounded-xl bg-green-50 text-green-600 flex items-center justify-center">
+                        <span class="material-symbols-outlined text-2xl">receipt_long</span>
+                    </div>
+                    <div class="text-md  text-emerald-600 font-semibold">Service Request</div>
+                </div>
+            
+                <div class="flex justify-start items-center gap-2">
+                    <a href="{% url 'service_request_reception_list' %}">
+                        <h3 class="text-3xl font-bold tracking-tight text-primary mb-1">{{ user.profile.sr_receipt_target_count|default:0 }}</h3>
+                    </a>
+                    <span class="text-sm font-bold text-slate-400 ml-1"> / </span> 
+                    <a href="{% url 'service_request_list' %}">                   
+                        <span class="text-4xl font-black text-slate-900 transition-colors group-hover:text-primary">{{ user.profile.sr_in_progress_count|default:0 }} </span>
+                    </a>
+                    <span class="text-sm font-bold text-slate-400 ml-1">건</span>
+                </div>                    
+
+                <p class="text-slate-500 text-sm font-medium">접수대기 / 처리 중</p>
+                
+                <div class="pt-4 border-t border-slate-50 flex items-center gap-2 text-xs text-slate-400 font-medium">
+                    <span class="material-symbols-outlined text-sm">info</span>
+                    전체 등록된 업무 현황
+                </div>
+            </div>
+
+            <!-- Asset Management Summary -->
+            <div class="flex flex-col justify-between gap-6 rounded-2xl p-6 bg-white shadow-sm border border-slate-100 hover:shadow-md hover:-translate-y-1 transition-all group">
+                <div class="flex justify-between items-start">
+                    <div class="size-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                        <span class="material-symbols-outlined text-2xl">inventory_2</span>
+                    </div>
+                    <div class="text-md text-blue-600 font-semibold">IT Assets</div>
+                </div>
+            
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="flex flex-col">
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">총 시스템</span>
+                        <div class="flex items-baseline gap-1">
+                            <span class="text-2xl font-black text-slate-900">{{ total_systems|default:0 }}</span>
+                            <span class="text-[10px] font-bold text-slate-400">대</span>
+                        </div>
+                    </div>
+                    <div class="flex flex-col">
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">올해 계약</span>
+                        <div class="flex items-baseline gap-1">
+                            <span class="text-2xl font-black text-slate-900">{{ active_contracts_count|default:0 }}</span>
+                            <span class="text-[10px] font-bold text-slate-400">건</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-4 border-t border-slate-50">
+                    <div class="flex items-center justify-between">
+                        <div class="flex flex-col">
+                            <span class="text-[10px] font-bold text-slate-400 uppercase mb-0.5">내 담당 자산</span>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-black text-primary">Sys. {{ my_systems_count|default:0 }}</span>
+                                <span class="size-1 rounded-full bg-slate-200"></span>
+                                <span class="text-xs font-black text-primary">Con. {{ my_contracts_count|default:0 }}</span>
+                            </div>
+                        </div>
+                        <a href="{% url 'assets:topology' %}" class="size-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-400 hover:bg-primary hover:text-white transition-all">
+                            <span class="material-symbols-outlined text-base">account_tree</span>
                         </a>
                     </div>
-                {% endif %}
+                </div>
             </div>
         </div>
-    </div>
-    
-    <!-- 사이드 패널 -->
-    <div class="col-lg-4">
-        <!-- 우선순위별 업무 현황 -->
-        <div class="card mb-4">
-            <div class="card-header">
-                <h5 class="card-title mb-0">
-                    <i class="fas fa-chart-pie me-2"></i>우선순위별
-                </h5>
+
+
+
+        <!-- Recent Content Area -->
+        <div class="grid grid-cols-1 xl:grid-cols-2 gap-8">
+            <!-- Recent Tasks Table -->
+            <div class="xl:col-span-2 flex flex-col rounded-md bg-white shadow-sm border border-slate-100 overflow-hidden">
+                <div class="p-6 border-b border-slate-100 flex items-center justify-between">
+                    <h3 class="font-bold text-slate-900 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-blue-500">event_upcoming</span>
+                        {{ current_year }}년 업무추진 계획
+                    </h3>
+                    <div class="flex items-center gap-4">
+                        <div class="flex items-center gap-2 text-xs font-bold text-slate-400">
+                            <span class="size-2 rounded-full bg-primary"></span>
+                            진행중
+                            <span class="size-2 rounded-full bg-amber-400 ml-2"></span>
+                            예정
+                            <span class="size-2 rounded-full bg-green-500 ml-2"></span>
+                            완료
+                        </div>
+                        <a href="{% url 'task_planner' %}" class="px-4 py-1.5 rounded-lg bg-slate-50 text-slate-600 text-xs font-bold hover:bg-slate-100 transition-colors flex items-center gap-1 group">
+                            전체보기
+                            <span class="material-symbols-outlined text-[16px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="overflow-x-auto h-full min-h-[300px] bg-slate-50/50 relative p-2 md:p-3">
+                    {% if recent_tasks %}
+                        <!-- Task Data for Gantt -->
+                        <script id="gantt-data" type="application/json">
+                        [
+                            {% for task in recent_tasks %}
+                            {
+                                "id": "{{ task.pk }}",
+                                "name": "{{ task.title|escapejs }}",
+                                "status": "{{ task.status }}",
+                                "status_display": "{% if task.status == 'in_progress' %}진행중{% elif task.status == 'todo' %}예정{% elif task.status == 'done' %}완료{% else %}대기{% endif %}",
+                                "start": "{% if task.start_date %}{{ task.start_date|date:'Y-m-d' }}{% else %}{{ task.created_at|date:'Y-m-d' }}{% endif %}",
+                                "end": "{% if task.due_date %}{{ task.due_date|date:'Y-m-d' }}{% else %}{{ today|date:'Y-m-d' }}{% endif %}",
+                                "progress": {% if task.status == 'done' %}100{% elif task.progress %}{{ task.progress }}{% elif task.status == 'in_progress' %}50{% else %}0{% endif %}
+                            }{% if not forloop.last %},{% endif %}
+                            {% endfor %}
+                        ]
+                        </script>
+                        
+                        <div class="min-w-[1000px]">
+                            <!-- Gantt Header -->
+                            <div class="flex items-stretch border-b border-slate-200 bg-white/80 backdrop-blur-md sticky top-0 z-30 shadow-sm">
+                                <div class="w-64 shrink-0 flex items-center justify-center border-r border-slate-200 font-black text-[14px] uppercase tracking-wider text-slate-400 bg-white/90 sticky left-0 z-40">
+                                    업무 리스트
+                                </div>
+                                <div class="flex-1 grid grid-cols-12 divide-x divide-slate-200">
+                                    {% for m in "123456789012" %}
+                                    <div class="text-center py-4 text-[14px] font-black text-slate-400 uppercase flex items-center justify-center">{{ forloop.counter }}월</div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+
+                            <!-- Gantt Body -->
+                            <div class="flex-1 bg-white relative pb-10" id="gantt-rows">
+                                <div class="divide-y divide-slate-200" id="gantt-task-list">
+                                    <!-- Tasks will be injected here via JS -->
+                                </div>
+
+                                <!-- Today Line Indicator -->
+                                <div id="today-indicator" class="absolute top-0 bottom-0 w-[2px] bg-rose-500 z-50 pointer-events-none transition-all duration-700 flex flex-col items-center">
+                                    <div class="bg-rose-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full shadow-lg -translate-y-full mb-1 whitespace-nowrap ring-2 ring-white">오늘 ({{ today|date:"m/d" }})</div>
+                                </div>
+                            </div>
+                        </div>
+                        </div>
+                    {% else %}
+                        <div class="flex flex-col items-center justify-center h-full py-20 px-10 text-center space-y-4">
+                            <div class="size-20 bg-slate-50 rounded-full flex items-center justify-center">
+                                <span class="material-symbols-outlined text-4xl text-slate-200">folder_open</span>
+                            </div>
+                            <div>
+                                <p class="text-slate-900 font-bold">등록된 업무가 없습니다</p>
+                                <p class="text-slate-400 text-sm mt-1">첫 번째 업무를 업무 리스트에 등록해보세요.</p>
+                            </div>
+                            <a href="{% url 'task_create' %}" class="px-6 py-2.5 bg-primary text-white rounded-xl text-sm font-bold shadow-lg shadow-primary/20">새 업무 등록</a>
+                        </div>
+                    {% endif %}
+                </div>
             </div>
-            <div class="card-body">
-                <div class="priority-stats">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <div class="d-flex align-items-center">
-                            <i class="fas fa-circle me-2" style="color: var(--priority-urgent);"></i>
-                            <span>긴급</span>
-                        </div>
-                        <span class="badge badge-urgent">{{ urgent_tasks|default:0 }}</span>
+
+        </div>
+    </div>
+
+    <!-- AI Review Modal -->
+    <!-- AI Review Modal -->
+    {% if latest_review and latest_report_id %}
+    <div id="review-modal" class="hidden relative z-50">
+        <div class="fixed inset-0 bg-slate-900/20 backdrop-blur-sm transition-opacity" onclick="closeReviewModal()"></div>
+        <div class="fixed inset-0 z-10 overflow-y-auto">
+            <div class="flex min-h-full items-center justify-center p-4 text-center">
+                <div class="relative transform overflow-hidden rounded-[32px] bg-white text-left shadow-2xl transition-all w-full max-w-5xl h-[80vh] flex flex-col border border-slate-100">
+                    <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                        <h3 class="text-lg font-bold text-slate-900 flex items-center gap-2" id="aiReviewModalLabel">
+                            <i class="fas fa-robot text-primary"></i> AI 리뷰 결과
+                        </h3>
+                        <button type="button" class="w-8 h-8 rounded-full flex items-center justify-center bg-white border border-slate-200 text-slate-400 hover:text-slate-600 hover:shadow-sm transition-all" onclick="closeReviewModal()">
+                            <span class="material-symbols-outlined text-[20px]">close</span>
+                        </button>
                     </div>
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <div class="d-flex align-items-center">
-                            <i class="fas fa-circle me-2" style="color: var(--priority-high);"></i>
-                            <span>높음</span>
-                        </div>
-                        <span class="badge badge-high">{{ high_tasks|default:0 }}</span>
-                    </div>
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <div class="d-flex align-items-center">
-                            <i class="fas fa-circle me-2" style="color: var(--priority-medium);"></i>
-                            <span>보통</span>
-                        </div>
-                        <span class="badge badge-medium">{{ medium_tasks|default:0 }}</span>
-                    </div>
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div class="d-flex align-items-center">
-                            <i class="fas fa-circle me-2" style="color: var(--priority-low);"></i>
-                            <span>낮음</span>
-                        </div>
-                        <span class="badge badge-low">{{ low_tasks|default:0 }}</span>
+                    <div class="flex-1 bg-white relative overflow-hidden">
+                         <div id="review-content" class="absolute inset-0 w-full h-full p-0">
+                            <!-- iframe container -->
+                         </div>
                     </div>
                 </div>
             </div>
         </div>
-        
-        <!-- 최근 활동 -->
-        <div class="card mb-4">
-            <div class="card-header">
-                <h5 class="card-title mb-0">
-                    <i class="fas fa-history me-2"></i>최근 알림
-                </h5>
-            </div>
-            <div class="card-body">
-                {% if recent_notifications %}
-                    <div class="timeline">
-                        {% for notification in recent_notifications %}
-                        <div class="timeline-item">
-                            <div class="timeline-content">
-                                {% if notification.task %}
-                                    <a href="{% url 'notifications:mark_read' notification.id %}" class="text-decoration-none">
-                                        <p class="mb-1 {% if not notification.is_read %}fw-bold{% endif %}">
-                                            <i class="fas fa-bell me-1"></i>{{ notification.title }}
-                                        </p>
-                                        <small class="text-muted">{{ notification.message|truncatechars:50 }}</small>
-                                    </a>
-                                {% else %}
-                                    <p class="mb-1 {% if not notification.is_read %}fw-bold{% endif %}">
-                                        <i class="fas fa-bell me-1"></i>{{ notification.title }}
-                                    </p>
-                                    <small class="text-muted">{{ notification.message|truncatechars:50 }}</small>
-                                {% endif %}
-                                <br>
-                                <small class="text-muted">
-                                    <i class="fas fa-clock me-1"></i>
-                                    {{ notification.created_at|timesince }} 전
-                                </small>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                {% else %}
-                    <div class="empty-state py-3">
-                        <div class="empty-icon">
-                            <i class="fas fa-bell-slash"></i>
-                        </div>
-                        <p class="empty-description mb-0">최근 알림이 없습니다.</p>
-                    </div>
-                {% endif %}
-            </div>
-        </div>
-        
-
     </div>
-</div>
+    {% endif %}
 
+</main>
 {% endblock %}
 
 {% block extra_js %}
+<script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
 <script>
-$(document).ready(function() {
+    // Modal functions for Dashboard
+    window.openReviewModal = function() {
+        const modal = document.getElementById('review-modal');
+        const contentDiv = document.getElementById('review-content');
+        
+        contentDiv.innerHTML = '<div class="flex justify-center items-center h-full"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>';
+        
+        modal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden'; // Prevent background scrolling
+        
+        const reportId = {{ latest_report_id|default:"0" }};
+        const userId = {{ user.id }};
+        const url = `/reports/weekly/${reportId}/review/${userId}/`;
+        
+        fetch(url, {
+            method: 'GET',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const iframe = document.createElement('iframe');
+                iframe.style.width = '100%';
+                iframe.style.height = '100%';
+                iframe.style.border = 'none';
+                contentDiv.innerHTML = '';
+                contentDiv.appendChild(iframe);
+                
+                const doc = iframe.contentWindow.document;
+                doc.open();
+                doc.write(data.html);
+                doc.close();
+            } else {
+                contentDiv.innerHTML = `<div class="p-8 text-center text-slate-500">${data.message}</div>`;
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            contentDiv.innerHTML = '<div class="p-8 text-center text-rose-500">리뷰 정보를 불러오는 중 오류가 발생했습니다.</div>';
+        });
+    }
+    window.closeReviewModal = function() {
+        $('#review-modal').addClass('hidden');
+        document.body.style.overflow = 'auto'; // Restore scrolling
+    }
 
-    
-    // 테이블 행 클릭 이벤트
-    $('.table tbody tr').click(function() {
-        $(this).addClass('table-active').siblings().removeClass('table-active');
+$(document).ready(function() {
+    // Refresh icon animation and page reload
+    $('#refreshBtn').on('click', function() {
+        $('#refreshIcon').addClass('animate-spin');
+        setTimeout(() => location.reload(), 300);
     });
-    
-    // 새로고침 버튼 애니메이션
-    $('.btn[onclick="location.reload()"]').click(function() {
-        $(this).find('i').addClass('fa-spin');
+
+    // Animate stats numbers
+    $('.text-3xl').each(function() {
+        const $this = $(this);
+        const target = parseInt($this.text());
+        if (isNaN(target)) return;
+        
+        $this.text('0');
+        $({ countNum: 0 }).animate({ countNum: target }, {
+            duration: 800,
+            easing: 'swing',
+            step: function() {
+                $this.text(Math.floor(this.countNum));
+            },
+            complete: function() {
+                $this.text(this.countNum);
+            }
+        });
     });
+
+    // Google Charts (Safe Load)
+    if (typeof google !== 'undefined') {
+        try {
+            google.charts.load('current', {'packages':['gantt'], 'language': 'ko'});
+        } catch(e) { console.error("Google Charts failed to load", e); }
+    }
+
+    // Enhanced Custom Gantt Implementation
+    if ($('#gantt-data').length) {
+        const rawData = JSON.parse(document.getElementById('gantt-data').textContent);
+        const currentYear = new Date().getFullYear();
+        const $taskList = $('#gantt-task-list');
+        const $indicator = $('#today-indicator');
+        
+        const isLeap = (year) => (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
+        const dayOfYear = (date) => {
+            const start = new Date(date.getFullYear(), 0, 0);
+            return Math.floor((date - start) / (1000 * 60 * 60 * 24));
+        };
+        const totalDays = isLeap(currentYear) ? 366 : 365;
+
+        function renderGantt() {
+            $taskList.empty();
+            const now = new Date();
+            
+            // Positioning helper
+            const getLeftPos = (dateStr) => {
+                const date = new Date(dateStr);
+                if (date.getFullYear() < currentYear) return 0;
+                if (date.getFullYear() > currentYear) return 100;
+                return (dayOfYear(date) / totalDays) * 100;
+            };
+
+            rawData.forEach(task => {
+                const startPos = getLeftPos(task.start);
+                const endPos = getLeftPos(task.end);
+                let width = endPos - startPos;
+                if (width < 0.5) width = 0.5;
+
+                const statusColors = {
+                    'in_progress': { bar: 'bg-primary shadow-primary/20', text: 'text-primary', label: 'In Progress', bg: 'bg-primary/10 border-primary/20' },
+                    'todo': { bar: 'bg-amber-400 shadow-amber-500/10', text: 'text-amber-700', label: 'To-Do', bg: 'bg-amber-100/50 border-amber-200/50' },
+                    'done': { bar: 'bg-green-500 shadow-green-500/10', text: 'text-green-700', label: 'Done', bg: 'bg-green-100/50 border-green-200/50' }
+                };
+                const config = statusColors[task.status] || { bar: 'bg-slate-300', text: 'text-slate-500', label: 'Waiting', bg: 'bg-slate-50 border-slate-200' };
+
+                const rowHtml = `
+                    <div class="flex hover:bg-slate-50/50 transition-colors group h-14 relative cursor-pointer border-b border-slate-100" onclick="location.href='/task/${task.id}/'">
+                        <div class="w-64 shrink-0 px-6 border-r border-slate-200 flex items-center gap-3 bg-white sticky left-0 z-10 group-hover:bg-slate-50/40 transition-colors shadow-[6px_0_12px_rgba(0,0,0,0.02)]">
+                            <div class="size-2.5 rounded-full ${config.bar} ring-2 ring-white shadow-sm"></div>
+                            <div class="min-w-0">
+                                <p class="text-[11px] font-bold text-slate-800 truncate group-hover:text-primary transition-colors">${task.name}</p>
+                                <p class="text-[9px] text-slate-400 font-bold tracking-wider">${task.start.split('-').slice(1).reverse().join('/')} ~ ${task.end.split('-').slice(1).reverse().join('/')}</p>
+                            </div>
+                        </div>
+                        <div class="flex-1 grid grid-cols-12 relative px-4 py-2.5">
+                            <!-- Background Grid Lines -->
+                            <div class="absolute inset-0 grid grid-cols-12 divide-x divide-slate-200 pointer-events-none px-4">
+                                ${Array(12).fill('<div class="h-full"></div>').join('')}
+                            </div>
+                            
+                            <!-- Task Bars Layer -->
+                            <div class="col-span-12 h-full relative z-20">
+                                <div class="absolute top-0 bottom-0 rounded-md border shadow-sm flex items-center px-2 transition-all hover:scale-[1.02] hover:shadow-md group ${config.bg}" 
+                                     style="left: ${startPos}%; width: ${width}%;">
+                                    <div class="absolute inset-y-0 left-0 w-1 ${config.bar}"></div>
+                                    <span class="text-[9px] font-black uppercase tracking-tighter truncate ${config.text}">${config.label}</span>
+                                    
+                                    <!-- Progress indicator (Thicker) -->
+                                    <div class="absolute bottom-0 left-0 h-1 bg-white/40" style="width: ${task.progress}%"></div>
+
+                                    <!-- Tooltip -->
+                                    <div class="invisible group-hover:visible opacity-0 group-hover:opacity-100 absolute -top-12 left-1/2 -translate-x-1/2 bg-slate-900/95 backdrop-blur-md text-white text-[9px] font-bold py-2.5 px-3 rounded-xl border border-white/10 whitespace-nowrap transition-all duration-200 shadow-2xl pointer-events-none z-[100] scale-95 group-hover:scale-100">
+                                        <div class="flex flex-col gap-1">
+                                            <div class="flex items-center gap-2 border-b border-white/10 pb-1 mb-1">
+                                                <div class="size-1.5 rounded-full ${config.bar}"></div>
+                                                <span class="text-white text-[10px]">${task.name}</span>
+                                            </div>
+                                            <div class="flex flex-col gap-0.5 opacity-80">
+                                                <div class="flex items-center gap-1.5">
+                                                    <span class="material-symbols-outlined text-[12px]">calendar_today</span>
+                                                    <span>${task.start} ~ ${task.end}</span>
+                                                </div>
+                                                <div class="flex items-center gap-1.5">
+                                                    <span class="material-symbols-outlined text-[12px]">analytics</span>
+                                                    <span>진척율: ${task.progress}% (${task.status_display})</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <!-- Tooltip Arrow -->
+                                        <div class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-slate-900 rotate-45 border-r border-b border-white/10"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                $taskList.append(rowHtml);
+            });
+
+            // Position Today line
+            if (now.getFullYear() === currentYear) {
+                const curDay = dayOfYear(now);
+                const perc = (curDay / totalDays) * 100;
+                // Position relative to the parent #gantt-rows
+                // Offset = Task List Column (16rem) + Container Padding (1rem) + (Scale % of Grid Width)
+                $indicator.css({
+                    'left': `calc(16rem + 1rem + ((${perc} / 100) * (100% - 16rem - 2rem)))`,
+                    'opacity': 1
+                });
+            } else {
+                $indicator.css('opacity', 0);
+            }
+        }
+
+        renderGantt();
+        $(window).on('resize', renderGantt);
+    }
 });
 </script>
+
+<style>
+@keyframes spin-slow {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+.animate-spin-slow {
+    animation: spin-slow 8s linear infinite;
+}
+.animate-pulse-slow {
+    animation: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+/* Google Gantt Chart Overrides */
+#gantt_chart_div text {
+    font-family: 'Manrope', sans-serif !important;
+}
+
+/* Gradient Text Animation */
+@keyframes gradient-x {
+    0%, 100% {
+        background-position: left center;
+    }
+    50% {
+        background-position: right center;
+    }
+}
+.animate-gradient-x {
+    animation: gradient-x 3s ease infinite;
+}
+</style>
 {% endblock %}

@@ -1,31 +1,47 @@
-{% extends "base.html" %}
+{% extends 'basic.html' %}
 
-{% block page_name %}
-시스템점검 담당자 관리
-{% endblock %}
+{% block page_name %}시스템점검 담당자 관리{% endblock %}
+
 {% block content %}
-    <div class="d-flex justify-content-start mb-3 border bg-white p-3">
-        <form method="get" id="monthFilterForm">
-            <label for="monthPicker" class="me-2 fw-bold">조회 월</label>
-            <input type="month" id="monthPicker" name="month" value="{{ selected_month|default:'' }}" class="form-control d-inline-block" style="width: 200px;">
-        </form>
+<div class="flex flex-col gap-8 max-w-4xl mx-auto">
+    <!-- Header/Filter Section -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div class="flex flex-col gap-1">
+            <h1 class="text-3xl font-extrabold tracking-tight text-slate-900">시스템점검 담당자 설정</h1>
+            <p class="text-slate-500 font-medium text-sm">일자별 점검 담당자를 목록 형태로 일괄 설정합니다.</p>
+        </div>
+        <div class="bg-white px-6 py-3 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
+            <form method="get" id="monthFilterForm" class="flex items-center gap-3">
+                <label for="monthPicker" class="text-xs font-bold text-slate-400 uppercase tracking-wider">조회 월</label>
+                <input type="month" id="monthPicker" name="month" value="{{ selected_month|default:'' }}" 
+                       class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-sm font-bold text-slate-700 focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-all">
+            </form>
+        </div>
     </div>
 
-    <div class="container-fluid table-responsive border bg-white p-3">
-        <table id="manager_table" class="table table-bordered text-center">
-            <thead>
-                <tr>
-                    <th>일자</th>
-                    <th>담당자</th>
-                </tr>
-            </thead>
-            <tbody id="table-body">
-            </tbody>
-        </table>
+    <!-- Table Section -->
+    <div class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden text-slate-900">
+        <div class="overflow-x-auto">
+            <table id="manager_table" class="w-full text-center border-collapse">
+                <thead class="bg-slate-50 text-slate-500 text-[10px] uppercase font-bold tracking-wider border-b border-slate-200">
+                    <tr>
+                        <th class="px-8 py-4 text-left">일자</th>
+                        <th class="px-8 py-4">배정된 담당자</th>
+                    </tr>
+                </thead>
+                <tbody id="table-body" class="divide-y divide-slate-50 text-sm">
+                    <!-- Dynamic -->
+                </tbody>
+            </table>
+        </div>
+        <div class="px-8 py-6 bg-slate-50/50 border-t border-slate-100 flex justify-end">
+            <button id="save-btn" class="flex items-center gap-2 px-8 py-3 rounded-full bg-slate-900 text-white font-extrabold shadow-xl shadow-slate-200 hover:bg-slate-800 transition-all text-sm">
+                <span class="material-symbols-outlined text-[18px]">save</span>
+                설정 저장하기
+            </button>
+        </div>
     </div>
-    <div class="mt-3">
-        <button class="scl-btn scl-btn-sm" id="save-btn">저장하기</button>
-    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -42,17 +58,22 @@
 
                 data.data.forEach(row => {
                     const tr = document.createElement('tr');
+                    tr.className = "hover:bg-slate-50/50 transition-colors";
 
                     const tdDate = document.createElement('td');
+                    tdDate.className = "px-8 py-4 text-left font-bold text-slate-700";
                     tdDate.textContent = row[0];
                     tr.appendChild(tdDate);
 
                     const tdSelect = document.createElement('td');
+                    tdSelect.className = "px-8 py-3";
+                    
                     const select = document.createElement('select');
-                    select.className = 'form-select';
+                    select.className = 'w-full max-w-xs bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm font-medium text-slate-600 focus:ring-1 focus:ring-primary outline-none transition-all cursor-pointer';
+                    
                     const emptyOpt = document.createElement('option');
                     emptyOpt.value = '';
-                    emptyOpt.textContent = '--선택--';
+                    emptyOpt.textContent = '담당자 미배정';
                     select.appendChild(emptyOpt);
 
                     options.forEach(opt => {
@@ -73,16 +94,12 @@
     }
 
     document.getElementById('monthPicker').addEventListener('change', function () {
-        if (this.value) {
-            loadData(this.value);
-        }
+        if (this.value) loadData(this.value);
     });
 
     document.addEventListener('DOMContentLoaded', function () {
         const monthPicker = document.getElementById('monthPicker');
-        if (monthPicker.value) {
-            loadData(monthPicker.value);
-        }
+        if (monthPicker.value) loadData(monthPicker.value);
 
         document.getElementById('save-btn').addEventListener('click', function () {
             const rows = Array.from(document.querySelectorAll('#table-body tr'));
@@ -100,22 +117,12 @@
                 },
                 body: JSON.stringify({month: monthPicker.value, data: data})
             })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                return response.json();
-            })
+            .then(res => res.json())
             .then(result => {
-                if (result.status === 'success') {
-                    alert('저장되었습니다!');
-                } else {
-                    alert('저장 실패');
-                }
+                if (result.status === 'success') alert('성공적으로 저장되었습니다.');
+                else alert('저장에 실패했습니다.');
             })
-            .catch(error => {
-                alert('저장 중 오류 발생: ' + error);
-            });
+            .catch(error => alert('오류가 발생했습니다: ' + error));
         });
     });
 </script>
