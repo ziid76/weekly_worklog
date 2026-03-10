@@ -11,9 +11,18 @@ from typing import Any, Dict, Iterable, List, Optional, Sequence
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.utils.html import strip_tags
 
 from worklog.models import Worklog
 from reports.models import ReportReview
+
+from common.gemini_utils import (
+    get_gemini_client,
+    get_gemini_generation_config,
+    get_handled_exceptions,
+    extract_gemini_text,
+    generate_gemini_content
+)
 
 try:
     from google import genai
@@ -60,36 +69,31 @@ def review_last_4_weeks(user: User, as_of: Optional[date] = None) -> Dict[str, A
     prompt = _build_prompt(user, entries, anchor)
     logger.debug("Generated prompt length=%s", len(prompt))
 
-    api_key = _resolve_api_key()
-    if not api_key:
-        logger.error("Gemini API key is not configured")
-        return _fallback_result("API key not configured")
+    client = get_gemini_client()
+    if not client:
+        return _fallback_result("Gemini client initialization failed")
 
-    if not genai:  # pragma: no cover - depends on optional dependency
-        logger.error("google-genai package is not installed")
-        return _fallback_result("google-genai package not installed")
-
-    client = genai.Client(api_key=api_key)
-    model_name = getattr(settings, "GEMINI_MODEL_NAME", "gemini-pro")
+    model_name = getattr(settings, "GEMINI_MODEL_NAME", "gemini-1.5-pro")
     timeout_seconds = getattr(settings, "GEMINI_TIMEOUT", 30)
 
     full_prompt = f"{_system_instruction()}\n\n{prompt}"
 
     try:
         logger.info("Requesting Gemini review for user=%s model=%s", user.pk, model_name)
-        response = client.models.generate_content(
+        response = generate_gemini_content(
+            client=client,
             model=model_name,
             contents=full_prompt,
             config=_generation_config(),
         )
-    except tuple(_handled_exceptions()) as exc:  # type: ignore[arg-type]
+    except tuple(get_handled_exceptions()) as exc:  # type: ignore[arg-type]
         logger.exception("Gemini request failed: %s", exc)
         return _fallback_result(str(exc))
     except Exception as exc:  # pragma: no cover - defensive
         logger.exception("Unexpected Gemini error: %s", exc)
         return _fallback_result("unexpected_error")
 
-    raw_text = _extract_text(response)
+    raw_text = extract_gemini_text(response)
     if not raw_text:
         logger.error("Gemini response missing text payload")
         return _fallback_result("empty_response")
@@ -121,23 +125,7 @@ def review_last_4_weeks(user: User, as_of: Optional[date] = None) -> Dict[str, A
     return payload
 
 
-def _handled_exceptions() -> Sequence[type]:
-    handlers: List[type] = [TimeoutError]
-    if google_exceptions:
-        handlers.append(google_exceptions.GoogleAPIError)
-    try:
-        from requests import exceptions as requests_exceptions
-    except ImportError:  # pragma: no cover - requests bundled with SDK
-        requests_exceptions = None
-    if requests_exceptions:
-        handlers.extend(
-            [
-                requests_exceptions.Timeout,
-                requests_exceptions.ConnectionError,
-                requests_exceptions.HTTPError,
-            ]
-        )
-    return tuple(handlers)
+# _handled_exceptions removed (moved to common.gemini_utils)
 
 
 def _compute_weeks(anchor: date) -> List[WeekWindow]:
@@ -148,6 +136,21 @@ def _compute_weeks(anchor: date) -> List[WeekWindow]:
         iso_year, iso_week, _ = week_start.isocalendar()
         windows.append(WeekWindow(year=iso_year, week_number=iso_week, week_start=week_start))
     return windows
+
+
+def _clean_html(text: Optional[str]) -> str:
+    if not text:
+        return ""
+    import re
+    import html
+    # 줄바꿈 태그를 실제 개행문자로 변환
+    text = re.sub(r'<(?:br|/p|/div)>', '\n', text, flags=re.IGNORECASE)
+    # 나머지 태그 제거 및 HTML 엔티티 복원
+    text = strip_tags(text)
+    text = html.unescape(text)
+    # 가독성을 위해 연속된 개행은 하나로 줄임
+    text = re.sub(r'\n\s*\n+', '\n', text)
+    return text.strip()
 
 
 def _collect_worklogs(user: User, windows: Iterable[WeekWindow]) -> List[Dict[str, Any]]:
@@ -170,16 +173,15 @@ def _collect_worklogs(user: User, windows: Iterable[WeekWindow]) -> List[Dict[st
                 "week_number": window.week_number,
                 "week_start": window.week_start,
                 "week_end": window.week_start + timedelta(days=6),
-                "this_week_work": (worklog.this_week_work if worklog else ""),
-                "next_week_plan": (worklog.next_week_plan if worklog else ""),
+                "this_week_work": _clean_html(worklog.this_week_work) if worklog else "",
+                "next_week_plan": _clean_html(worklog.next_week_plan) if worklog else "",
                 "has_worklog": worklog is not None,
             }
         )
     return entries
 
 
-def _resolve_api_key() -> Optional[str]:
-    return os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+# _resolve_api_key removed (moved to common.gemini_utils)
 
 
 def _system_instruction() -> str:
@@ -267,16 +269,8 @@ def _request_options(timeout_seconds: int) -> Optional[Any]:
 
 
 def _generation_config() -> Any:
-    if not genai:  # pragma: no cover - handled earlier
-        return None
-
     schema = _response_schema()
-    # Fallback for unexpected SDK layout    
-    return {
-        "temperature": 0.2,
-        "response_mime_type": "application/json",
-        "response_schema": schema,
-    }
+    return get_gemini_generation_config(response_schema=schema, temperature=0.2)
 
 
 def _response_schema() -> Dict[str, Any]:
@@ -382,24 +376,7 @@ def _fallback_result(reason: str) -> Dict[str, Any]:
     return base
 
 
-def _extract_text(response: Any) -> str:
-    text = getattr(response, "text", None)
-    if isinstance(text, str) and text.strip():
-        return text
-
-    candidates = getattr(response, "candidates", None)
-    if candidates:
-        for candidate in candidates:
-            content = getattr(candidate, "content", None)
-            if not content:
-                continue
-            parts = getattr(content, "parts", None)
-            if not parts:
-                continue
-            texts = [getattr(part, "text", "") for part in parts if getattr(part, "text", "")]
-            if texts:
-                return "\n".join(texts)
-    return ""
+# _extract_text removed (moved to common.gemini_utils)
 
 def _guide_response_schema() -> Dict[str, Any]:
     """Returns the JSON schema for the writing guide response."""
@@ -458,9 +435,9 @@ def _build_guide_prompt(user: User, worklogs: Sequence[Worklog]) -> str:
             title = f"- {worklog.year}년 {worklog.week_number}주차 ({worklog.week_start_date.isoformat()} ~ {worklog.week_end_date.isoformat()})"
             lines.append(title)
             lines.append("  - 금주 실적:")
-            lines.append(f"    {worklog.this_week_work.strip() or '(내용 없음)'}")
+            lines.append(f"    {_clean_html(worklog.this_week_work) or '(내용 없음)'}")
             lines.append("  - 차주 계획:")
-            lines.append(f"    {worklog.next_week_plan.strip() or '(내용 없음)'}")
+            lines.append(f"    {_clean_html(worklog.next_week_plan) or '(내용 없음)'}")
             lines.append("")
 
     lines.extend(
@@ -496,36 +473,29 @@ def generate_writing_guide(user: User) -> Dict[str, Any]:
     prompt = _build_guide_prompt(user, worklogs)
     logger.debug("Generated guide prompt length=%s", len(prompt))
 
-    # 3. Check API key and dependencies
-    api_key = _resolve_api_key()
-    if not api_key:
-        logger.error("Gemini API key is not configured")
-        return {"error": "API 키가 설정되지 않았습니다."}
-
-    if not genai:
-        logger.error("google-genai package is not installed")
-        return {"error": "google-genai 패키지가 설치되지 않았습니다."}
-
     # 4. Set up Gemini client and call API
-    client = genai.Client(api_key=api_key)
-    model_name = getattr(settings, "GEMINI_MODEL_NAME", "gemini-pro")
+    client = get_gemini_client()
+    if not client:
+        return {"error": "Gemini 클라이언트를 초기화할 수 없습니다."}
+
+    model_name = getattr(settings, "GEMINI_MODEL_NAME", "gemini-1.5-pro")
     
-    generation_config = {
-        "temperature": 0.3,
-        "response_mime_type": "application/json",
-        "response_schema": _guide_response_schema(),
-    }
+    generation_config = get_gemini_generation_config(
+        response_schema=_guide_response_schema(),
+        temperature=0.3
+    )
     
     full_prompt = f"{_guide_system_instruction()}\n\n{prompt}"
 
     try:
         logger.info("Requesting Gemini writing guide for user=%s", user.pk)
-        response = client.models.generate_content(
+        response = generate_gemini_content(
+            client=client,
             model=model_name,
             contents=full_prompt,
             config=generation_config,
         )
-    except tuple(_handled_exceptions()) as exc:
+    except tuple(get_handled_exceptions()) as exc:
         logger.exception("Gemini guide request failed: %s", exc)
         return {"error": f"AI 서비스 요청에 실패했습니다: {exc}"}
     except Exception:
@@ -533,7 +503,7 @@ def generate_writing_guide(user: User) -> Dict[str, Any]:
         return {"error": "예상치 못한 AI 서비스 오류가 발생했습니다."}
 
     # 5. Parse and return response
-    raw_text = _extract_text(response)
+    raw_text = extract_gemini_text(response)
     if not raw_text:
         logger.error("Gemini guide response missing text payload")
         return {"error": "AI로부터 비어 있는 응답을 받았습니다."}

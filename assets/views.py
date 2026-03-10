@@ -2,7 +2,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.views.generic import ListView, DetailView, CreateView, UpdateView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.urls import reverse_lazy
-from django.db.models import Q
+from django.db.models import Q, Min, Value
 from django.http import JsonResponse, HttpResponse
 from django.views import View
 from django.core.paginator import Paginator
@@ -13,7 +13,7 @@ import os
 import pandas as pd
 from django.contrib import messages
 from django.contrib.auth.models import User
-from django.db.models import Q, Value
+from django.utils import timezone
 from django.db.models.functions import Concat
 from accounts.models import UserProfile
 
@@ -301,47 +301,148 @@ class RegularInspectionDashboardView(LoginRequiredMixin, ListView):
         import datetime
         today = datetime.date.today()
         year = int(self.request.GET.get('year', today.year))
+        month_param = self.request.GET.get('month')
+        selected_month = int(month_param) if month_param and month_param.isdigit() else None
         
         contracts = self.get_queryset()
         
-        # 년도 범위 (현재 기준 전후 2년)
-        context['year_range'] = range(today.year - 2, today.year + 3)
-        context['selected_year'] = year
+        # 올해 기간을 포함하고 정기점검 대상인 계약 건수 계산
+        total_regular_contracts_count = Contract.objects.filter(
+            is_regular_inspection=True,
+            start_date__year__lte=year,
+            end_date__year__gte=year,
+        ).distinct().count()
         
-        # 대시보드 데이터 구성
+        # 년도에 해당하는 계약만 1차 필터링
+        
+        all_regular_contracts = self.get_queryset()
+        years_set = set()
+        current_year = today.year
+        
+        for ctr in all_regular_contracts:
+            start_y = ctr.start_date.year
+            end_y = ctr.end_date.year
+            # 계약 기간 내의 연도 중 현재 연도 이하인 것들만 추가
+            for y in range(start_y, min(end_y, current_year) + 1):
+                years_set.add(y)
+        
+        # 정렬된 리스트로 변환 (내림차순)
+        context['year_range'] = sorted(list(years_set), reverse=True)
+        context['month_range'] = range(1, 13)
+        context['selected_year'] = year
+        context['selected_month'] = selected_month
+        
+        # 연 기준 필터링된 계약들
+        contracts = contracts.filter(
+            start_date__year__lte=year,
+            end_date__year__gte=year
+        )
+
         dashboard_data = []
+        yearly_total_planned = 0
+        yearly_done_planned = 0
+        yearly_undone_planned = 0
+        
+        # 월별 필터용 카운트
+        monthly_total_planned = 0
+        monthly_done_planned = 0
+        monthly_undone_planned = 0
+
         for contract in contracts:
             months_data = []
+            contract_matches_filter = False
+            contract_has_active_month = False 
+            
+            # 계약의 운영중인 시스템 미리 추출 (쿼리 최소화)
+            active_systems = [s for s in contract.systems.all() if s.status == 'OPER']
+            active_systems_count = len(active_systems)
+            
+            # 실제 점검 스케줄 (계약 필드 그대로 사용)
+            scheduled_months = set(contract.inspection_schedule or [])
+            
             for m in range(1, 13):
-                is_planned = m in (contract.inspection_schedule or [])
+                # 해당 월이 계약 기간 내에 있는지 확인
+                month_start = datetime.date(year, m, 1)
+                if m == 12:
+                    month_end = datetime.date(year, 12, 31)
+                else:
+                    month_end = datetime.date(year, m + 1, 1) - datetime.timedelta(days=1)
                 
-                # 해당 월의 점검 내역 확인 (YYYY-MM 형식 매칭)
+                # 계약 기간과 겹치는지 확인
+                is_within_period = not (contract.end_date < month_start or contract.start_date > month_end)
+                if is_within_period:
+                    contract_has_active_month = True
+                
+                is_planned = is_within_period and m in scheduled_months
+                
+                # 해당 월의 점검 내역 확인
                 month_str = f"{year}-{m:02d}"
                 actual_inspections = contract.inspections.filter(inspection_month=month_str)
                 
-                # 시스템별 점검 현황 (계약에 속한 모든 시스템이 점검되었는지 확인)
-                total_systems = contract.systems.count()
-                inspected_systems_count = actual_inspections.values('system').distinct().count()
+                # 운영중인 시스템 중 점검된 수
+                inspected_systems_count = actual_inspections.filter(system__in=active_systems).values('system').distinct().count()
+                is_all_done = inspected_systems_count > 0 # 최소 하나 이상 점검 시 완료 간주
                 
-                is_done = inspected_systems_count > 0
-                is_all_done = total_systems > 0 and inspected_systems_count >= total_systems
-                
+                # 연간 통계 누적 (계획된 달인 경우만)
+                if is_planned:
+                    yearly_total_planned += 1
+                    if is_all_done:
+                        yearly_done_planned += 1
+                    else:
+                        yearly_undone_planned += 1
+
+                # 선택된 월 필터링 및 월 통계 누적
+                if selected_month and m == selected_month and is_planned:
+                    contract_matches_filter = True
+                    monthly_total_planned += 1
+                    if is_all_done:
+                        monthly_done_planned += 1
+                    else:
+                        monthly_undone_planned += 1
+
                 months_data.append({
                     'month': m,
                     'is_planned': is_planned,
-                    'is_done': is_done,
+                    'is_done': inspected_systems_count > 0,
                     'is_all_done': is_all_done,
                     'inspections': actual_inspections,
                     'inspected_count': inspected_systems_count,
-                    'total_count': total_systems,
+                    'total_count': active_systems_count,
+                    'is_within_period': is_within_period,
                 })
             
-            dashboard_data.append({
-                'contract': contract,
-                'months': months_data,
-            })
+            # 리스트 표시 여부 결정 (계약 기간이 해당 연도와 겹치는 경우만)
+            if contract_has_active_month:
+                if not selected_month or contract_matches_filter:
+                    dashboard_data.append({
+                        'contract': contract,
+                        'months': months_data,
+                        'target_system_count': active_systems_count,
+                    })
             
         context['dashboard_data'] = dashboard_data
+        
+        # 진척도 계산 (연 기준)
+        yearly_progress_rate = 0
+        if yearly_total_planned > 0:
+            yearly_progress_rate = round((yearly_done_planned / yearly_total_planned) * 100, 1)
+
+        context['stats'] = {
+            'total': yearly_total_planned,
+            'done': yearly_done_planned,
+            'undone': yearly_undone_planned,
+            'total_systems': total_regular_contracts_count,
+            'progress_rate': yearly_progress_rate,
+        }
+        
+        # 월별 필터가 있는 경우 별도의 월 통계 제공
+        if selected_month:
+            context['monthly_stats'] = {
+                'total': monthly_total_planned,
+                'done': monthly_done_planned,
+                'undone': monthly_undone_planned,
+            }
+
         return context
 
 class ContractListView(LoginRequiredMixin, ListView):
@@ -355,7 +456,12 @@ class ContractListView(LoginRequiredMixin, ListView):
         q = self.request.GET.get('q')
         year = self.request.GET.get('year')
         my_contract = self.request.GET.get('my_contract') == 'true'
+        regular_only = self.request.GET.get('regular_only') == 'true'
         
+        # 최초 조회 시 (파라미터가 없을 때) 현재 연도 기본값 설정
+        if year is None and not q and not my_contract and not regular_only:
+            year = str(timezone.now().year)
+
         if q:
             queryset = queryset.filter(
                 Q(name__icontains=q) | Q(contractor__icontains=q) | Q(systems__name__icontains=q)
@@ -363,7 +469,6 @@ class ContractListView(LoginRequiredMixin, ListView):
         
         if year:
             # 계약기간이 해당 연도에 포함되는 경우 필터링
-            # start_date가 해당 연도 이전이고, end_date가 해당 연도 이후인 경우
             queryset = queryset.filter(
                 start_date__year__lte=year,
                 end_date__year__gte=year
@@ -371,28 +476,47 @@ class ContractListView(LoginRequiredMixin, ListView):
         
         if my_contract:
             queryset = queryset.filter(Q(manager=self.request.user) | Q(systems__manager=self.request.user))
+
+        if regular_only:
+            queryset = queryset.filter(is_regular_inspection=True)
         
         return queryset.distinct()
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        # 계약이 실제로 존재하는 연도만 제공
-        from django.db.models import Q
+        # 현재 연도
+        current_year = timezone.now().year
         
-        # 모든 계약의 연도 범위를 수집
-        contracts = Contract.objects.all()
-        years_set = set()
+        # 최초 계약 연도 조회
+        min_date = Contract.objects.aggregate(min_date=Min('start_date'))['min_date']
+        start_year = min_date.year if min_date else current_year
         
-        for contract in contracts:
-            # 계약 기간에 포함되는 모든 연도 추가
-            start_year = contract.start_date.year
-            end_year = contract.end_date.year
-            for year in range(start_year, end_year + 1):
-                years_set.add(year)
-        
-        # 정렬된 리스트로 변환 (내림차순)
-        context['year_range'] = sorted(list(years_set), reverse=True)
+        # 올해부터 최초 계약 연도까지 내림차순 리스트
+        context['year_range'] = range(current_year, start_year - 1, -1)
         context['my_contract'] = self.request.GET.get('my_contract') == 'true'
+        context['regular_only'] = self.request.GET.get('regular_only') == 'true'
+        
+        selected_year = self.request.GET.get('year')
+        if selected_year is None and not self.request.GET.get('q') and not context['my_contract'] and not context['regular_only']:
+            selected_year = str(current_year)
+        context['selected_year'] = selected_year
+        
+        # 유형별 통계 (현재 필터링된 쿼리셋 기반)
+        # 단, 전체 카운트는 queryset.count()로, 유형별은 별도 집계
+        stats_qs = self.get_queryset()
+        from django.db.models import Count
+        type_counts = stats_qs.values('contract_type').annotate(count=Count('id'))
+        
+        stats = {
+            'total': stats_qs.count(),
+            'types': {t[0]: 0 for t in Contract.TYPE_CHOICES}
+        }
+        for item in type_counts:
+            stats['types'][item['contract_type']] = item['count']
+        
+        context['contract_stats'] = stats
+        context['type_choices'] = dict(Contract.TYPE_CHOICES)
+        
         return context
 
 class ContractCreateView(LoginRequiredMixin, CreateView):

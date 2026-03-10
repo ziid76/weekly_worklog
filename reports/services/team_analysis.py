@@ -1,17 +1,31 @@
-
 import logging
 import os
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional, Sequence, Iterable
 import datetime
 from django.conf import settings
 from django.db.models import Q
 from django.contrib.auth.models import User
+from django.utils.html import strip_tags
 from worklog.models import Worklog
 from reports.models import ReportReview, TeamPerformanceAnalysis, WeeklyReport
 from teams.models import Team
-from typing import Any, Dict, Iterable, List, Optional, Sequence
-from google import genai
-from google.api_core import exceptions as google_exceptions
+from common.gemini_utils import (
+    get_gemini_client,
+    get_gemini_generation_config,
+    get_handled_exceptions,
+    extract_gemini_text,
+    generate_gemini_content
+)
+
+try:
+    from google import genai
+except ImportError:
+    genai = None
+
+try:
+    from google.api_core import exceptions as google_exceptions
+except ImportError:
+    google_exceptions = None
 
 logger = logging.getLogger(__name__)
 
@@ -21,11 +35,9 @@ class TeamPerformanceAnalyzer:
         self.model_name = settings.GEMINI_MODEL_NAME
         
         # Configure Gemini
-        api_key = _resolve_api_key()
-        if not api_key:
-             raise ValueError("GEMINI_API_KEY not found")
-
-        self.client = genai.Client(api_key=api_key)
+        self.client = get_gemini_client()
+        if not self.client:
+             raise ValueError("Failed to initialize Gemini client")
 
     def analyze_last_4_weeks(self, anchor_year: Optional[int] = None, anchor_week: Optional[int] = None) -> Dict[str, Any]:
         """최근 4주간의 데이터를 분석합니다."""
@@ -42,11 +54,14 @@ class TeamPerformanceAnalyzer:
 
         # 3. Gemini 호출
         try:
-            response = self.client.models.generate_content(
+            config = get_gemini_generation_config(temperature=0.2)
+            response = generate_gemini_content(
+                client=self.client,
                 model=self.model_name, 
-                contents=prompt
+                contents=prompt,
+                config=config
             )
-            text = self._extract_text(response)
+            text = extract_gemini_text(response)
             if not text:
                  return {"error": "AI로부터 응답을 받지 못했습니다."}
             analysis_json = self._parse_response(text)
@@ -66,6 +81,20 @@ class TeamPerformanceAnalyzer:
         )
         
         return analysis_json
+
+    def _clean_html(self, text: Optional[str]) -> str:
+        if not text:
+            return ""
+        import re
+        import html
+        # 줄바꿈 태그를 실제 개행문자로 변환
+        text = re.sub(r'<(?:br|/p|/div)>', '\n', text, flags=re.IGNORECASE)
+        # 나머지 태그 제거 및 HTML 엔티티 복원
+        text = strip_tags(text)
+        text = html.unescape(text)
+        # 가독성을 위해 연속된 개행은 하나로 줄임
+        text = re.sub(r'\n\s*\n+', '\n', text)
+        return text.strip()
 
     def _collect_data(self, anchor_year: Optional[int] = None, anchor_week: Optional[int] = None) -> Dict[str, Any]:
         """최근 4주 데이터를 수집합니다."""
@@ -107,9 +136,9 @@ class TeamPerformanceAnalyzer:
                 
                 week_entry = {
                     "week": f"{week_info['year']}-W{week_info['week']}",
-                    "work_done": worklog.this_week_work if worklog else "작성 안 함",
-                    "next_plan": worklog.next_week_plan if worklog else "작성 안 함",
-                    "review_summary": review['review_content'].get('summary') if review and review.get('review_content') else ""
+                    "work_done": self._clean_html(worklog.this_week_work) if worklog else "작성 안 함",
+                    "next_plan": self._clean_html(worklog.next_week_plan) if worklog else "작성 안 함",
+                    "review_summary": self._clean_html(review['review_content'].get('summary')) if review and review.get('review_content') and review['review_content'].get('summary') else ""
                 }
                 weeks_data.append(week_entry)
             
@@ -183,26 +212,8 @@ class TeamPerformanceAnalyzer:
                 return json.loads(match.group(0))
             raise ValueError(f"Invalid JSON response: {text[:100]}...")
 
-    def _extract_text(self, response: Any) -> str:
-        text = getattr(response, "text", None)
-        if isinstance(text, str) and text.strip():
-            return text
-
-        candidates = getattr(response, "candidates", None)
-        if candidates:
-            for candidate in candidates:
-                content = getattr(candidate, "content", None)
-                if not content:
-                    continue
-                parts = getattr(content, "parts", None)
-                if not parts:
-                    continue
-                texts = [getattr(part, "text", "") for part in parts if getattr(part, "text", "")]
-                if texts:
-                    return "\n".join(texts)
-        return ""
+# _extract_text removed (moved to common.gemini_utils)
 
 
 
-def _resolve_api_key() -> Optional[str]:
-    return os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+# _resolve_api_key removed (moved to common.gemini_utils)

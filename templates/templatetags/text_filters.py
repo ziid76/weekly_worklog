@@ -41,6 +41,14 @@ def smart_linebreaks(value):
 
 
 @register.filter
+def dict_get(dictionary, key):
+    """딕셔너리에서 특정 키의 값을 반환합니다."""
+    if not dictionary:
+        return None
+    return dictionary.get(key)
+
+
+@register.filter
 def format_percentage(value):
     """퍼센티지 값을 보기 좋게 포맷팅합니다."""
     try:

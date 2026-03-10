@@ -1,4 +1,5 @@
 import logging
+import time
 from datetime import date
 from django.core.management.base import BaseCommand
 from django.contrib.auth.models import User
@@ -75,6 +76,10 @@ class Command(BaseCommand):
                 else:
                     self.stdout.write(self.style.SUCCESS(f"✅ {user.username}님의 리뷰가 성공적으로 생성되었습니다."))
                     success_count += 1
+                
+                # 과도한 API 요청 방지를 위한 지연 (3초)
+                if user != users_without_review.last():
+                    time.sleep(3)
                     
             except Exception as e:
                 self.stdout.write(self.style.ERROR(f"❌ {user.username}님 리뷰 생성 실패: {e}"))
