@@ -56,7 +56,7 @@ def weekly_report_detail(request, id):
             year=report.year, 
             week_number=report.week_number,
             author__in=team_members
-        ).select_related('author', 'author__profile').order_by('display_order', 'author__profile__last_name_ko', 'author__username')
+        ).select_related('author', 'author__profile').prefetch_related('files').order_by('display_order', 'author__profile__last_name_ko', 'author__username')
         
 
     else:
@@ -64,7 +64,7 @@ def weekly_report_detail(request, id):
         worklogs = Worklog.objects.filter(
             year=report.year, 
             week_number=report.week_number
-        ).select_related('author', 'author__profile').order_by('display_order', 'author__profile__last_name_ko', 'author__username')
+        ).select_related('author', 'author__profile').prefetch_related('files').order_by('display_order', 'author__profile__last_name_ko', 'author__username')
 
     
     # 댓글 처리

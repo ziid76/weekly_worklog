@@ -447,7 +447,8 @@ def upload_worklog_file(request, worklog_id):
 @login_required
 def download_worklog_file(request, file_id):
     """주간업무 파일 다운로드"""
-    worklog_file = get_object_or_404(WorklogFile, id=file_id, worklog__author=request.user)
+    worklog_file = get_object_or_404(WorklogFile, id=file_id)
+
     
     try:
         import mimetypes

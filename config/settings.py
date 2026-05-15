@@ -64,6 +64,8 @@ INSTALLED_APPS = [
     'templates',
     'assets',
     'hooks',
+    'vbpm',
+    'reviewer',
 ]
 
 MIDDLEWARE = [
@@ -328,3 +330,6 @@ SESSION_COOKIE_SECURE = False   # https가 아니므로 False여야 함
 CSRF_COOKIE_SECURE = False
 SESSION_COOKIE_SAMESITE = 'Lax'
 SESSION_COOKIE_DOMAIN = None    # localhost인 경우 비워두거나 None
+
+# Recipient API
+INTERNAL_API_TOKEN = os.environ.get('INTERNAL_API_TOKEN', 'default-token-please-change')

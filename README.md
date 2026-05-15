@@ -318,6 +318,12 @@ GET /worklog/api/tasks/
 POST /worklog/api/add-task/
 ```
 
+### 🔐 외부 시스템 연동 API
+- **사용자 목록 추출 API**: [사용법 가이드 바로가기](api_guide.md)
+  - 타 시스템에서 알림 수신 대상자 목록을 동기화하기 위한 API입니다.
+  - Bearer 토큰 인증 및 JSON 형식을 지원합니다.
+
+
 ## 👨‍💻 개발 가이드
 
 ### 개발 환경 설정

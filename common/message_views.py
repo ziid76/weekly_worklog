@@ -110,6 +110,7 @@ def send_simple_message(conversation_id: int, text: str):
 
 def send_message(conversation_id: int, 
                  text: str,
+                 header_text: str = None,
                  message_type: str = "text",
                  button_text: str = None,
                  button_url: str = None ):
@@ -134,9 +135,11 @@ def send_message(conversation_id: int,
 
         # 이미지 블록 추가 (옵션)
         payload["blocks"].append({
-            "type": "image_link",
-            "url": "https://github.com/ziid76/search/blob/main/itms_msg.png?raw=true",
+            "type": "header",
+            "text": header_text or "ITMS Alert",
+            "style": "blue"
         })
+
         payload["blocks"].append({
             "type": "text",
             "text": text
@@ -206,14 +209,21 @@ def send_kakao_message(
                  text,
                  message_type,
                  button_text,
-                 button_url):
+                 button_url,
+                 header_text=None):
     user_id = find_user_id_by_email(email)
     if user_id:
         conversation_id = open_conversation(user_id)    
         if conversation_id:
-            send_message(conversation_id, text, message_type, button_text, button_url)
+            send_message(
+                conversation_id,
+                text,
+                header_text=header_text,
+                message_type=message_type,
+                button_text=button_text,
+                button_url=button_url,
+            )
         else : return False
     
     else : return False
     return True
-

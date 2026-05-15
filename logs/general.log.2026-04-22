@@ -1,0 +1,9 @@
+INFO 2026-04-22 16:04:44,189 autoreload 7 134270964933376 Watching for file changes with StatReloader
+INFO 2026-04-22 16:06:04,000 basehttp 7 134270136284864 "GET / HTTP/1.1" 301 0
+INFO 2026-04-22 16:06:04,051 basehttp 7 134270136284864 "GET /dashboard/ HTTP/1.1" 302 0
+INFO 2026-04-22 16:06:04,165 basehttp 7 134270136284864 "GET /accounts/login/?next=/dashboard/ HTTP/1.1" 200 16817
+INFO 2026-04-22 16:06:04,636 basehttp 7 134270126843584 "GET /static/css/summernote-lite.css HTTP/1.1" 200 31086
+INFO 2026-04-22 16:06:04,640 basehttp 7 134270136284864 "GET /static/css/custom.css?v=4 HTTP/1.1" 200 87371
+INFO 2026-04-22 16:06:04,666 basehttp 7 134270126843584 "GET /static/images/logo.png HTTP/1.1" 200 3305
+INFO 2026-04-22 16:06:04,790 basehttp 7 134270126843584 "GET /static/js/lang/summernote-ko-KR.js HTTP/1.1" 200 9926
+INFO 2026-04-22 16:06:04,850 basehttp 7 134270136284864 "GET /static/js/summernote-lite.js HTTP/1.1" 200 366080

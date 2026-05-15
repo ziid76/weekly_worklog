@@ -3,6 +3,11 @@ from . import views
 
 urlpatterns = [
     path('', views.index, name='monitor'),
+    path('web-monitor/', views.web_monitor, name='web_monitor'),
+    path('web-monitor/<int:target_id>/detail/', views.web_monitor_detail, name='web_monitor_detail'),
+    path('web-monitor/proxy/', views.web_monitor_proxy, name='web_monitor_proxy'),
+    path('web-monitor/api/data/', views.web_monitor_api_data_proxy, name='web_monitor_api_proxy'),
+    path('web-monitor/api/detail/<int:target_id>/', views.web_monitor_api_detail_proxy, name='web_monitor_api_detail_proxy'),
     path('ops/logs/', views.operation_log_list, name='operation_log_list'),
     path('ops/logs/add', views.operation_log_add, name='operation_log_add'),
     path('ops/logs/<int:pk>/detail', views.operation_log_detail, name='operation_log_detail'),

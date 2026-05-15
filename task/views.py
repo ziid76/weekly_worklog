@@ -8,7 +8,12 @@ from django.contrib import messages
 from django.http import JsonResponse, HttpResponse
 from .models import Task, Category, TaskComment, TaskFile
 from .forms import TaskForm, CategoryForm, TaskCommentForm, TaskFileForm, TaskSearchForm
-from notifications.utils import notify_task_assigned, notify_comment_added, notify_task_status_changed
+from notifications.utils import (
+    notify_comment_added,
+    notify_task_assigned,
+    notify_task_assignment_changes,
+    notify_task_status_changed,
+)
 from django.template.loader import render_to_string
 
 
@@ -320,7 +325,15 @@ class TaskUpdateView(LoginRequiredMixin, UpdateView):
             messages.error(self.request, '업무를 수정할 권한이 없습니다.')
             return redirect('task_detail', pk=form.instance.pk)
         
+        previous_assigned_users = list(form.instance.assigned_to.all())
         response = super().form_valid(form)
+        current_assigned_users = list(self.object.assigned_to.all())
+        notify_task_assignment_changes(
+            self.object,
+            previous_assigned_users,
+            current_assigned_users,
+            self.request.user
+        )
         
         # 파일 업로드 처리
         files = self.request.FILES.getlist('files')
@@ -376,7 +389,7 @@ def add_comment(request, task_id):
             comment.save()
             
             # 댓글 추가 알림 (새로운 알림 시스템 사용)
-            notify_comment_added(task, request.user)
+            notify_comment_added(task, request.user, comment.content)
             
             messages.success(request, '댓글이 추가되었습니다.')
     

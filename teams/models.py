@@ -17,6 +17,7 @@ class TeamMembership(models.Model):
         ('member', '멤버'),
         ('leader', '팀장'),
         ('admin', '관리자'),
+        ('monitor', '모니터링'),
     )
 
     team = models.ForeignKey(Team, on_delete=models.CASCADE)

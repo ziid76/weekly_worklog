@@ -1,0 +1,1105 @@
+﻿{% extends 'basic.html' %}
+{% block page_name %}(X6): {{ workflow.name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    #x6-container {
+        width: 100%;
+        height: 700px;
+        background: white;
+        border-radius: 1.5rem;
+        position: relative;
+        border: 1px solid #e2e8f0;
+        overflow: hidden;
+    }
+    .x6-shape-palette {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        z-index: 10;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        background: lightblue;
+        padding: 15px;
+        border-radius: 1rem;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+    .x6-shape-btn {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 12px;
+        border-radius: 0.5rem;
+        border: 1px solid #e2e8f0;
+        background: white;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .x6-shape-btn:hover {
+        background: #f1f5f9;
+        border-color: #cbd5e1;
+    }
+    #detail-panel {
+        position: fixed;
+        right: -400px;
+        top: 0;
+        width: 400px;
+        height: 100vh;
+        background: white;
+        z-index: 1000;
+        box-shadow: -4px 0 15px rgba(0,0,0,0.1);
+        transition: right 0.3s ease-in-out;
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+    }
+    #detail-panel.open {
+        right: 0;
+    }
+    .panel-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid #f1f5f9;
+        padding-bottom: 12px;
+    }
+    .panel-tab {
+        flex: 1;
+        border: 1px solid #e2e8f0;
+        background: #f8fafc;
+        color: #64748b;
+        border-radius: 0.6rem;
+        padding: 8px 10px;
+        font-size: 12px;
+        font-weight: 700;
+        cursor: pointer;
+    }
+    .panel-tab.active {
+        background: #0077C8;
+        border-color: #0077C8;
+        color: #fff;
+    }
+    .panel-tab:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="detail-panel">
+    <div class="panel-header">
+        <h3 class="text-xl font-bold text-slate-900" id="panel-node-name">Node Detail</h3>
+        <button onclick="closePanel()" class="size-8 flex items-center justify-center hover:bg-slate-100 rounded-full">
+            <span class="material-symbols-outlined">close</span>
+        </button>
+    </div>
+
+    <div class="flex items-center gap-2">
+        <button id="tab-style-btn" class="panel-tab active" onclick="setPanelTab('style')">속성</button>
+        <button id="tab-detail-btn" class="panel-tab" onclick="setPanelTab('detail')">상세정보</button>
+    </div>
+
+    <div id="style-tab-content" class="flex flex-col gap-4 overflow-y-auto flex-1 pr-2">
+        <div id="label-controls" class="flex flex-col gap-2">
+            <label class="text-xs font-black text-slate-400 uppercase tracking-widest">Label</label>
+            <input id="node-label-input" type="text" class="w-full rounded-md border-slate-200 text-sm focus:ring-primary focus:border-primary" placeholder="Node label" />
+        </div>
+
+        <div id="shape-style-controls" class="flex flex-col gap-3 border-t border-slate-100 pt-4">
+            <label class="text-xs font-black text-slate-400 uppercase tracking-widest">Shape Style</label>
+            <div class="grid grid-cols-2 gap-3">
+                <div id="fill-control">
+                    <label class="text-[10px] text-slate-500 mb-1 block">Fill</label>
+                    <input id="node-fill-input" type="color" class="w-full h-9 rounded-md border-slate-200 p-1" value="#f0f9ff" />
+                </div>
+                <div>
+                    <label class="text-[10px] text-slate-500 mb-1 block">Stroke</label>
+                    <input id="node-stroke-input" type="color" class="w-full h-9 rounded-md border-slate-200 p-1" value="#0077C8" />
+                </div>
+            </div>
+            <div>
+                <label class="text-[10px] text-slate-500 mb-1 block">Stroke Width</label>
+                <input id="node-stroke-width-input" type="number" min="0" step="0.5" class="w-full rounded-md border-slate-200 text-sm p-2" value="2" />
+            </div>
+            <div id="line-style-controls" class="hidden">
+                <label class="text-[10px] text-slate-500 mb-1 block">Line Type</label>
+                <select id="node-line-type-input" class="w-full rounded-lg border-slate-200 text-sm p-2">
+                    <option value="solid">Solid</option>
+                    <option value="dashed">Dashed</option>
+                    <option value="dotted">Dotted</option>
+                </select>
+                <div class="grid grid-cols-2 gap-3 mt-3">
+                    <div>
+                        <label class="text-[10px] text-slate-500 mb-1 block">Length</label>
+                        <input id="separator-length-input" type="number" min="10" step="10" class="w-full rounded-md border-slate-200 text-sm p-2" value="220" />
+                    </div>
+                    <div>
+                        <label class="text-[10px] text-slate-500 mb-1 block">Direction</label>
+                        <select id="separator-direction-input" class="w-full rounded-lg border-slate-200 text-sm p-2">
+                            <option value="horizontal">Horizontal</option>
+                            <option value="vertical">Vertical</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="text-style-controls" class="flex flex-col gap-3 border-t border-slate-100 pt-4">
+            <label class="text-xs font-black text-slate-400 uppercase tracking-widest">Text Style</label>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="text-[10px] text-slate-500 mb-1 block">Font Size</label>
+                    <input id="node-font-size-input" type="number" min="8" step="1" class="w-full rounded-md border-slate-200 text-sm p-2" value="14" />
+                </div>
+                <div>
+                    <label class="text-[10px] text-slate-500 mb-1 block">Font Color</label>
+                    <input id="node-font-color-input" type="color" class="w-full h-9 rounded-md border-slate-200 p-1" value="#334155" />
+                </div>
+            </div>
+        </div>
+
+        <button id="apply-style-btn" onclick="applyNodeStyle()" class="w-full bg-slate-800 text-white py-2.5 rounded-xl font-bold text-sm hover:bg-slate-700 transition-all">
+            속성 저장
+        </button>
+        <button onclick="deleteSelectedNode()" class="w-full bg-red-50 text-red-600 py-3 rounded-xl font-bold border border-red-100 hover:bg-red-600 hover:text-white transition-all flex items-center justify-center gap-2">
+            <span class="material-symbols-outlined text-sm">delete</span>
+            삭제
+        </button>
+    </div>
+
+    <div id="detail-tab-content" class="hidden flex flex-col gap-4 overflow-y-auto flex-1 pr-2">
+        <div id="detail-not-available" class="hidden text-sm text-slate-500 bg-slate-50 border border-slate-100 rounded-xl p-3">
+            상세정보는 원형/다이아몬드/사각형 도형에서만 지원됩니다.
+        </div>
+        <div id="detail-form" class="flex flex-col gap-4">
+
+            <div>
+                <label class="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block">설명</label>
+                <textarea id="detail-text-edit" class="w-full h-28 rounded-md border-slate-200 text-sm focus:ring-primary focus:border-primary" placeholder="설명을 입력하세요"></textarea>
+            </div>
+            <div>
+                <label class="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block">첨부파일</label>
+                <input type="file" id="detail-file-input" multiple class="text-sm text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
+                <div id="detail-files-view" class="flex flex-col gap-2 mt-3"></div>
+            </div>
+            <button onclick="saveNodeDetail()" class="w-full bg-primary text-white py-2.5 rounded-xl font-bold text-sm hover:bg-primary/90 transition-all">
+                상세정보 저장
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="flex flex-col gap-4">
+    <div class="flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+        <div class="flex items-center gap-4">
+            <a href="{% url 'workflow_list' %}" class="size-10 flex items-center justify-center hover:bg-slate-50 rounded-full transition-colors border border-slate-100">
+                <span class="material-symbols-outlined text-slate-600">arrow_back</span>
+            </a>
+            <div class="flex flex-col">
+                <h2 class="text-xl font-extrabold text-slate-900">{{ workflow.name }} (Editor)</h2>
+                <p class="text-xs text-slate-500 font-medium">현재 버전 {{ workflow.current_version }} · {{ workflow.updated_at }}</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-3">
+            <button id="x6-save-btn" class="bg-primary text-white px-6 py-2 rounded-full font-bold hover:bg-primary/90 transition-all flex items-center gap-2">
+                <span class="material-symbols-outlined">save</span>
+                저장           
+            </button>
+        </div>
+    </div>
+
+    <div id="x6-container">
+        <div class="x6-shape-palette">
+            <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Shapes</h4>
+            <div class="x6-shape-btn" onclick="addNode('rect', 'Rectangle')">
+                <span class="size-4 border-2 border-slate-400 rounded-sm"></span>
+                <span>Rectangle</span>
+            </div>
+            <div class="x6-shape-btn" onclick="addNode('circle', 'Circle')">
+                <span class="size-4 border-2 border-slate-400 rounded-full"></span>
+                <span>Circle</span>
+            </div>
+            <div class="x6-shape-btn" onclick="addNode('polygon', 'Diamond')">
+                <span class="size-3 border-2 border-slate-400 transform rotate-45"></span>
+                <span>Diamond</span>
+            </div>
+            <div class="x6-shape-btn" onclick="addNode('text', 'Text')">
+                <span class="material-symbols-outlined text-sm">title</span>
+                <span>Text</span>
+            </div>
+            <div class="x6-shape-btn" onclick="addNode('separator', '')">
+                <span class="material-symbols-outlined text-sm">horizontal_rule</span>
+                <span>Separator</span>
+            </div>
+        </div>
+        <div id="X6-ROOT" style="width: 100%; height: 100%;"></div>
+    </div>
+</div>
+
+<div id="save-history-modal" class="fixed inset-0 z-50 hidden">
+    <div class="absolute inset-0 bg-slate-900/40" onclick="closeSaveHistoryModal()"></div>
+    <div class="relative z-10 flex min-h-full items-center justify-center p-4">
+        <div class="w-full max-w-lg rounded-3xl bg-white border border-slate-100 shadow-2xl">
+            <div class="flex items-center justify-between px-6 py-5 border-b border-slate-100">
+                <div>
+                    <h3 class="text-xl font-extrabold text-slate-900">저장 및 버전 기록</h3>
+                    <p class="text-sm text-slate-500">변경 내용을 남기고 버전을 자동으로 올립니다.</p>
+                </div>
+                <button type="button" onclick="closeSaveHistoryModal()" class="size-9 rounded-full hover:bg-slate-100 flex items-center justify-center">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <div class="px-6 py-5 flex flex-col gap-4">
+                <div class="rounded-2xl bg-slate-50 border border-slate-100 px-4 py-3 text-sm text-slate-600">
+                    다음 버전은 자동 계산됩니다. 일반 저장은 `0.1 -> 0.2`, 메이저 업데이트는 `1.0 -> 2.0` 방식입니다.
+                </div>
+                <div class="flex flex-col gap-2">
+                    <label for="history-description" class="text-xs font-black text-slate-400 uppercase tracking-widest">변경 내용</label>
+                    <textarea id="history-description" class="w-full h-32 rounded-xl border-slate-200 text-sm focus:ring-primary focus:border-primary" placeholder="예: 승인 단계 추가, 노드 설명 정리, 연결선 재배치"></textarea>
+                </div>
+                <label class="flex items-start gap-3 rounded-2xl border border-slate-200 px-4 py-3 cursor-pointer">
+                    <input id="is-major-update" type="checkbox" class="mt-1 rounded border-slate-300 text-primary focus:ring-primary" />
+                    <span class="text-sm text-slate-600">
+                        <strong class="text-slate-900 block">메이저 버전 업데이트</strong>
+                        선택하면 다음 버전이 `1.0`, `2.0`처럼 올라갑니다.
+                    </span>
+                </label>
+            </div>
+            <div class="px-6 py-5 border-t border-slate-100 flex justify-end gap-3">
+                <button type="button" onclick="closeSaveHistoryModal()" class="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 font-bold hover:bg-slate-50 transition-colors">
+                    취소
+                </button>
+                <button id="confirm-save-btn" type="button" class="px-5 py-2 rounded-xl bg-primary text-white font-bold hover:bg-primary/90 transition-colors">
+                    저장
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+
+{{ initial_x6_data|json_script:"x6-initial-data" }}
+
+<script src="https://cdn.jsdelivr.net/npm/@antv/x6@2.18.1/dist/index.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@antv/x6-plugin-transform@2.1.8/dist/index.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@antv/x6-plugin-selection@2.2.2/dist/index.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@antv/x6-plugin-keyboard@2.2.3/dist/index.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@antv/x6-plugin-clipboard@2.1.6/dist/index.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@antv/x6-plugin-snapline@2.1.7/dist/index.js"></script>
+
+<script>
+    const workflowId = "{{ workflow.id }}";
+    const parsedInitialData = JSON.parse(document.getElementById('x6-initial-data').textContent);
+    const initialData = (parsedInitialData && parsedInitialData.cells) ? parsedInitialData : { cells: [] };
+    const viewerUrl = "{% url 'workflow_viewer_v3' workflow.id %}";
+    let graph;
+    let selectedNode = null;
+    let activeSeparatorEdge = null;
+    let currentPanelTab = 'style';
+    let detailEnabledForSelected = false;
+
+    function openSaveHistoryModal() {
+        document.getElementById('save-history-modal').classList.remove('hidden');
+    }
+
+    function closeSaveHistoryModal() {
+        document.getElementById('save-history-modal').classList.add('hidden');
+    }
+
+    function saveWorkflowWithHistory() {
+        const data = graph.toJSON();
+        const historyDescription = document.getElementById('history-description').value.trim();
+        const isMajorUpdate = document.getElementById('is-major-update').checked;
+
+        if (!historyDescription) {
+            alert('변경 내용을 입력해 주세요.');
+            return;
+        }
+
+        fetch(`/vbpm/api/workflows/${workflowId}/save_x6/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+                graphData: data,
+                history_description: historyDescription,
+                is_major_update: isMajorUpdate
+            })
+        })
+        .then((res) => {
+            if (!res.ok) {
+                throw new Error(`Save failed with status ${res.status}`);
+            }
+            return res.json();
+        })
+        .then(() => {
+            closeSaveHistoryModal();
+            window.location.href = viewerUrl;
+        })
+        .catch((error) => {
+            console.error(error);
+            alert('저장 중 오류가 발생했습니다.');
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        graph = new X6.Graph({
+            container: document.getElementById('X6-ROOT'),
+            grid: {
+                size: 10,
+                visible: true,
+                type: 'dot', 
+                args: { color: '#e2e8f0', thickness: 1 }
+            },
+            panning: {
+                enabled: true,
+                modifiers: ['space']
+            },
+            mousewheel: {
+                enabled: true,
+                modifiers: ['ctrl', 'meta']
+            },
+            connecting: {
+                router: 'orth',
+                connector: {
+                    name: 'rounded',
+                    args: { radius: 8 },
+                },
+                anchor: 'center',
+                connectionPoint: 'anchor',
+                allowBlank: false,
+                snap: {
+                    radius: 20,
+                },
+                createEdge() {
+                    return new X6.Shape.Edge({
+                        attrs: {
+                            line: {
+                                stroke: '#94a3b8',
+                                strokeWidth: 2,
+                                targetMarker: {
+                                    name: 'block',
+                                    width: 12,
+                                    height: 8,
+                                },
+                            },
+                        },
+                        zIndex: 0,
+                    })
+                },
+                validateConnection({ targetMagnet }) {
+                    return !!targetMagnet
+                },
+            },
+            highlighting: {
+                magnetAdsorbed: {
+                    name: 'stroke',
+                    args: {
+                        attrs: {
+                            fill: '#0077C8',
+                            stroke: '#0077C8',
+                        },
+                    },
+                },
+            },
+        });
+
+        // Use plugins
+        graph.use(
+            new X6PluginTransform.Transform({
+                resizing: {
+                    enabled: true,
+                },
+                rotating: true,
+            })
+        );
+        graph.use(
+            new X6PluginSelection.Selection({
+                rubberband: true,
+                showNodeSelectionBox: true,
+            })
+        );
+        graph.use(new X6PluginKeyboard.Keyboard());
+        graph.use(new X6PluginClipboard.Clipboard());
+        graph.use(new X6PluginSnapline.Snapline());
+
+        // Load data
+        if (initialData && initialData.cells && initialData.cells.length > 0) {
+            graph.fromJSON(initialData);
+            normalizeLoadedCells();
+        }
+
+        graph.on('node:click', ({ node }) => {
+            graph.cleanSelection();
+            graph.select(node);
+            clearSeparatorTools();
+            openPanel(node);
+        });
+
+        graph.on('blank:click', () => {
+            clearSeparatorTools();
+            closePanel();
+        });
+
+        graph.on('edge:click', ({ edge }) => {
+            graph.cleanSelection();
+            graph.select(edge);
+            if (isSeparatorNode(edge)) {
+                enableSeparatorTools(edge);
+                openPanel(edge);
+            } else {
+                clearSeparatorTools();
+                openPanel(edge);
+            }
+        });
+
+        // Keep separator as a straight line (no middle vertex bending)
+        graph.on('edge:change:vertices', ({ edge }) => {
+            if (isSeparatorNode(edge) && edge.getVertices().length > 0) {
+                edge.setVertices([]);
+            }
+        });
+
+        graph.on('edge:connected', ({ edge }) => {
+            graph.cleanSelection();
+            graph.select(edge);
+            clearSeparatorTools();
+            openPanel(edge);
+        });
+
+        // Selected cell actions (Del / Backspace)
+        graph.bindKey(['backspace', 'del'], () => {
+            const cells = graph.getSelectedCells();
+            if (cells.length) {
+                graph.removeCells(cells);
+                if (selectedNode && cells.find((cell) => cell.id === selectedNode.id)) {
+                    closePanel();
+                }
+            }
+        });
+
+        // Keyboard copy / paste 
+        graph.bindKey(['meta+c', 'ctrl+c'], () => {
+            const cells = graph.getSelectedCells()
+            if (cells.length) {
+                graph.copy(cells)
+            }
+            return false
+        })
+        graph.bindKey(['meta+v', 'ctrl+v'], () => {
+             if (!graph.isClipboardEmpty()) {
+                const cells = graph.paste({ offset: 32 })
+                graph.cleanSelection()
+                graph.select(cells)
+            }
+            return false
+        })
+
+        // Save functionality
+        document.getElementById('x6-save-btn').onclick = () => {
+             openSaveHistoryModal();
+        };
+        document.getElementById('confirm-save-btn').onclick = saveWorkflowWithHistory;
+    });
+
+    const ports = {
+        groups: {
+            top: {
+                position: 'top',
+                attrs: {
+                    circle: {
+                        r: 4,
+                        magnet: true,
+                        stroke: '#0077C8',
+                        strokeWidth: 1,
+                        fill: '#fff'
+                    }
+                }
+            },
+            right: {
+                position: 'right',
+                attrs: {
+                    circle: {
+                        r: 4,
+                        magnet: true,
+                        stroke: '#0077C8',
+                        strokeWidth: 1,
+                        fill: '#fff'
+                    }
+                }
+            },
+            bottom: {
+                position: 'bottom',
+                attrs: {
+                    circle: {
+                        r: 4,
+                        magnet: true,
+                        stroke: '#0077C8',
+                        strokeWidth: 1,
+                        fill: '#fff'
+                    }
+                }
+            },
+            left: {
+                position: 'left',
+                attrs: {
+                    circle: {
+                        r: 4,
+                        magnet: true,
+                        stroke: '#0077C8',
+                        strokeWidth: 1,
+                        fill: '#fff'
+                    }
+                }
+            }
+        },
+        items: [
+            { id: 'port1', group: 'top' },
+            { id: 'port2', group: 'right' },
+            { id: 'port3', group: 'bottom' },
+            { id: 'port4', group: 'left' }
+        ]
+    };
+
+    function addNode(type, text) {
+        if (!graph) return;
+
+        let nodeConfig = {
+            shape: 'rect',
+            x: 200,
+            y: 150,
+            width: 120,
+            height: 60,
+            attrs: {
+                body: {
+                    stroke: '#0077C8',
+                    strokeWidth: 2,
+                    fill: '#f0f9ff',
+                    rx: 8,
+                    ry: 8
+                },
+                label: {
+                    text: text,
+                    fill: '#334155',
+                    fontSize: 14,
+                    fontWeight: 'bold'
+                }
+            },
+            ports: ports
+        };
+
+        if (type === 'circle') {
+            nodeConfig = {
+                shape: 'circle',
+                x: 200,
+                y: 150,
+                width: 80,
+                height: 80,
+                attrs: {
+                    body: {
+                        stroke: '#0077C8',
+                        strokeWidth: 2,
+                        fill: '#f0f9ff'
+                    },
+                    label: {
+                        text: text,
+                        fill: '#334155',
+                        fontSize: 14,
+                        fontWeight: 'bold'
+                    }
+                },
+                ports: ports
+            };
+        } else if (type === 'polygon') {
+            nodeConfig = {
+                shape: 'polygon',
+                x: 200,
+                y: 150,
+                width: 100,
+                height: 100,
+                attrs: {
+                    body: {
+                        stroke: '#0077C8',
+                        strokeWidth: 2,
+                        fill: '#f0f9ff',
+                        refPoints: '0,10 10,0 20,10 10,20'
+                    },
+                    label: {
+                        text: text,
+                        fill: '#334155',
+                        fontSize: 14,
+                        fontWeight: 'bold'
+                    }
+                },
+                ports: ports
+            };
+        } else if (type === 'text') {
+            nodeConfig = {
+                shape: 'rect',
+                x: 200,
+                y: 150,
+                width: 160,
+                height: 40,
+                attrs: {
+                    body: {
+                        fill: 'transparent',
+                        stroke: 'transparent',
+                        strokeWidth: 0
+                    },
+                    label: {
+                        text: text,
+                        fill: '#334155',
+                        fontSize: 16,
+                        fontWeight: 'bold'
+                    }
+                },
+                data: {
+                    nodeType: 'text'
+                }
+            };
+        } else if (type === 'separator') {
+            const edge = graph.addEdge({
+                source: { x: 220, y: 180 },
+                target: { x: 440, y: 180 },
+                connector: { name: 'normal' },
+                attrs: {
+                    line: {
+                        stroke: '#64748b',
+                        strokeWidth: 2,
+                        strokeDasharray: '',
+                        targetMarker: null
+                    }
+                },
+                data: {
+                    nodeType: 'separator'
+                }
+            });
+            edge.setVertices([]);
+            graph.cleanSelection();
+            graph.select(edge);
+            enableSeparatorTools(edge);
+            openPanel(edge);
+            return;
+        }
+
+        const node = graph.addNode(nodeConfig);
+        normalizeTextNodeAppearance(node);
+        graph.cleanSelection();
+        graph.select(node);
+        openPanel(node);
+    }
+
+    function isTextNode(node) {
+        if (!node) return false;
+        return node.getData()?.nodeType === 'text';
+    }
+
+    function isSeparatorNode(node) {
+        if (!node) return false;
+        return node.getData()?.nodeType === 'separator';
+    }
+
+    function normalizeTextNodeAppearance(node) {
+        if (!isTextNode(node)) return;
+        node.attr('body/fill', 'transparent');
+        node.attr('body/stroke', 'transparent');
+        node.attr('body/strokeWidth', 0);
+        node.attr('body/strokeDasharray', '');
+    }
+
+    function normalizeEdgeAppearance(edge) {
+        if (!edge || !edge.isEdge || !edge.isEdge()) return;
+
+        if (isSeparatorNode(edge)) {
+            edge.setConnector({ name: 'normal' });
+            edge.attr('line/targetMarker', null);
+            edge.setVertices([]);
+            return;
+        }
+
+        edge.setRouter({ name: 'orth' });
+        edge.setConnector({ name: 'rounded', args: { radius: 8 } });
+        edge.attr('line/targetMarker', {
+            name: 'block',
+            width: 12,
+            height: 8,
+        });
+    }
+
+    function normalizeLoadedCells() {
+        if (!graph) return;
+        graph.getNodes().forEach((node) => {
+            normalizeTextNodeAppearance(node);
+        });
+        graph.getEdges().forEach((edge) => {
+            normalizeEdgeAppearance(edge);
+        });
+    }
+
+    function isDetailSupportedNode(node) {
+        if (!node || !node.isNode || !node.isNode()) return false;
+        if (isTextNode(node)) return false;
+        return ['rect', 'circle', 'polygon'].includes(node.shape);
+    }
+
+    function setPanelTab(tab) {
+        if (tab === 'detail' && !detailEnabledForSelected) return;
+        currentPanelTab = tab === 'detail' ? 'detail' : 'style';
+
+        const styleBtn = document.getElementById('tab-style-btn');
+        const detailBtn = document.getElementById('tab-detail-btn');
+        const styleTab = document.getElementById('style-tab-content');
+        const detailTab = document.getElementById('detail-tab-content');
+
+        if (currentPanelTab === 'detail') {
+            styleBtn.classList.remove('active');
+            detailBtn.classList.add('active');
+            styleTab.classList.add('hidden');
+            detailTab.classList.remove('hidden');
+        } else {
+            detailBtn.classList.remove('active');
+            styleBtn.classList.add('active');
+            detailTab.classList.add('hidden');
+            styleTab.classList.remove('hidden');
+        }
+    }
+
+    function updateDetailTabAvailability(enabled) {
+        detailEnabledForSelected = !!enabled;
+        const detailBtn = document.getElementById('tab-detail-btn');
+        const detailNotAvailable = document.getElementById('detail-not-available');
+        const detailForm = document.getElementById('detail-form');
+
+        detailBtn.disabled = !detailEnabledForSelected;
+        if (detailEnabledForSelected) {
+            detailBtn.classList.remove('opacity-50');
+            detailNotAvailable.classList.add('hidden');
+            detailForm.classList.remove('hidden');
+        } else {
+            detailBtn.classList.add('opacity-50');
+            detailNotAvailable.classList.remove('hidden');
+            detailForm.classList.add('hidden');
+        }
+    }
+
+    function renderDetailFiles(files) {
+        const filesView = document.getElementById('detail-files-view');
+        filesView.innerHTML = '';
+        if (!files || files.length === 0) {
+            filesView.innerHTML = '<p class="text-xs text-slate-400">첨부파일이 없습니다.</p>';
+            return;
+        }
+
+        files.forEach((f) => {
+            const isImg = f.filename && f.filename.match(/\.(jpg|jpeg|png|gif|webp)$/i);
+            const item = document.createElement('div');
+            item.className = 'flex flex-col gap-2 p-2 border border-slate-100 rounded-lg';
+            if (isImg) {
+                item.innerHTML = `<img src="${f.file}" class="rounded-lg max-w-full h-auto mb-1"/><a href="${f.file}" target="_blank" class="text-[11px] text-primary truncate">${f.filename}</a>`;
+            } else {
+                item.innerHTML = `<a href="${f.file}" target="_blank" class="text-xs text-primary truncate hover:underline">${f.filename}</a>`;
+            }
+            filesView.appendChild(item);
+        });
+    }
+
+    function loadNodeDetail(nodeId) {
+        const detailTextView = document.getElementById('detail-text-view');
+        const detailTextEdit = document.getElementById('detail-text-edit');
+        fetch(`/vbpm/api/workflows/${workflowId}/lf_node_detail/?node_id=${nodeId}`)
+            .then((res) => res.json())
+            .then((data) => {
+                if (detailTextView) {
+                    detailTextView.innerText = data.content || '설명이 없습니다.';
+                }
+                if (detailTextEdit) {
+                    detailTextEdit.value = data.content || '';
+                }
+                renderDetailFiles(data.files || []);
+            });
+    }
+
+    function saveNodeDetail() {
+        if (!selectedNode || !detailEnabledForSelected) return;
+        const formData = new FormData();
+        formData.append('node_id', selectedNode.id);
+        formData.append('content', document.getElementById('detail-text-edit').value || '');
+
+        const fileInput = document.getElementById('detail-file-input');
+        for (let i = 0; i < fileInput.files.length; i += 1) {
+            formData.append('files', fileInput.files[i]);
+        }
+
+        fetch(`/vbpm/api/workflows/${workflowId}/lf_node_detail/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: formData
+        })
+            .then((res) => res.json())
+            .then((data) => {
+                const detailTextView = document.getElementById('detail-text-view');
+                if (detailTextView) {
+                    detailTextView.innerText = data.content || '설명이 없습니다.';
+                }
+                renderDetailFiles(data.files || []);
+                fileInput.value = '';
+                alert('상세정보가 저장되었습니다.');
+            });
+    }
+
+    function clearSeparatorTools() {
+        if (activeSeparatorEdge) {
+            activeSeparatorEdge.removeTools();
+            activeSeparatorEdge = null;
+        }
+    }
+
+    function enableSeparatorTools(edge) {
+        if (!edge || !isSeparatorNode(edge)) return;
+        clearSeparatorTools();
+        edge.setVertices([]);
+        activeSeparatorEdge = edge;
+    }
+
+    function getNodeLabel(node) {
+        return node.attr('label/text') || '';
+    }
+
+    function getNodeFontSize(node) {
+        return node.attr('label/fontSize') || 14;
+    }
+
+    function getNodeFontColor(node) {
+        return node.attr('label/fill') || '#334155';
+    }
+
+    function safeColor(value, fallback) {
+        if (typeof value !== 'string') return fallback;
+        const isHex = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(value.trim());
+        return isHex ? value.trim() : fallback;
+    }
+
+    function lineTypeToDasharray(lineType) {
+        if (lineType === 'dashed') return '8 4';
+        if (lineType === 'dotted') return '2 4';
+        return '';
+    }
+
+    function dasharrayToLineType(dasharray) {
+        if (!dasharray) return 'solid';
+        const normalized = `${dasharray}`.trim();
+        if (normalized === '8 4') return 'dashed';
+        if (normalized === '2 4') return 'dotted';
+        return 'solid';
+    }
+
+    function getSeparatorEndpoints(edge) {
+        const source = edge.getSource();
+        const target = edge.getTarget();
+        if (source && target && typeof source.x === 'number' && typeof source.y === 'number' && typeof target.x === 'number' && typeof target.y === 'number') {
+            return {
+                source: { x: source.x, y: source.y },
+                target: { x: target.x, y: target.y }
+            };
+        }
+        const sourcePoint = edge.getSourcePoint();
+        const targetPoint = edge.getTargetPoint();
+        return {
+            source: { x: sourcePoint.x, y: sourcePoint.y },
+            target: { x: targetPoint.x, y: targetPoint.y }
+        };
+    }
+
+    function getSeparatorDirectionAndLength(edge) {
+        const { source, target } = getSeparatorEndpoints(edge);
+        const dx = Math.abs(target.x - source.x);
+        const dy = Math.abs(target.y - source.y);
+        return {
+            direction: dx >= dy ? 'horizontal' : 'vertical',
+            length: Math.max(10, Math.round(Math.sqrt((dx * dx) + (dy * dy))))
+        };
+    }
+
+    function applySeparatorGeometry(edge, direction, length) {
+        const safeLength = Math.max(10, Math.round(Number(length) || 220));
+        const { source, target } = getSeparatorEndpoints(edge);
+        const centerX = (source.x + target.x) / 2;
+        const centerY = (source.y + target.y) / 2;
+        const half = safeLength / 2;
+
+        if (direction === 'vertical') {
+            edge.setSource({ x: centerX, y: centerY - half });
+            edge.setTarget({ x: centerX, y: centerY + half });
+        } else {
+            edge.setSource({ x: centerX - half, y: centerY });
+            edge.setTarget({ x: centerX + half, y: centerY });
+        }
+        edge.setVertices([]);
+    }
+
+    function setNodeLabel(node, label) {
+        const value = (label || '').trim();
+        node.attr('label/text', value || (isTextNode(node) ? 'Text' : 'Node'));
+    }
+
+    function openPanel(node) {
+        if (!node) return;
+        selectedNode = node;
+        const supportsDetail = isDetailSupportedNode(node);
+        updateDetailTabAvailability(supportsDetail);
+
+        const isSeparator = isSeparatorNode(node);
+        const isPlainEdge = !!(node.isEdge && node.isEdge() && !isSeparator);
+        const panelNodeName = document.getElementById('panel-node-name');
+        const labelControls = document.getElementById('label-controls');
+        const textStyleControls = document.getElementById('text-style-controls');
+        const lineStyleControls = document.getElementById('line-style-controls');
+        const fillControl = document.getElementById('fill-control');
+        const applyStyleButton = document.getElementById('apply-style-btn');
+        const nodeLabelInput = document.getElementById('node-label-input');
+        const nodeFontSizeInput = document.getElementById('node-font-size-input');
+        const nodeFontColorInput = document.getElementById('node-font-color-input');
+        const nodeFillInput = document.getElementById('node-fill-input');
+        const nodeStrokeInput = document.getElementById('node-stroke-input');
+        const nodeStrokeWidthInput = document.getElementById('node-stroke-width-input');
+        const nodeLineTypeInput = document.getElementById('node-line-type-input');
+        const separatorDirectionInput = document.getElementById('separator-direction-input');
+        const separatorLengthInput = document.getElementById('separator-length-input');
+        const detailTextView = document.getElementById('detail-text-view');
+        const detailTextEdit = document.getElementById('detail-text-edit');
+        const detailFileInput = document.getElementById('detail-file-input');
+        const detailFilesView = document.getElementById('detail-files-view');
+        const detailPanel = document.getElementById('detail-panel');
+
+        if (isPlainEdge) {
+            if (panelNodeName) panelNodeName.innerText = 'Connection';
+            if (labelControls) labelControls.classList.add('hidden');
+            if (textStyleControls) textStyleControls.classList.add('hidden');
+            if (lineStyleControls) lineStyleControls.classList.add('hidden');
+            if (fillControl) fillControl.classList.add('hidden');
+            if (applyStyleButton) applyStyleButton.classList.add('hidden');
+        } else if (isSeparator) {
+            if (panelNodeName) panelNodeName.innerText = 'Separator';
+            if (labelControls) labelControls.classList.add('hidden');
+            if (textStyleControls) textStyleControls.classList.add('hidden');
+            if (lineStyleControls) lineStyleControls.classList.remove('hidden');
+            if (fillControl) fillControl.classList.add('hidden');
+            if (applyStyleButton) applyStyleButton.classList.remove('hidden');
+
+            if (nodeStrokeInput) nodeStrokeInput.value = safeColor(node.attr('line/stroke'), '#64748b');
+            if (nodeStrokeWidthInput) nodeStrokeWidthInput.value = node.attr('line/strokeWidth') || 2;
+            if (nodeLineTypeInput) nodeLineTypeInput.value = dasharrayToLineType(node.attr('line/strokeDasharray'));
+            const separatorGeometry = getSeparatorDirectionAndLength(node);
+            if (separatorDirectionInput) separatorDirectionInput.value = separatorGeometry.direction;
+            if (separatorLengthInput) separatorLengthInput.value = separatorGeometry.length;
+        } else {
+            const label = getNodeLabel(node) || 'Node';
+            if (panelNodeName) panelNodeName.innerText = label;
+            if (nodeLabelInput) nodeLabelInput.value = label;
+            if (nodeFontSizeInput) nodeFontSizeInput.value = getNodeFontSize(node);
+            if (nodeFontColorInput) nodeFontColorInput.value = safeColor(getNodeFontColor(node), '#334155');
+
+            if (labelControls) labelControls.classList.remove('hidden');
+            if (fillControl) fillControl.classList.toggle('hidden', isTextNode(node));
+            if (lineStyleControls) lineStyleControls.classList.add('hidden');
+            if (applyStyleButton) applyStyleButton.classList.remove('hidden');
+
+            if (nodeFillInput) nodeFillInput.value = safeColor(node.attr('body/fill'), '#f0f9ff');
+            if (nodeStrokeInput) nodeStrokeInput.value = safeColor(node.attr('body/stroke'), '#0077C8');
+            if (nodeStrokeWidthInput) nodeStrokeWidthInput.value = node.attr('body/strokeWidth') || 2;
+
+            if (textStyleControls) {
+                textStyleControls.classList.remove('hidden');
+            }
+        }
+
+        if (supportsDetail) {
+            loadNodeDetail(node.id);
+        } else {
+            if (detailTextView) detailTextView.innerText = '';
+            if (detailTextEdit) detailTextEdit.value = '';
+            if (detailFileInput) detailFileInput.value = '';
+            if (detailFilesView) detailFilesView.innerHTML = '';
+        }
+
+        setPanelTab('style');
+        if (detailPanel) detailPanel.classList.add('open');
+    }
+
+    function closePanel() {
+        document.getElementById('detail-panel').classList.remove('open');
+        selectedNode = null;
+        clearSeparatorTools();
+        updateDetailTabAvailability(false);
+        setPanelTab('style');
+    }
+
+    function applyNodeStyle() {
+        if (!selectedNode) return;
+        if (selectedNode.isEdge && selectedNode.isEdge() && !isSeparatorNode(selectedNode)) return;
+
+        if (isSeparatorNode(selectedNode)) {
+            const stroke = document.getElementById('node-stroke-input').value || '#64748b';
+            const strokeWidth = parseFloat(document.getElementById('node-stroke-width-input').value) || 2;
+            const lineType = document.getElementById('node-line-type-input').value || 'solid';
+            const direction = document.getElementById('separator-direction-input').value || 'horizontal';
+            const length = document.getElementById('separator-length-input').value || 220;
+
+            selectedNode.attr('line/stroke', stroke);
+            selectedNode.attr('line/strokeWidth', strokeWidth);
+            selectedNode.attr('line/strokeDasharray', lineTypeToDasharray(lineType));
+            selectedNode.attr('line/targetMarker', null);
+            applySeparatorGeometry(selectedNode, direction, length);
+            return;
+        }
+
+        const label = document.getElementById('node-label-input').value;
+        const fontSize = parseInt(document.getElementById('node-font-size-input').value, 10) || 14;
+        const fontColor = document.getElementById('node-font-color-input').value || '#334155';
+
+        setNodeLabel(selectedNode, label);
+        selectedNode.attr('label/fontSize', fontSize);
+        selectedNode.attr('label/fill', fontColor);
+        if (isTextNode(selectedNode)) {
+            normalizeTextNodeAppearance(selectedNode);
+        } else {
+            selectedNode.attr('body/fill', document.getElementById('node-fill-input').value || '#f0f9ff');
+            selectedNode.attr('body/stroke', document.getElementById('node-stroke-input').value || '#0077C8');
+            selectedNode.attr('body/strokeWidth', parseFloat(document.getElementById('node-stroke-width-input').value) || 2);
+            selectedNode.attr('body/strokeDasharray', '');
+        }
+
+        document.getElementById('panel-node-name').innerText = getNodeLabel(selectedNode) || 'Node';
+    }
+
+    function deleteSelectedNode() {
+        if (!selectedNode || !graph) return;
+        const label = (selectedNode.isEdge && selectedNode.isEdge())
+            ? '이 연결선을 삭제하시겠습니까?'
+            : '이 노드를 삭제하시겠습니까?';
+        if (!confirm(label)) return;
+        graph.removeCell(selectedNode);
+        closePanel();
+    }
+
+    window.addNode = addNode;
+    window.closePanel = closePanel;
+    window.applyNodeStyle = applyNodeStyle;
+    window.saveNodeDetail = saveNodeDetail;
+    window.setPanelTab = setPanelTab;
+    window.deleteSelectedNode = deleteSelectedNode;
+    window.closeSaveHistoryModal = closeSaveHistoryModal;
+</script>
+{% endblock %}

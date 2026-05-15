@@ -1,8 +1,10 @@
-from django.core.management.base import BaseCommand
-from reports.services.team_analysis import TeamPerformanceAnalyzer
-from teams.models import Team
 import logging
 from datetime import date
+
+from django.core.management.base import BaseCommand
+
+from app.services import TeamPerformanceAnalyzer
+from teams.models import Team
 
 logger = logging.getLogger(__name__)
 

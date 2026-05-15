@@ -1,0 +1,291 @@
+INFO 2026-04-23 15:07:17,089 autoreload 7 125447271338752 Watching for file changes with StatReloader
+INFO 2026-04-23 15:07:52,111 basehttp 7 125446442714816 "GET / HTTP/1.1" 301 0
+INFO 2026-04-23 15:07:52,188 basehttp 7 125446442714816 "GET /dashboard/ HTTP/1.1" 302 0
+INFO 2026-04-23 15:07:52,425 basehttp 7 125446442714816 "GET /accounts/login/?next=/dashboard/ HTTP/1.1" 200 16817
+INFO 2026-04-23 15:07:52,541 basehttp 7 125446424880832 "GET /static/images/logo.png HTTP/1.1" 200 3305
+INFO 2026-04-23 15:07:52,541 basehttp 7 125446434322112 "GET /static/css/summernote-lite.css HTTP/1.1" 200 31086
+INFO 2026-04-23 15:07:52,550 basehttp 7 125446442714816 "GET /static/css/custom.css?v=4 HTTP/1.1" 200 87371
+INFO 2026-04-23 15:07:52,709 basehttp 7 125446434322112 "GET /static/js/summernote-lite.js HTTP/1.1" 200 366080
+INFO 2026-04-23 15:07:52,826 basehttp 7 125446434322112 "GET /static/js/lang/summernote-ko-KR.js HTTP/1.1" 200 9926
+INFO 2026-04-23 15:07:53,218 basehttp 7 125446434322112 "GET /static/favicon.ico HTTP/1.1" 200 15406
+INFO 2026-04-23 15:08:03,426 basehttp 7 125446434322112 "POST /accounts/login/?next=/dashboard/ HTTP/1.1" 302 0
+INFO 2026-04-23 15:08:03,646 basehttp 7 125446434322112 "GET /dashboard/ HTTP/1.1" 200 60723
+ERROR 2026-04-23 15:08:08,563 log 7 125446434322112 Internal Server Error: /reviewer/
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/django/db/backends/sqlite3/base.py", line 354, in execute
+    return super().execute(query, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+sqlite3.OperationalError: no such table: reviewer_reviewhistory
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/django/core/handlers/base.py", line 220, in _get_response
+    response = response.render()
+               ^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/django/template/response.py", line 114, in render
+    self.content = self.rendered_content
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/django/template/response.py", line 92, in rendered_content
+    return template.render(context, self._request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/django/template/backends/django.py", line 107, in render
+    return self.template.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/django/template/base.py", line 171, in render
+    return self._render(context)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/django/template/base.py", line 163, in _render
+    return self.nodelist.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/django/template/base.py", line 1008, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/django/template/base.py", line 1008, in <listcomp>
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/django/template/base.py", line 969, in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/django/template/loader_tags.py", line 159, in render
+    return compiled_parent._render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/django/template/base.py", line 163, in _render
+    return self.nodelist.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/django/template/base.py", line 1008, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/django/template/base.py", line 1008, in <listcomp>
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/django/template/base.py", line 969, in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/django/template/loader_tags.py", line 65, in render
+    result = block.nodelist.render(context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/django/template/base.py", line 1008, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/django/template/base.py", line 1008, in <listcomp>
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/django/template/base.py", line 969, in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/django/template/defaulttags.py", line 199, in render
+    len_values = len(values)
+                 ^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/django/db/models/query.py", line 382, in __len__
+    self._fetch_all()
+  File "/usr/local/lib/python3.11/site-packages/django/db/models/query.py", line 1928, in _fetch_all
+    self._result_cache = list(self._iterable_class(self))
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/django/db/models/query.py", line 91, in __iter__
+    results = compiler.execute_sql(
+              ^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py", line 1574, in execute_sql
+    cursor.execute(sql, params)
+  File "/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py", line 122, in execute
+    return super().execute(sql, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py", line 79, in execute
+    return self._execute_with_wrappers(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py", line 92, in _execute_with_wrappers
+    return executor(sql, params, many, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py", line 100, in _execute
+    with self.db.wrap_database_errors:
+  File "/usr/local/lib/python3.11/site-packages/django/db/utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/django/db/backends/sqlite3/base.py", line 354, in execute
+    return super().execute(query, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+django.db.utils.OperationalError: no such table: reviewer_reviewhistory
+ERROR 2026-04-23 15:08:08,578 basehttp 7 125446434322112 "GET /reviewer/ HTTP/1.1" 500 220231
+WARNING 2026-04-23 15:08:08,969 log 7 125446434322112 Not Found: /favicon.ico
+WARNING 2026-04-23 15:08:08,970 basehttp 7 125446434322112 "GET /favicon.ico HTTP/1.1" 404 6970
+INFO 2026-04-23 15:08:31,868 basehttp 7 125446434322112 "GET /reviewer/ HTTP/1.1" 200 52063
+INFO 2026-04-23 15:09:50,259 models 7 125446434322112 AFC is enabled with max remote calls: 10.
+INFO 2026-04-23 15:10:07,641 _client 7 125446434322112 HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent "HTTP/1.1 200 OK"
+WARNING 2026-04-23 15:10:07,646 types 7 125446434322112 Warning: there are non-text parts in the response: ['thought_signature'], returning concatenated text result from text parts. Check the full candidates.content.parts accessor to get the full model response.
+WARNING 2026-04-23 15:10:07,648 types 7 125446434322112 Warning: there are non-text parts in the response: ['thought_signature'], returning concatenated text result from text parts. Check the full candidates.content.parts accessor to get the full model response.
+INFO 2026-04-23 15:10:07,709 basehttp 7 125446434322112 "POST /reviewer/api/action/ HTTP/1.1" 200 6377
+INFO 2026-04-23 15:15:47,959 autoreload 7 125447271338752 /app/reviewer/services.py changed, reloading.
+INFO 2026-04-23 15:15:50,013 autoreload 42 137785865380608 Watching for file changes with StatReloader
+INFO 2026-04-23 15:15:57,589 autoreload 42 137785865380608 /app/reviewer/models.py changed, reloading.
+INFO 2026-04-23 15:15:59,402 autoreload 55 132168625001216 Watching for file changes with StatReloader
+INFO 2026-04-23 15:16:26,532 autoreload 55 132168625001216 /app/reviewer/views.py changed, reloading.
+INFO 2026-04-23 15:16:28,678 autoreload 68 125765509059328 Watching for file changes with StatReloader
+ERROR 2026-04-23 15:18:10,125 log 68 125764672079552 Internal Server Error: /reviewer/
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/django/db/backends/sqlite3/base.py", line 354, in execute
+    return super().execute(query, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+sqlite3.OperationalError: no such column: reviewer_reviewhistory.program_name
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/django/core/handlers/base.py", line 220, in _get_response
+    response = response.render()
+               ^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/django/template/response.py", line 114, in render
+    self.content = self.rendered_content
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/django/template/response.py", line 92, in rendered_content
+    return template.render(context, self._request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/django/template/backends/django.py", line 107, in render
+    return self.template.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/django/template/base.py", line 171, in render
+    return self._render(context)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/django/template/base.py", line 163, in _render
+    return self.nodelist.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/django/template/base.py", line 1008, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/django/template/base.py", line 1008, in <listcomp>
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/django/template/base.py", line 969, in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/django/template/loader_tags.py", line 159, in render
+    return compiled_parent._render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/django/template/base.py", line 163, in _render
+    return self.nodelist.render(context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/django/template/base.py", line 1008, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/django/template/base.py", line 1008, in <listcomp>
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/django/template/base.py", line 969, in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/django/template/loader_tags.py", line 65, in render
+    result = block.nodelist.render(context)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/django/template/base.py", line 1008, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/django/template/base.py", line 1008, in <listcomp>
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/django/template/base.py", line 969, in render_annotated
+    return self.render(context)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/django/template/defaulttags.py", line 199, in render
+    len_values = len(values)
+                 ^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/django/db/models/query.py", line 382, in __len__
+    self._fetch_all()
+  File "/usr/local/lib/python3.11/site-packages/django/db/models/query.py", line 1928, in _fetch_all
+    self._result_cache = list(self._iterable_class(self))
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/django/db/models/query.py", line 91, in __iter__
+    results = compiler.execute_sql(
+              ^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/django/db/models/sql/compiler.py", line 1574, in execute_sql
+    cursor.execute(sql, params)
+  File "/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py", line 122, in execute
+    return super().execute(sql, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py", line 79, in execute
+    return self._execute_with_wrappers(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py", line 92, in _execute_with_wrappers
+    return executor(sql, params, many, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py", line 100, in _execute
+    with self.db.wrap_database_errors:
+  File "/usr/local/lib/python3.11/site-packages/django/db/utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "/usr/local/lib/python3.11/site-packages/django/db/backends/utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/django/db/backends/sqlite3/base.py", line 354, in execute
+    return super().execute(query, params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+django.db.utils.OperationalError: no such column: reviewer_reviewhistory.program_name
+ERROR 2026-04-23 15:18:10,134 basehttp 68 125764672079552 "GET /reviewer/ HTTP/1.1" 500 222231
+INFO 2026-04-23 15:18:32,443 basehttp 68 125764672079552 "GET /reviewer/ HTTP/1.1" 200 55340
+INFO 2026-04-23 15:18:38,745 basehttp 68 125764672079552 "GET /reviewer/?q=&mine=1 HTTP/1.1" 200 55340
+INFO 2026-04-23 15:18:40,698 basehttp 68 125764672079552 "GET /reviewer/?q=&mine=0 HTTP/1.1" 200 55340
+INFO 2026-04-23 15:19:15,704 models 68 125764672079552 AFC is enabled with max remote calls: 10.
+INFO 2026-04-23 15:19:32,221 _client 68 125764672079552 HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent "HTTP/1.1 200 OK"
+WARNING 2026-04-23 15:19:32,223 types 68 125764672079552 Warning: there are non-text parts in the response: ['thought_signature'], returning concatenated text result from text parts. Check the full candidates.content.parts accessor to get the full model response.
+WARNING 2026-04-23 15:19:32,225 types 68 125764672079552 Warning: there are non-text parts in the response: ['thought_signature'], returning concatenated text result from text parts. Check the full candidates.content.parts accessor to get the full model response.
+INFO 2026-04-23 15:19:32,340 basehttp 68 125764672079552 "POST /reviewer/api/action/ HTTP/1.1" 200 6298
+INFO 2026-04-23 15:25:33,929 basehttp 68 125764672079552 "GET /reviewer/api/history/0b2bd93d-c491-41c0-9f7c-f216bdce1f36/ HTTP/1.1" 200 17048
+INFO 2026-04-23 15:25:54,749 basehttp 68 125764672079552 "GET /reviewer/?q=&mine=1 HTTP/1.1" 200 56303
+INFO 2026-04-23 15:25:55,760 basehttp 68 125764672079552 "GET /reviewer/?q=&mine=0 HTTP/1.1" 200 56303
+INFO 2026-04-23 15:25:56,862 basehttp 68 125764672079552 "GET /reviewer/?q=&mine=1 HTTP/1.1" 200 56303
+INFO 2026-04-23 15:25:57,869 basehttp 68 125764672079552 "GET /reviewer/?q=&mine=0 HTTP/1.1" 200 56303
+INFO 2026-04-23 15:25:59,147 basehttp 68 125764672079552 "GET /reviewer/?q=&mine=1 HTTP/1.1" 200 56303
+INFO 2026-04-23 15:26:00,956 basehttp 68 125764672079552 "GET /reviewer/?q=&mine=0 HTTP/1.1" 200 56303
+INFO 2026-04-23 15:26:06,106 basehttp 68 125764672079552 "GET /reviewer/?q=%EC%8B%9C%EB%8B%88%EC%96%B4&mine=0 HTTP/1.1" 200 54595
+INFO 2026-04-23 15:26:08,122 basehttp 68 125764672079552 "GET /reviewer/?q=%EC%8B%9C%EB%8B%88%EC%96%B4&mine=1 HTTP/1.1" 200 54595
+INFO 2026-04-23 15:26:10,724 basehttp 68 125764672079552 "GET /reviewer/ HTTP/1.1" 200 56303
+INFO 2026-04-23 15:26:12,587 basehttp 68 125764672079552 "GET /reviewer/api/history/91f9252c-046b-456e-aa67-39b077b1927c/ HTTP/1.1" 200 17241
+INFO 2026-04-23 15:26:27,230 basehttp 68 125764672079552 "GET /reviewer/api/history/0b2bd93d-c491-41c0-9f7c-f216bdce1f36/ HTTP/1.1" 200 17048
+INFO 2026-04-23 15:28:52,472 basehttp 68 125764672079552 "GET /reviewer/ HTTP/1.1" 200 56314
+INFO 2026-04-23 15:29:22,784 basehttp 68 125764672079552 "GET /reviewer/ HTTP/1.1" 200 56314
+INFO 2026-04-23 15:29:45,177 basehttp 68 125764672079552 "GET /reviewer/ HTTP/1.1" 200 56314
+INFO 2026-04-23 15:30:04,948 basehttp 68 125764672079552 "GET /reviewer/?q=&mine=1 HTTP/1.1" 200 56314
+INFO 2026-04-23 15:30:06,105 basehttp 68 125764672079552 "GET /reviewer/?q=&mine=0 HTTP/1.1" 200 56314
+INFO 2026-04-23 15:31:09,081 basehttp 68 125764672079552 "GET /task/?status=in_progress HTTP/1.1" 200 42874
+INFO 2026-04-23 15:31:12,559 basehttp 68 125764672079552 "GET /reviewer/ HTTP/1.1" 200 56314
+INFO 2026-04-23 15:31:24,143 basehttp 68 125764672079552 "GET /dashboard/ HTTP/1.1" 200 60723
+INFO 2026-04-23 15:34:24,605 basehttp 68 125764680472256 "GET /monitor/web-monitor/ HTTP/1.1" 200 52479
+INFO 2026-04-23 15:34:25,426 basehttp 68 125764680472256 "GET /monitor/web-monitor/api/data/ HTTP/1.1" 200 1166
+INFO 2026-04-23 15:34:27,659 basehttp 68 125764680472256 "GET /monitor/web-monitor/3/detail/ HTTP/1.1" 200 53893
+INFO 2026-04-23 15:34:28,884 basehttp 68 125764680472256 "GET /monitor/web-monitor/api/detail/3/ HTTP/1.1" 200 65080
+INFO 2026-04-23 15:34:31,278 basehttp 68 125764680472256 "GET /monitor/web-monitor/3/detail/ HTTP/1.1" 200 53893
+INFO 2026-04-23 15:34:32,053 basehttp 68 125764680472256 "GET /monitor/web-monitor/api/detail/3/ HTTP/1.1" 200 65080
+INFO 2026-04-23 15:34:44,879 basehttp 68 125764680472256 "GET /monitor/web-monitor/ HTTP/1.1" 200 52479
+INFO 2026-04-23 15:34:45,608 basehttp 68 125764680472256 "GET /monitor/web-monitor/api/data/ HTTP/1.1" 200 1166
+INFO 2026-04-23 15:34:49,782 basehttp 68 125764680472256 "GET /monitor/web-monitor/5/detail/ HTTP/1.1" 200 53893
+INFO 2026-04-23 15:34:51,153 basehttp 68 125764680472256 "GET /monitor/web-monitor/api/detail/5/ HTTP/1.1" 200 26160
+INFO 2026-04-23 15:34:58,880 basehttp 68 125764680472256 "GET /monitor/web-monitor/ HTTP/1.1" 200 52479
+INFO 2026-04-23 15:34:59,830 basehttp 68 125764680472256 "GET /monitor/web-monitor/api/data/ HTTP/1.1" 200 1166
+INFO 2026-04-23 15:35:01,783 basehttp 68 125764680472256 "GET /monitor/web-monitor/3/detail/ HTTP/1.1" 200 53893
+INFO 2026-04-23 15:35:03,557 basehttp 68 125764680472256 "GET /monitor/web-monitor/api/detail/3/ HTTP/1.1" 200 65080
+INFO 2026-04-23 15:35:30,455 basehttp 68 125764680472256 "GET /monitor/web-monitor/ HTTP/1.1" 200 52479
+INFO 2026-04-23 15:35:30,870 basehttp 68 125764680472256 "GET /monitor/web-monitor/api/data/ HTTP/1.1" 200 1166
+INFO 2026-04-23 15:35:32,143 basehttp 68 125764680472256 "GET /monitor/web-monitor/2/detail/ HTTP/1.1" 200 53893
+INFO 2026-04-23 15:35:32,820 basehttp 68 125764680472256 "GET /monitor/web-monitor/api/detail/2/ HTTP/1.1" 200 68091
+INFO 2026-04-23 15:35:47,929 basehttp 68 125764680472256 "GET /monitor/web-monitor/ HTTP/1.1" 200 52479
+INFO 2026-04-23 15:35:48,263 basehttp 68 125764680472256 "GET /monitor/web-monitor/api/data/ HTTP/1.1" 200 1166
+INFO 2026-04-23 15:36:18,271 basehttp 68 125764680472256 "GET /monitor/web-monitor/api/data/ HTTP/1.1" 200 1166
+INFO 2026-04-23 15:36:48,353 basehttp 68 125764680472256 "GET /monitor/web-monitor/api/data/ HTTP/1.1" 200 1166
+INFO 2026-04-23 15:37:18,577 basehttp 68 125764680472256 "GET /monitor/web-monitor/api/data/ HTTP/1.1" 200 1166
+INFO 2026-04-23 15:37:51,674 basehttp 68 125764680472256 "GET /monitor/web-monitor/api/data/ HTTP/1.1" 200 1166
+INFO 2026-04-23 15:38:17,337 basehttp 68 125764680472256 "GET /monitor/web-monitor/api/data/ HTTP/1.1" 200 1166
+INFO 2026-04-23 15:38:47,287 basehttp 68 125764680472256 "GET /monitor/web-monitor/api/data/ HTTP/1.1" 200 1166
+INFO 2026-04-23 15:39:02,526 basehttp 68 125764680472256 "GET /task/?status=in_progress HTTP/1.1" 200 42874
+INFO 2026-04-23 15:39:07,299 basehttp 68 125764680472256 "GET /dashboard/ HTTP/1.1" 200 60723
+INFO 2026-04-23 15:44:49,479 basehttp 68 125764680472256 "GET /dashboard/ HTTP/1.1" 200 60723

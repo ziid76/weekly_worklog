@@ -133,7 +133,7 @@
                         <button type="button" aria-expanded="false" class="accordion-btn flex w-full items-center justify-between gap-2 px-4 py-3 rounded-full text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors">
                             <div class="flex items-center gap-2">
                                 <span class="material-symbols-outlined">assignment</span>
-                                <p class="text-sm font-bold">Work Management</p>
+                                <p class="text-sm font-bold">업무 관리</p>
                             </div>
                             <span class="material-symbols-outlined text-base accordion-chevron">chevron_right</span>
                         </button>
@@ -169,16 +169,19 @@
                         </div>
                     </div>
 
+
+
                     <!-- Monitoring -->
                     <div class="accordion-item">
                         <button type="button" aria-expanded="false" class="accordion-btn flex w-full items-center justify-between gap-2 px-4 py-3 rounded-full text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors">
                             <div class="flex items-center gap-2">
                                 <span class="material-symbols-outlined">monitor_heart</span>
-                                <p class="text-sm font-bold">Monitoring</p>
+                                <p class="text-sm font-bold">모니터링</p>
                             </div>
                             <span class="material-symbols-outlined text-base accordion-chevron">chevron_right</span>
                         </button>
                         <div class="accordion-content">
+
                             <a class="flex items-center gap-2 pl-12 pr-4 py-2 rounded-full text-slate-600 hover:bg-slate-200 hover:text-slate-900 transition-colors" href="{% url 'operation_log_list' %}">
                                 <span class="material-symbols-outlined text-base">list_alt</span>
                                 <p class="text-sm font-medium">시스템 일일점검</p>
@@ -194,6 +197,10 @@
                                 <span class="material-symbols-outlined text-base">calendar_month</span>
                                 <p class="text-sm font-medium">점검담당자 관리</p>
                             </a>
+                            <a class="flex items-center gap-2 pl-12 pr-4 py-2 rounded-full text-slate-600 hover:bg-slate-200 hover:text-slate-900 transition-colors" href="{% url 'web_monitor' %}">
+                                <span class="material-symbols-outlined text-base">monitoring</span>
+                                <p class="text-sm font-medium">웹모니터링</p>
+                            </a>
                             <a class="flex items-center gap-2 pl-12 pr-4 py-2 rounded-full text-slate-600 hover:bg-slate-200 hover:text-slate-900 transition-colors" href="{% url 'hooks:incident_list' %}">
                                 <span class="material-symbols-outlined text-base">error</span>
                                 <p class="text-sm font-medium">인시던트 관리</p>
@@ -206,7 +213,7 @@
                         <button type="button" aria-expanded="false" class="accordion-btn flex w-full items-center justify-between gap-2 px-4 py-3 rounded-full text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors">
                             <div class="flex items-center gap-2">
                                 <span class="material-symbols-outlined">web_asset</span>
-                                <p class="text-sm font-bold">Asset Management</p>
+                                <p class="text-sm font-bold">자산 관리</p>
                             </div>
                             <span class="material-symbols-outlined text-base accordion-chevron">chevron_right</span>
                         </button>
@@ -244,7 +251,7 @@
                         <button type="button" aria-expanded="false" class="accordion-btn flex w-full items-center justify-between gap-2 px-4 py-3 rounded-full text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors">
                             <div class="flex items-center gap-2">
                                 <span class="material-symbols-outlined">design_services</span>
-                                <p class="text-sm font-bold">Service Request</p>
+                                <p class="text-sm font-bold">서비스요청 관리</p>
                             </div>
                             <span class="material-symbols-outlined text-base accordion-chevron">chevron_right</span>
                         </button>
@@ -291,6 +298,39 @@
                         </div>
                     </div>
 
+                    <!-- Process Management -->
+                    <div class="accordion-item">
+                        <button type="button" aria-expanded="false" class="accordion-btn flex w-full items-center justify-between gap-2 px-4 py-3 rounded-full text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors">
+                            <div class="flex items-center gap-2">
+                                <span class="material-symbols-outlined">schema</span>
+                                <p class="text-sm font-bold">업무절차 관리</p>
+                            </div>
+                            <span class="material-symbols-outlined text-base accordion-chevron">chevron_right</span>
+                        </button>
+                        <div class="accordion-content">
+                            <a class="flex items-center gap-2 pl-12 pr-4 py-2 rounded-full text-slate-600 hover:bg-slate-200 hover:text-slate-900 transition-colors" href="{% url 'workflow_list' %}">
+                                <span class="material-symbols-outlined text-base">account_tree</span>
+                                <p class="text-sm font-medium">업무절차 목록</p>
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- AI Assistant -->
+                    <div class="accordion-item">
+                        <button type="button" aria-expanded="false" class="accordion-btn flex w-full items-center justify-between gap-2 px-4 py-3 rounded-full text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors">
+                            <div class="flex items-center gap-2">
+                                <span class="material-symbols-outlined">psychology</span>
+                                <p class="text-sm font-bold">AI Assistant</p>
+                            </div>
+                            <span class="material-symbols-outlined text-base accordion-chevron">chevron_right</span>
+                        </button>
+                        <div class="accordion-content">
+                            <a class="flex items-center gap-2 pl-12 pr-4 py-2 rounded-full text-slate-600 hover:bg-slate-200 hover:text-slate-900 transition-colors" href="{% url 'review_dashboard' %}">
+                                <span class="material-symbols-outlined text-base">code_blocks</span>
+                                <p class="text-sm font-medium">코드 리뷰</p>
+                            </a>
+                        </div>
+                    </div>
                     {% if user.profile.current_team_role == 'leader' or user.profile.current_team_role == 'admin' %}
                     <!-- Admin -->
                     <div class="accordion-item">

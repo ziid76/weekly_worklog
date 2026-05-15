@@ -1,0 +1,307 @@
+{% extends 'basic.html' %}
+{% block page_name %}Workflow Viewer v3 (X6): {{ workflow.name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    #x6-container {
+        width: 100%;
+        height: 700px;
+        background: white;
+        border-radius: 1.5rem;
+        position: relative;
+        border: 1px solid #e2e8f0;
+        overflow: hidden;
+    }
+    #detail-panel {
+        position: fixed;
+        right: -400px;
+        top: 0;
+        width: 400px;
+        height: 100vh;
+        background: white;
+        z-index: 1000;
+        box-shadow: -4px 0 15px rgba(0, 0, 0, 0.1);
+        transition: right 0.3s ease-in-out;
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+    #detail-panel.open {
+        right: 0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="detail-panel">
+    <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <h3 id="panel-title" class="text-lg font-bold text-slate-900">상세정보</h3>
+        <button onclick="closePanel()" class="size-8 flex items-center justify-center hover:bg-slate-100 rounded-full">
+            <span class="material-symbols-outlined">close</span>
+        </button>
+    </div>
+    <div id="detail-empty" class="text-sm text-slate-500 bg-slate-50 border border-slate-100 rounded-xl p-3">
+        원형/다이아몬드/사각형 도형에서 상세정보를 조회할 수 있습니다.
+    </div>
+    <div id="detail-content" class="hidden flex flex-col gap-4 overflow-y-auto flex-1 pr-2">
+        <div>
+            <label class="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block">설명</label>
+            <div id="detail-text-view" class="text-sm text-slate-600 min-h-[64px] whitespace-pre-wrap bg-slate-50 p-3 rounded-xl border border-slate-100"></div>
+        </div>
+        <div>
+            <label class="text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block">첨부파일</label>
+            <div id="detail-files-view" class="flex flex-col gap-2"></div>
+        </div>
+    </div>
+</div>
+
+<div id="history-modal" class="fixed inset-0 z-50 hidden">
+    <div class="absolute inset-0 bg-slate-900/40" onclick="closeHistoryModal()"></div>
+    <div class="relative z-10 flex min-h-full items-center justify-center p-4">
+        <div class="w-full max-w-3xl rounded-3xl bg-white border border-slate-100 shadow-2xl overflow-hidden">
+            <div class="flex items-center justify-between px-6 py-5 border-b border-slate-100">
+                <div>
+                    <h3 class="text-xl font-extrabold text-slate-900">버전 히스토리</h3>
+                    <p class="text-sm text-slate-500">워크플로우 변경 이력을 버전별로 확인합니다.</p>
+                </div>
+                <button type="button" onclick="closeHistoryModal()" class="size-9 rounded-full hover:bg-slate-100 flex items-center justify-center">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <div id="history-modal-body" class="max-h-[70vh] overflow-y-auto px-6 py-5">
+                <p class="text-sm text-slate-500">히스토리를 불러오는 중입니다.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="flex flex-col gap-4">
+    <div class="flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+        <div class="flex items-center gap-4">
+            <a href="{% url 'workflow_list' %}" class="size-10 flex items-center justify-center hover:bg-slate-50 rounded-full transition-colors border border-slate-100">
+                <span class="material-symbols-outlined text-slate-600">arrow_back</span>
+            </a>
+            <div class="flex flex-col">
+                <h2 class="text-xl font-extrabold text-slate-900">{{ workflow.name }} (Viewer)</h2>
+                <p class="text-sm text-slate-500 font-medium">{{ workflow.description }}</p>
+                <p class="text-xs text-slate-400 font-semibold">현재 버전 {{ workflow.current_version }}</p>
+            </div>
+
+        </div>
+
+        <div class="flex items-center gap-3">
+            <button type="button" onclick="openHistoryModal()" class="bg-slate-100 text-slate-700 px-6 py-2 rounded-full font-bold hover:bg-slate-200 transition-all flex items-center gap-2">
+                <span class="material-symbols-outlined">history</span>
+                히스토리
+            </button>
+            <a href="{% url 'workflow_editor_v3' workflow.id %}" class="bg-primary text-white px-6 py-2 rounded-full font-bold hover:bg-primary/90 transition-all flex items-center gap-2">
+                <span class="material-symbols-outlined">edit</span>
+                Edit
+            </a>
+        </div>
+    </div>
+    <div id="x6-container">
+        <div id="X6-ROOT" style="width: 100%; height: 100%;"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{{ initial_x6_data|json_script:"x6-viewer-data" }}
+<script src="https://cdn.jsdelivr.net/npm/@antv/x6@2.18.1/dist/index.js"></script>
+<script>
+    const workflowId = "{{ workflow.id }}";
+    const parsedInitialData = JSON.parse(document.getElementById('x6-viewer-data').textContent);
+    const initialData = (parsedInitialData && parsedInitialData.cells) ? parsedInitialData : { cells: [] };
+    let graph;
+
+    function isDetailSupportedNode(node) {
+        if (!node || !node.isNode || !node.isNode()) return false;
+        if (node.getData()?.nodeType === 'text') return false;
+        return ['rect', 'circle', 'polygon'].includes(node.shape);
+    }
+
+    function isSeparatorEdge(edge) {
+        if (!edge || !edge.isEdge || !edge.isEdge()) return false;
+        return edge.getData()?.nodeType === 'separator';
+    }
+
+    function normalizeTextNodeAppearance(node) {
+        if (!node || !node.isNode || !node.isNode()) return;
+        if (node.getData()?.nodeType !== 'text') return;
+        node.attr('body/fill', 'transparent');
+        node.attr('body/stroke', 'transparent');
+        node.attr('body/strokeWidth', 0);
+        node.attr('body/strokeDasharray', '');
+    }
+
+    function normalizeEdgeAppearance(edge) {
+        if (!edge || !edge.isEdge || !edge.isEdge()) return;
+        edge.removeTools();
+
+        if (isSeparatorEdge(edge)) {
+            edge.setConnector({ name: 'normal' });
+            edge.attr('line/targetMarker', null);
+            edge.setVertices([]);
+            return;
+        }
+
+        edge.setRouter({ name: 'orth' });
+        edge.setConnector({ name: 'rounded', args: { radius: 8 } });
+        edge.attr('line/targetMarker', {
+            name: 'block',
+            width: 12,
+            height: 8,
+        });
+    }
+
+    function normalizeLoadedCells() {
+        if (!graph) return;
+        graph.getNodes().forEach((node) => {
+            normalizeTextNodeAppearance(node);
+        });
+        graph.getEdges().forEach((edge) => {
+            normalizeEdgeAppearance(edge);
+        });
+    }
+
+    function renderDetailFiles(files) {
+        const filesView = document.getElementById('detail-files-view');
+        filesView.innerHTML = '';
+        if (!files || files.length === 0) {
+            filesView.innerHTML = '<p class="text-xs text-slate-400">첨부파일이 없습니다.</p>';
+            return;
+        }
+        files.forEach((f) => {
+            const isImg = f.filename && f.filename.match(/\.(jpg|jpeg|png|gif|webp)$/i);
+            const item = document.createElement('div');
+            item.className = 'flex flex-col gap-2 p-2 border border-slate-100 rounded-lg';
+            if (isImg) {
+                item.innerHTML = `<img src="${f.file}" class="rounded-lg max-w-full h-auto mb-1"/><a href="${f.file}" target="_blank" class="text-[11px] text-primary truncate">${f.filename}</a>`;
+            } else {
+                item.innerHTML = `<a href="${f.file}" target="_blank" class="text-xs text-primary truncate hover:underline">${f.filename}</a>`;
+            }
+            filesView.appendChild(item);
+        });
+    }
+
+    function closePanel() {
+        document.getElementById('detail-panel').classList.remove('open');
+    }
+
+    function closeHistoryModal() {
+        document.getElementById('history-modal').classList.add('hidden');
+    }
+
+    function renderHistoryEntries(entries) {
+        const body = document.getElementById('history-modal-body');
+        if (!entries.length) {
+            body.innerHTML = '<p class="text-sm text-slate-500">저장된 버전 히스토리가 없습니다.</p>';
+            return;
+        }
+
+        body.innerHTML = entries.map((entry) => `
+            <div class="border border-slate-100 rounded-md p-4 mb-3 bg-slate-50">
+                <div class="flex items-start justify-between gap-4 mb-2">
+                    <div>
+                        <p class="text-lg font-extrabold text-slate-900">v${entry.version}</p>
+                        <p class="text-xs text-slate-500">${entry.created_at}</p>
+                    </div>
+                    <span class="text-xs font-bold text-slate-500 bg-white border border-slate-200 rounded-full px-3 py-1">
+                        ${entry.created_by_name || '알 수 없음'}
+                    </span>
+                </div>
+                <p class="text-sm text-slate-700 whitespace-pre-wrap">${entry.description || '변경 설명 없음'}</p>
+            </div>
+        `).join('');
+    }
+
+    function openHistoryModal() {
+        const modal = document.getElementById('history-modal');
+        const body = document.getElementById('history-modal-body');
+        modal.classList.remove('hidden');
+        body.innerHTML = '<p class="text-sm text-slate-500">히스토리를 불러오는 중입니다.</p>';
+
+        fetch(`/vbpm/api/history/?workflow=${workflowId}`)
+            .then((res) => {
+                if (!res.ok) {
+                    throw new Error(`History fetch failed with status ${res.status}`);
+                }
+                return res.json();
+            })
+            .then((data) => {
+                renderHistoryEntries(data.results || data);
+            })
+            .catch((error) => {
+                console.error(error);
+                body.innerHTML = '<p class="text-sm text-rose-500">히스토리를 불러오지 못했습니다.</p>';
+            });
+    }
+
+    function openEmptyPanel(node) {
+        document.getElementById('panel-title').innerText = node.attr('label/text') || '상세정보';
+        document.getElementById('detail-empty').classList.remove('hidden');
+        document.getElementById('detail-content').classList.add('hidden');
+        document.getElementById('detail-panel').classList.add('open');
+    }
+
+    function openDetailPanel(node) {
+        document.getElementById('panel-title').innerText = node.attr('label/text') || '상세정보';
+        fetch(`/vbpm/api/workflows/${workflowId}/lf_node_detail/?node_id=${node.id}`)
+            .then((res) => res.json())
+            .then((data) => {
+                document.getElementById('detail-empty').classList.add('hidden');
+                document.getElementById('detail-content').classList.remove('hidden');
+                document.getElementById('detail-text-view').innerText = data.content || '설명이 없습니다.';
+                renderDetailFiles(data.files || []);
+                document.getElementById('detail-panel').classList.add('open');
+            });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        graph = new X6.Graph({
+            container: document.getElementById('X6-ROOT'),
+            grid: {
+                size: 10,
+                visible: true,
+                type: 'dot',
+                args: { color: '#e2e8f0', thickness: 1 }
+            },
+            panning: {
+                enabled: true
+            },
+            mousewheel: {
+                enabled: true,
+                modifiers: ['ctrl', 'meta']
+            },
+            interacting: false
+        });
+
+        if (initialData && initialData.cells && initialData.cells.length > 0) {
+            graph.fromJSON(initialData);
+            normalizeLoadedCells();
+        }
+
+        graph.on('node:click', ({ node }) => {
+            if (isDetailSupportedNode(node)) {
+                openDetailPanel(node);
+            } else {
+                openEmptyPanel(node);
+            }
+        });
+
+        graph.on('blank:click', () => {
+            closePanel();
+        });
+
+        graph.on('edge:click', () => {
+            closePanel();
+        });
+    });
+
+    window.closePanel = closePanel;
+    window.closeHistoryModal = closeHistoryModal;
+    window.openHistoryModal = openHistoryModal;
+</script>
+{% endblock %}

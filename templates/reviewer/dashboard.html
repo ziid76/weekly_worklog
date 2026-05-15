@@ -1,0 +1,399 @@
+{% extends 'basic.html' %}
+{% load static %}
+
+{% block page_name %}Code Review{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+<style>
+    .history-item {
+        transition: all 0.2s ease;
+    }
+    .history-item:hover {
+        background-color: rgba(0, 119, 200, 0.05);
+        transform: translateX(4px);
+    }
+    .history-item.active {
+        background-color: rgba(0, 119, 200, 0.1);
+        border-left: 4px solid #0077C8;
+    }
+    .review-result-content pre {
+        background-color: #1a1a1a !important;
+        border-radius: 0.75rem;
+        padding: 1rem;
+        margin: 1rem 0;
+    }
+    .review-result-content h1, .review-result-content h2, .review-result-content h3 {
+        font-weight: 800;
+        margin-top: 1.5rem;
+        margin-bottom: 0.75rem;
+        color: #1e293b;
+    }
+    .review-result-content h1 { font-size: 1.5rem; }
+    .review-result-content h2 { font-size: 1.25rem; }
+    .review-result-content h3 { font-size: 1.125rem; }
+    .review-result-content p {
+        margin-bottom: 1rem;
+        line-height: 1.6;
+        color: #334155;
+    }
+    .review-result-content ul, .review-result-content ol {
+        margin-bottom: 1rem;
+        padding-left: 1.5rem;
+    }
+    .review-result-content li {
+        margin-bottom: 0.5rem;
+    }
+    .review-result-content code:not(pre code) {
+        background-color: #f1f5f9;
+        padding: 0.2rem 0.4rem;
+        border-radius: 0.25rem;
+        font-size: 0.875em;
+        color: #e11d48;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8 h-[calc(100vh-180px)]">
+    <!-- Left: History Sidebar (Desktop) -->
+    <div class="lg:col-span-3 flex flex-col gap-4 bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+        <div class="p-4 border-b border-slate-100 bg-slate-50/50 flex flex-col gap-3">
+            <h3 class="font-bold text-slate-800 flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary">history</span>
+                Review History
+            </h3>
+            
+            <!-- Search & Filter -->
+            <form action="" method="GET" class="flex flex-col gap-2">
+                <div class="relative">
+                    <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">search</span>
+                    <input type="text" name="q" value="{{ search_query }}" placeholder="Search reviews..." 
+                           class="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all">
+                </div>
+                <div class="flex items-center gap-2 bg-slate-100 p-1 rounded-xl">
+                    <button type="submit" name="mine" value="0" 
+                            class="flex-1 py-1 text-[10px] font-bold rounded-lg transition-all {% if not filter_mine %}bg-white text-primary shadow-sm{% else %}text-slate-500 hover:bg-white/50{% endif %}">
+                        All Reviews
+                    </button>
+                    <button type="submit" name="mine" value="1" 
+                            class="flex-1 py-1 text-[10px] font-bold rounded-lg transition-all {% if filter_mine %}bg-white text-primary shadow-sm{% else %}text-slate-500 hover:bg-white/50{% endif %}">
+                        My Reviews
+                    </button>
+                </div>
+            </form>
+        </div>
+        <div class="flex-1 overflow-y-auto p-2 flex flex-col gap-1" id="historyList">
+            {% for item in history %}
+            <button onclick="loadHistory('{{ item.id }}')" 
+                    id="history-{{ item.id }}"
+                    class="history-item text-left p-3 rounded-md hover:bg-slate-50 border border-transparent transition-all group">
+                <p class="text-sm font-bold text-slate-700 truncate group-hover:text-primary">
+                    {% if item.program_name %}{{ item.program_name }}{% else %}{{ item.input_code|truncatechars:40 }}{% endif %}
+                </p>
+                <div class="flex items-center justify-between mt-1">
+                    <div class="flex flex-col">
+                        <span class="text-[10px] text-slate-400">{{ item.created_at|date:"Y-m-d H:i" }}</span>
+                        <span class="text-[9px] text-slate-300">{{ item.created_by.username|default:"Anonymous" }}</span>
+                    </div>
+                    <span class="text-[10px] bg-slate-100 px-2 py-0.5 rounded-full text-slate-500">
+                        {{ item.input_code|wordcount }} words
+                    </span>
+                </div>
+            </button>
+            {% empty %}
+            <div class="p-8 text-center text-slate-400">
+                <span class="material-symbols-outlined text-4xl mb-2">folder_open</span>
+                <p class="text-sm">No history yet</p>
+            </div>
+            {% endfor %}
+        </div>
+        <div class="p-4 border-t border-slate-100">
+            <button onclick="resetForm()" class="w-full py-2 px-4 bg-primary text-white rounded-full font-bold text-sm flex items-center justify-center gap-2 hover:bg-primary/90 transition-all shadow-md active:scale-95">
+                <span class="material-symbols-outlined text-sm text-white">add</span>
+                New Review
+            </button>
+        </div>
+    </div>
+
+    <!-- Right: Main Area -->
+    <div class="lg:col-span-9 flex flex-col gap-6 overflow-hidden">
+        <!-- Input Form Section -->
+        <div id="inputFormSection" class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex flex-col gap-4 transition-all duration-300 h-full overflow-hidden">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="size-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
+                        <span class="material-symbols-outlined">code</span>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-extrabold text-slate-900">New Code Review</h2>
+                        <p class="text-xs text-slate-500">Analyze your source code with AI</p>
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="toggleOptional()" class="text-xs font-bold text-slate-500 hover:text-primary transition-colors flex items-center gap-1">
+                        <span class="material-symbols-outlined text-sm" id="optionalIcon">expand_more</span>
+                        Optional Fields
+                    </button>
+                </div>
+            </div>
+
+            <div class="flex-1 flex flex-col gap-4 overflow-hidden mt-2">
+                <!-- Program Name Input -->
+                <div class="shrink-0">
+                    <label class="text-xs font-bold text-slate-500 mb-2 flex items-center gap-1">
+                        <span class="material-symbols-outlined text-sm">label</span>
+                        Program Name
+                    </label>
+                    <input type="text" id="program_name" 
+                           class="w-full p-3 rounded-md border border-slate-200 bg-white text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none"
+                           placeholder="Enter program name or ID (e.g., Z_RE_001)">
+                </div>
+
+                <!-- Source Code Input -->
+                <div class="flex-1 flex flex-col min-h-0">
+                    <label class="text-xs font-bold text-slate-500 mb-2 flex items-center gap-1">
+                        <span class="material-symbols-outlined text-sm">source</span>
+                        Source Code <span class="text-red-500">*</span>
+                    </label>
+                    <textarea id="input_code" 
+                              class="flex-1 w-full p-4 rounded-md border border-slate-200 bg-slate-50 font-mono text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all resize-none outline-none"
+                              placeholder="Paste your ABAP or any other code here..."></textarea>
+                </div>
+
+                <!-- Optional Context -->
+                <div id="optionalInputs" class="hidden grid grid-cols-1 md:grid-cols-2 gap-4 shrink-0 transition-all">
+                    <div class="flex flex-col">
+                        <label class="text-xs font-bold text-slate-500 mb-2 flex items-center gap-1">
+                            <span class="material-symbols-outlined text-sm">business_center</span>
+                            Business Context
+                        </label>
+                        <textarea id="business_context" 
+                                  class="w-full p-3 rounded-md border border-slate-200 bg-white text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all resize-none h-24 outline-none"
+                                  placeholder="What is this code for? (Optional)"></textarea>
+                    </div>
+                    <div class="flex flex-col">
+                        <label class="text-xs font-bold text-slate-500 mb-2 flex items-center gap-1">
+                            <span class="material-symbols-outlined text-sm">priority_high</span>
+                            Core Review Point
+                        </label>
+                        <textarea id="core_review_point" 
+                                  class="w-full p-3 rounded-md border border-slate-200 bg-white text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all resize-none h-24 outline-none"
+                                  placeholder="Any specific part you want to check? (Optional)"></textarea>
+                    </div>
+                </div>
+
+                <!-- Submit Button Area -->
+                <div class="flex justify-end mt-2">
+                    <button id="submitBtn" onclick="submitReview()" class="px-8 py-3 bg-slate-900 text-white rounded-full font-extrabold text-sm flex items-center gap-2 hover:bg-slate-800 transition-all shadow-lg active:scale-95 disabled:opacity-50 disabled:pointer-events-none">
+                        <span class="material-symbols-outlined">rocket_launch</span>
+                        Run AI Review
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Result Section (Overlay or Replace) -->
+        <div id="resultSection" class="hidden bg-white rounded-2xl shadow-sm border border-slate-100 p-8 flex flex-col gap-6 h-full overflow-hidden animate-fade-in">
+            <div class="flex items-center justify-between shrink-0">
+                <div class="flex items-center gap-3">
+                    <div class="size-10 bg-emerald-100 rounded-xl flex items-center justify-center text-emerald-600">
+                        <span class="material-symbols-outlined">analytics</span>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-extrabold text-slate-900" id="resultTitle">Review Results</h2>
+                        <p class="text-xs text-slate-500" id="resultMeta">Generated just now</p>
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="copyResult()" class="size-10 flex items-center justify-center rounded-full bg-slate-50 hover:bg-slate-100 text-slate-600 transition-all" title="Copy Result">
+                        <span class="material-symbols-outlined text-xl">content_copy</span>
+                    </button>
+                    <button onclick="resetForm()" class="size-10 flex items-center justify-center rounded-full bg-slate-50 hover:bg-slate-100 text-slate-600 transition-all" title="Close">
+                        <span class="material-symbols-outlined text-xl">close</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tabs -->
+            <div class="flex border-b border-slate-100 shrink-0">
+                <button onclick="switchTab('review')" id="tab-review" class="px-6 py-2 border-b-2 border-primary text-primary font-bold text-sm transition-all">Review Result</button>
+                <button onclick="switchTab('code')" id="tab-code" class="px-6 py-2 border-b-2 border-transparent text-slate-500 hover:text-slate-800 font-bold text-sm transition-all">Original Code</button>
+            </div>
+
+            <!-- Tab Content -->
+            <div class="flex-1 overflow-y-auto min-h-0">
+                <div id="reviewContent" class="review-result-content ProseMirror">
+                    <!-- Markdown rendered here -->
+                </div>
+                <div id="codeContent" class="hidden h-full">
+                    <pre class="rounded-xl h-full line-numbers"><code id="codeDisplay" class="language-abap"></code></pre>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading State -->
+        <div id="loadingState" class="hidden bg-white/80 backdrop-blur-sm rounded-2xl flex flex-col items-center justify-center gap-4 h-full animate-pulse">
+            <div class="size-16 relative">
+                <div class="absolute inset-0 border-4 border-primary/20 rounded-full"></div>
+                <div class="absolute inset-0 border-4 border-primary rounded-full border-t-transparent animate-spin"></div>
+            </div>
+            <div class="text-center">
+                <p class="text-lg font-extrabold text-slate-900">AI is reviewing your code...</p>
+                <p class="text-sm text-slate-500">Analyzing patterns, logic, and potential risks</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-abap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+<script>
+    let currentHistoryId = null;
+
+    function toggleOptional() {
+        const optional = $('#optionalInputs');
+        const icon = $('#optionalIcon');
+        if (optional.hasClass('hidden')) {
+            optional.removeClass('hidden').addClass('grid');
+            icon.text('expand_less');
+        } else {
+            optional.addClass('hidden').removeClass('grid');
+            icon.text('expand_more');
+        }
+    }
+
+    function switchTab(tab) {
+        if (tab === 'review') {
+            $('#tab-review').addClass('border-primary text-primary').removeClass('border-transparent text-slate-500');
+            $('#tab-code').addClass('border-transparent text-slate-500').removeClass('border-primary text-primary');
+            $('#reviewContent').removeClass('hidden');
+            $('#codeContent').addClass('hidden');
+        } else {
+            $('#tab-code').addClass('border-primary text-primary').removeClass('border-transparent text-slate-500');
+            $('#tab-review').addClass('border-transparent text-slate-500').removeClass('border-primary text-primary');
+            $('#codeContent').removeClass('hidden');
+            $('#reviewContent').addClass('hidden');
+        }
+    }
+
+    function resetForm() {
+        currentHistoryId = null;
+        $('.history-item').removeClass('active border-primary bg-slate-50');
+        $('#inputFormSection').removeClass('hidden');
+        $('#resultSection').addClass('hidden');
+        $('#loadingState').addClass('hidden');
+        $('#program_name').val('');
+        $('#input_code').val('');
+        $('#business_context').val('');
+        $('#core_review_point').val('');
+        $('#resultTitle').text('Review Results');
+        switchTab('review');
+    }
+
+    function submitReview() {
+        const programName = $('#program_name').val().trim();
+        const inputCode = $('#input_code').val().trim();
+        const businessContext = $('#business_context').val().trim();
+        const coreReviewPoint = $('#core_review_point').val().trim();
+
+        if (!inputCode) {
+            alert('Please enter source code.');
+            return;
+        }
+
+        $('#inputFormSection').addClass('hidden');
+        $('#loadingState').removeClass('hidden');
+
+        fetch('/reviewer/api/action/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': window.csrfToken
+            },
+            body: JSON.stringify({
+                program_name: programName,
+                input_code: inputCode,
+                business_context: businessContext,
+                core_review_point: coreReviewPoint
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) throw new Error(data.error);
+            
+            showResult(data.review_result, inputCode, data.created_at, data.program_name);
+            refreshHistoryList(data.id, inputCode, data.created_at, data.program_name);
+        })
+        .catch(error => {
+            alert('Review failed: ' + error.message);
+            $('#inputFormSection').removeClass('hidden');
+            $('#loadingState').addClass('hidden');
+        });
+    }
+
+    function showResult(result, originalCode, date, programName) {
+        $('#loadingState').addClass('hidden');
+        $('#resultSection').removeClass('hidden');
+        
+        $('#reviewContent').html(marked.parse(result));
+        $('#codeDisplay').text(originalCode);
+        $('#resultMeta').text('Generated at ' + date);
+        $('#resultTitle').text(programName ? `Review: ${programName}` : 'Review Results');
+        Prism.highlightElement(document.getElementById('codeDisplay'));
+    }
+
+    function loadHistory(id) {
+        currentHistoryId = id;
+        $('.history-item').removeClass('active');
+        $(`#history-${id}`).addClass('active');
+
+        $('#inputFormSection').addClass('hidden');
+        $('#loadingState').removeClass('hidden');
+        $('#resultSection').addClass('hidden');
+
+        fetch(`/reviewer/api/history/${id}/`)
+        .then(response => response.json())
+        .then(data => {
+            showResult(data.review_result, data.input_code, data.created_at, data.program_name);
+        })
+        .catch(error => {
+            alert('Failed to load history: ' + error.message);
+            $('#inputFormSection').removeClass('hidden');
+            $('#loadingState').addClass('hidden');
+        });
+    }
+
+    function refreshHistoryList(id, code, date, programName) {
+        const displayName = programName || (code.substring(0, 40) + (code.length > 40 ? '...' : ''));
+        const newItemHtml = `
+            <button onclick="loadHistory('${id}')" 
+                    id="history-${id}"
+                    class="history-item active text-left p-3 rounded-xl hover:bg-slate-50 border border-transparent transition-all group">
+                <p class="text-sm font-bold text-slate-700 truncate group-hover:text-primary">${displayName}</p>
+                <div class="flex items-center justify-between mt-1">
+                    <div class="flex flex-col">
+                        <span class="text-[10px] text-slate-400">${date}</span>
+                        <span class="text-[9px] text-slate-300">Just now</span>
+                    </div>
+                    <span class="text-[10px] bg-slate-100 px-2 py-0.5 rounded-full text-slate-500">New</span>
+                </div>
+            </button>
+        `;
+        $('#historyList').prepend(newItemHtml);
+        // Remove empty message if exists
+        $('#historyList .text-center').remove();
+    }
+
+    function copyResult() {
+        const text = $('#reviewContent').text();
+        navigator.clipboard.writeText(text).then(() => {
+            alert('Review result copied to clipboard!');
+        });
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,330 @@
+{% extends 'basic.html' %}
+{% block page_name %}모니터링 상세 정보{% endblock %}
+
+{% block content %}
+<div class="flex flex-col gap-6 max-w-7xl mx-auto">
+    <!-- Back Button & Title -->
+    <div class="flex items-center justify-between">
+        <div class="flex items-center gap-4">
+            <a href="{% url 'web_monitor' %}" class="size-10 rounded-xl bg-white border border-slate-100 shadow-sm flex items-center justify-center text-slate-500 hover:text-primary hover:border-primary/20 transition-all">
+                <span class="material-symbols-outlined">arrow_back</span>
+            </a>
+            <div>
+                <h2 class="text-2xl font-black text-slate-900" id="detail-name">불러오는 중...</h2>
+                <p class="text-sm text-slate-400 font-medium" id="detail-url">-</p>
+            </div>
+        </div>
+        <div id="detail-status-badge"></div>
+    </div>
+
+    <!-- Quick Stats Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">현재 상태</p>
+            <h4 class="text-xl font-bold text-slate-900" id="stat-current-status">-</h4>
+        </div>
+        <div class="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">최근 응답 속도</p>
+            <h4 class="text-xl font-bold text-slate-900" id="stat-response-time">-</h4>
+        </div>
+        <div class="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">24시간 가동률</p>
+            <h4 class="text-xl font-bold text-emerald-600" id="stat-uptime">-</h4>
+        </div>
+        <div class="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">체크 주기</p>
+            <h4 class="text-xl font-bold text-slate-900" id="stat-interval">-</h4>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Main Info Card -->
+        <div class="lg:col-span-2 flex flex-col gap-6">
+            <!-- Chart Section Placeholder -->
+            <div class="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
+                <div class="flex items-center justify-between mb-8">
+                    <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-blue-500">monitoring</span>
+                        응답 속도 추세 (24h)
+                    </h3>
+                    <div class="flex items-center gap-4">
+                        <div class="flex items-center gap-2">
+                            <span class="size-2 rounded-full bg-[#0077C8]"></span>
+                            <span class="text-[10px] font-black text-slate-400 uppercase tracking-wider">UP (정상)</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="size-2.5 rounded-full bg-[#ef4444]"></span>
+                            <span class="text-[10px] font-black text-slate-400 uppercase tracking-wider">DOWN (장애)</span>
+                        </div>
+                    </div>
+                </div>
+                <div id="response-chart" class="h-64 flex items-center justify-center bg-slate-50 rounded-md border border-dashed border-slate-200">
+                    <p class="text-slate-400 font-medium">데이터를 불러오는 중입니다...</p>
+                </div>
+            </div>
+
+            <!-- Recent Logs Table -->
+            <div class="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
+                <div class="p-8 border-b border-slate-50 flex items-center justify-between">
+                    <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-amber-500">history</span>
+                        최근 상태 로그
+                    </h3>
+                    <button onclick="fetchDetailData()" class="size-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-400 hover:text-primary transition-colors">
+                        <span class="material-symbols-outlined text-sm" id="refresh-icon">refresh</span>
+                    </button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead>
+                            <tr class="bg-slate-50/50">
+                                <th class="px-8 py-4 text-[11px] font-black text-slate-400 uppercase tracking-wider">시간</th>
+                                <th class="px-8 py-4 text-[11px] font-black text-slate-400 uppercase tracking-wider">상태</th>
+                                <th class="px-8 py-4 text-[11px] font-black text-slate-400 uppercase tracking-wider">응답 속도</th>
+                                <th class="px-8 py-4 text-[11px] font-black text-slate-400 uppercase tracking-wider">상세</th>
+                            </tr>
+                        </thead>
+                        <tbody id="logs-container">
+                            <!-- Logs will be rendered here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar Section -->
+        <div class="flex flex-col gap-6">
+            <!-- Settings Info -->
+            <div class="bg-slate-900 p-8 rounded-[2.5rem] text-white shadow-xl shadow-slate-200">
+                <h3 class="text-lg font-bold mb-6 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-blue-400">settings</span>
+                    모니터링 설정
+                </h3>
+                <div class="flex flex-col gap-4">
+                    <div class="flex justify-between items-center py-3 border-b border-white/10">
+                        <span class="text-slate-400 text-sm">HTTP Method</span>
+                        <span class="font-bold font-mono" id="config-method">GET</span>
+                    </div>
+                    <div class="flex justify-between items-center py-3 border-b border-white/10">
+                        <span class="text-slate-400 text-sm">Timeout</span>
+                        <span class="font-bold" id="config-timeout">10s</span>
+                    </div>
+                    <div class="flex justify-between items-center py-3 border-b border-white/10">
+                        <span class="text-slate-400 text-sm">상태 코드 검증</span>
+                        <span class="font-bold text-emerald-400" id="config-codes">200, 301, 302</span>
+                    </div>
+                </div>
+                <a href="{{ embed_access_url }}/web-monitor/target/{{ target_id }}/update/" target="_blank" class="mt-8 w-full py-4 bg-white rounded-2xl text-sm font-bold flex items-center justify-center gap-2 hover:bg-white/20 transition-all border border-white/5">
+                    <span class="material-symbols-outlined text-sm text-slate-900">edit</span>
+                    설정 수정하기
+                </a>
+            </div>
+
+            <!-- Notification Recipients -->
+            <div class="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
+                <h3 class="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-rose-500">notifications_active</span>
+                    알림 수신자
+                </h3>
+                <div class="flex flex-col gap-3" id="recipients-container">
+                    <!-- Recipients will be rendered here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+<script>
+    const TARGET_ID = "{{ target_id }}";
+    const API_URL = "{% url 'web_monitor_api_detail_proxy' target_id=target_id %}";
+
+    // Load Google Charts
+    google.charts.load('current', {'packages':['corechart'], 'language': 'ko'});
+
+    function drawChart(recentLogs) {
+        if (!recentLogs || recentLogs.length === 0) return;
+
+        const container = document.getElementById('response-chart');
+        container.innerHTML = ''; 
+
+        const data = new google.visualization.DataTable();
+        data.addColumn('datetime', '시간');
+        data.addColumn('number', '응답속도 (ms)');
+        data.addColumn({type: 'string', role: 'style'}); // 스타일 컬럼 추가
+        data.addColumn({type: 'string', role: 'tooltip', p: {html: true}});
+
+        const chartData = [...recentLogs].reverse().map(log => {
+            const date = new Date(log.timestamp);
+            
+            // 상태에 따른 스타일 정의
+            // UP: 파란색, DOWN: 빨간색 확대 포인트
+            const pointStyle = log.status === 'UP' 
+                ? 'point { size: 3; fill-color: #0077C8; stroke-color: #ffffff; stroke-width: 1; }'
+                : 'point { size: 6; fill-color: #ef4444; stroke-color: #ffffff; stroke-width: 2; }';
+
+            const tooltip = `
+                <div class="p-4 bg-white border border-slate-100 shadow-xl rounded-2xl min-w-[180px]">
+                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">${log.timestamp}</p>
+                    <div class="flex items-center justify-between gap-4 mb-1">
+                        <span class="text-xs font-bold text-slate-600">상태</span>
+                        <span class="px-1.5 py-0.5 rounded text-[9px] font-black ${log.status === 'UP' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}">${log.status}</span>
+                    </div>
+                    <div class="flex items-center justify-between gap-4">
+                        <span class="text-xs font-bold text-slate-600">응답 속도</span>
+                        <span class="text-sm font-black text-primary">${log.response_time}ms</span>
+                    </div>
+                </div>`;
+            return [date, log.response_time, pointStyle, tooltip];
+        });
+
+        data.addRows(chartData);
+
+        const options = {
+            curveType: 'function',
+            legend: { position: 'none' },
+            colors: ['#cbd5e1'], // 기본 라인 색상을 중립적인 색으로 변경
+            lineWidth: 2,
+            areaOpacity: 0.05,
+            backgroundColor: 'transparent',
+            chartArea: {
+                width: '90%',
+                height: '80%',
+                top: 20,
+                bottom: 40
+            },
+            hAxis: {
+                format: 'HH:mm',
+                gridlines: { color: 'transparent' },
+                textStyle: { color: '#94a3b8', fontSize: 10, fontName: 'Manrope' }
+            },
+            vAxis: {
+                gridlines: { color: '#f1f5f9' },
+                baselineColor: '#f1f5f9',
+                textStyle: { color: '#94a3b8', fontSize: 10, fontName: 'Manrope' },
+                viewWindow: { min: 0 }
+            },
+            tooltip: { isHtml: true },
+            focusTarget: 'category',
+            pointsVisible: true, // 포인트 표시 활성화
+            animation: {
+                startup: true,
+                duration: 1000,
+                easing: 'out'
+            }
+        };
+
+        const chart = new google.visualization.AreaChart(container);
+        chart.draw(data, options);
+
+        window.addEventListener('resize', () => chart.draw(data, options));
+    }
+
+    function fetchDetailData() {
+        const refreshIcon = document.getElementById('refresh-icon');
+        refreshIcon.classList.add('animate-spin');
+
+        fetch(API_URL)
+            .then(res => res.json().catch(() => ({})).then(data => ({ ok: res.ok, status: res.status, data })))
+            .then(({ ok, status, data }) => {
+                if (!ok) {
+                    throw new Error(data.error || `시스템 연결 실패 (Status: ${status})`);
+                }
+                if (!data || typeof data !== 'object') {
+                    throw new Error('올바르지 않은 데이터 형식입니다.');
+                }
+                
+                // Header Info
+                document.getElementById('detail-name').innerText = data.name ?? '-';
+                document.getElementById('detail-url').innerText = data.url ?? '-';
+                
+                // Status Badge
+                const statusBadge = document.getElementById('detail-status-badge');
+                if (data.last_status === 'UP') {
+                    statusBadge.innerHTML = `<div class="px-6 py-2 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100 font-black text-sm flex items-center gap-2">
+                        <span class="size-2 rounded-full bg-emerald-500 animate-pulse"></span> ONLINE
+                    </div>`;
+                    document.getElementById('stat-current-status').innerText = '정상 (UP)';
+                    document.getElementById('stat-current-status').className = 'text-xl font-bold text-emerald-600';
+                } else {
+                    statusBadge.innerHTML = `<div class="px-6 py-2 rounded-full bg-red-50 text-red-600 border border-red-100 font-black text-sm flex items-center gap-2">
+                        <span class="size-2 rounded-full bg-red-500 animate-pulse"></span> OFFLINE
+                    </div>`;
+                    document.getElementById('stat-current-status').innerText = '장애 (DOWN)';
+                    document.getElementById('stat-current-status').className = 'text-xl font-bold text-red-600';
+                }
+
+                // Stats
+                document.getElementById('stat-response-time').innerText = data.last_response_time ? `${data.last_response_time}ms` : '-';
+                document.getElementById('stat-uptime').innerText = (data.uptime_24h || '100') + '%';
+                document.getElementById('stat-interval').innerText = data.check_interval + 's';
+
+                // Config
+                document.getElementById('config-timeout').innerText = (data.timeout || 10) + 's';
+                
+                // Logs Table
+                const logsContainer = document.getElementById('logs-container');
+                if (data.recent_logs && data.recent_logs.length > 0) {
+                    logsContainer.innerHTML = data.recent_logs.map(log => `
+                        <tr class="border-b border-slate-50 hover:bg-slate-50/30 transition-colors">
+                            <td class="px-8 py-4">
+                                <p class="text-sm font-semibold text-slate-700">${log.timestamp}</p>
+                            </td>
+                            <td class="px-8 py-4">
+                                <span class="px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-tight ${log.status === 'UP' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}">
+                                    ${log.status}
+                                </span>
+                            </td>
+                            <td class="px-8 py-4">
+                                <p class="text-sm font-mono text-slate-500">${log.response_time}ms</p>
+                            </td>
+                            <td class="px-8 py-4">
+                                <p class="text-xs text-slate-400 font-medium truncate max-w-[200px]">${log.message || '-'}</p>
+                            </td>
+                        </tr>
+                    `).join('');
+                } else {
+                    logsContainer.innerHTML = `<tr><td colspan="4" class="px-8 py-12 text-center text-slate-400 font-medium">로그가 없습니다.</td></tr>`;
+                }
+
+                // Draw Chart (24h Trend)
+                if (data.logs_24h_data && data.logs_24h_data.length > 0) {
+                    if (typeof google !== 'undefined' && google.visualization) {
+                        drawChart(data.logs_24h_data);
+                    } else {
+                        google.charts.setOnLoadCallback(() => drawChart(data.logs_24h_data));
+                    }
+                }
+
+                // Recipients
+                const recipientsContainer = document.getElementById('recipients-container');
+                if (data.recipients && data.recipients.length > 0) {
+                    recipientsContainer.innerHTML = data.recipients.map(r => `
+                        <div class="flex items-center gap-3 p-3 bg-slate-50 rounded-2xl border border-slate-50">
+                            <div class="size-8 rounded-full bg-white flex items-center justify-center text-slate-400 shadow-sm">
+                                <span class="material-symbols-outlined text-sm">person</span>
+                            </div>
+                            <div class="flex flex-col">
+                                <p class="text-xs font-bold text-slate-700">${r.name}</p>
+                                <p class="text-[10px] text-slate-400">${r.email || '-'}</p>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    recipientsContainer.innerHTML = `<p class="text-xs text-slate-400 text-center py-4 bg-slate-50 rounded-2xl border border-dashed border-slate-200">등록된 수신자가 없습니다.</p>`;
+                }
+
+                refreshIcon.classList.remove('animate-spin');
+            })
+            .catch(err => {
+                console.error(err);
+                refreshIcon.classList.remove('animate-spin');
+            });
+    }
+
+    // Initial load
+    fetchDetailData();
+</script>
+{% endblock %}

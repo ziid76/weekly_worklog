@@ -1,0 +1,512 @@
+{% extends 'basic.html' %}
+{% block page_name %}워크플로우 에디터 v2 (LogicFlow): {{ workflow.name }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@logicflow/core/lib/style/index.min.css" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@logicflow/extension/lib/style/index.min.css" />
+<style>
+    #lf-container {
+        width: 100%;
+        height: 700px;
+        background: #f8fafc;
+        border-radius: 1.5rem;
+        position: relative;
+        border: 1px solid #e2e8f0;
+    }
+    .lf-control-panel {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        z-index: 10;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        background: white;
+        padding: 15px;
+        border-radius: 1rem;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+    .lf-shape-btn {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 12px;
+        border-radius: 0.5rem;
+        border: 1px solid #e2e8f0;
+        background: white;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .lf-shape-btn:hover {
+        background: #f1f5f9;
+        border-color: #cbd5e1;
+    }
+    /* Mode Toggle */
+    .mode-toggle {
+        display: flex;
+        background: #f1f5f9;
+        padding: 4px;
+        border-radius: 2rem;
+        margin-bottom: 20px;
+    }
+    .mode-btn {
+        flex: 1;
+        padding: 6px 16px;
+        border-radius: 2rem;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.3s;
+        text-align: center;
+    }
+    .mode-btn.active {
+        background: white;
+        color: #0077C8;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    /* Detail Panel */
+    #detail-panel {
+        position: fixed;
+        right: -400px;
+        top: 0;
+        width: 400px;
+        height: 100vh;
+        background: white;
+        z-index: 1000;
+        box-shadow: -4px 0 15px rgba(0,0,0,0.1);
+        transition: right 0.3s ease-in-out;
+        padding: 30px;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+    #detail-panel.open {
+        right: 0;
+    }
+    .panel-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid #f1f5f9;
+        padding-bottom: 15px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Detail Panel -->
+<div id="detail-panel">
+    <div class="panel-header">
+        <h3 class="text-xl font-bold text-slate-900" id="panel-node-name">노드 정보</h3>
+        <button onclick="closePanel()" class="size-8 flex items-center justify-center hover:bg-slate-100 rounded-full">
+            <span class="material-symbols-outlined">close</span>
+        </button>
+    </div>
+    
+    <div class="flex flex-col gap-4 overflow-y-auto flex-1 pr-2">
+        <div id="view-mode-content">
+            <h4 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">상세 설명</h4>
+            <div id="detail-text-view" class="text-sm text-slate-600 mb-6 min-h-[50px] whitespace-pre-wrap bg-slate-50 p-4 rounded-xl"></div>
+            
+            <h4 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">첨부 파일</h4>
+            <div id="detail-files-view" class="flex flex-col gap-2"></div>
+        </div>
+
+        <div id="edit-mode-content" class="hidden">
+            <div class="flex flex-col gap-2">
+                <label class="text-xs font-black text-slate-400 uppercase tracking-widest">상세 설명 수정</label>
+                <textarea id="detail-text-edit" class="w-full h-32 rounded-xl border-slate-200 text-sm focus:ring-primary focus:border-primary" placeholder="내용을 입력하세요..."></textarea>
+            </div>
+            
+            <div class="flex flex-col gap-2 pt-4">
+                <label class="text-xs font-black text-slate-400 uppercase tracking-widest">파일 업로드 (이미지/문서)</label>
+                <input type="file" id="detail-file-input" multiple class="text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
+            </div>
+            
+            <div id="text-style-controls" class="flex flex-col gap-4 border-t border-slate-100 pt-4 mt-2 hidden">
+                <label class="text-xs font-black text-slate-400 uppercase tracking-widest">텍스트 스타일</label>
+                <div class="flex items-center gap-4">
+                    <div class="flex-1">
+                        <label class="text-[10px] text-slate-500 mb-1 block">글꼴 크기</label>
+                        <input type="number" id="detail-font-size" class="w-full rounded-lg border-slate-200 text-sm p-2" value="12" onchange="updateTextStyle()" />
+                    </div>
+                    <div class="flex-1">
+                        <label class="text-[10px] text-slate-500 mb-1 block">글자 색상</label>
+                        <input type="color" id="detail-font-color" class="w-full h-9 rounded-lg border-slate-200 p-1" value="#000000" onchange="updateTextStyle()" />
+                    </div>
+                </div>
+            </div>
+
+            <button onclick="saveNodeDetail()" class="w-full bg-primary text-white py-3 rounded-xl font-bold mt-6 shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all">
+                정보 저장
+            </button>
+            <button onclick="deleteElement()" class="w-full bg-red-50 text-red-600 py-3 rounded-xl font-bold mt-2 border border-red-100 hover:bg-red-600 hover:text-white transition-all flex items-center justify-center gap-2">
+                <span class="material-symbols-outlined text-sm">delete</span>
+                노드 삭제
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="flex flex-col gap-4">
+    <div class="flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+        <div class="flex items-center gap-4">
+            <a href="{% url 'workflow_list' %}" class="size-10 flex items-center justify-center hover:bg-slate-50 rounded-full transition-colors border border-slate-100">
+                <span class="material-symbols-outlined text-slate-600">arrow_back</span>
+            </a>
+            <div class="flex flex-col">
+                <h2 class="text-xl font-extrabold text-slate-900">{{ workflow.name }} (LF)</h2>
+                <div class="mode-toggle">
+                    <div id="btn-edit-mode" onclick="setMode('edit')" class="mode-btn active">편집 모드</div>
+                    <div id="btn-view-mode" onclick="setMode('view')" class="mode-btn">뷰어 모드</div>
+                </div>
+            </div>
+        </div>
+        <div class="flex items-center gap-3">
+            <button id="lf-save-btn" class="bg-primary text-white px-8 py-2 rounded-full font-bold hover:shadow-lg hover:shadow-primary/20 transition-all text-sm flex items-center gap-2">
+                <span class="material-symbols-outlined text-sm">save</span>
+                현재 상태 저장
+            </button>
+        </div>
+    </div>
+
+    <div id="lf-container">
+        <div class="lf-control-panel" id="shapes-palette">
+            <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Shapes</h4>
+            <div class="lf-shape-btn" onclick="addLFNode('rect-resize', '사각형')">
+                <span class="size-4 border-2 border-slate-400 rounded-sm"></span>
+                <span>사각형</span>
+            </div>
+            <div class="lf-shape-btn" onclick="addLFNode('ellipse-resize', '원형')">
+                <span class="size-4 border-2 border-slate-400 rounded-full"></span>
+                <span>원형</span>
+            </div>
+            <div class="lf-shape-btn" onclick="addLFNode('diamond-resize', '마름모')">
+                <span class="size-3 border-2 border-slate-400 transform rotate-45"></span>
+                <span>마름모</span>
+            </div>
+            <div class="lf-shape-btn" onclick="addLFNode('text', '텍스트')">
+                <span class="material-symbols-outlined text-sm">title</span>
+                <span>텍스트</span>
+            </div>
+            <div class="lf-shape-btn" onclick="addLFNode('line-node', '라인')">
+                <span class="material-symbols-outlined text-sm">horizontal_rule</span>
+                <span>라인</span>
+            </div>
+        </div>
+        <div id="LF-ROOT" style="width: 100%; height: 100%;"></div>
+    </div>
+</div>
+
+<!-- Load LogicFlow and Extensions via ESM -->
+<script type="importmap">
+  {
+    "imports": {
+      "@logicflow/core": "https://esm.sh/@logicflow/core@1.2.27",
+      "@logicflow/extension": "https://esm.sh/@logicflow/extension@1.2.27"
+    }
+  }
+</script>
+
+<script type="module">
+    import LogicFlow, { TextNode, TextNodeModel } from '@logicflow/core';
+    import { 
+        Menu, 
+        SelectionSelect, 
+        DndPanel, 
+        Control, 
+        RectResize, 
+        EllipseResize, 
+        DiamondResize 
+    } from '@logicflow/extension';
+
+    const workflowId = "{{ workflow.id }}";
+    const initialData = {{ workflow.data_lf|default:'{}'|safe }};
+    let currentMode = 'edit';
+    let selectedNodeId = null;
+    let lf;
+
+    document.addEventListener('DOMContentLoaded', () => {
+        // Register Plugins statically before instantiation
+        LogicFlow.use(Menu);
+        LogicFlow.use(SelectionSelect);
+        LogicFlow.use(DndPanel);
+        LogicFlow.use(Control);
+        LogicFlow.use(RectResize);
+        LogicFlow.use(EllipseResize);
+        LogicFlow.use(DiamondResize);
+
+        lf = new LogicFlow({
+            container: document.querySelector('#LF-ROOT'),
+            grid: true,
+            keyboard: { enabled: true },
+            edgeTextDraggable: true,
+            edgeType: 'bezier',
+        });
+
+        // Helper to get text style from properties without recursive calls
+        const getCustomTextStyle = (baseStyle, model) => {
+            if (model.properties?.fontSize) baseStyle.fontSize = model.properties.fontSize;
+            if (model.properties?.fontColor) baseStyle.fill = model.properties.fontColor;
+            return baseStyle;
+        };
+
+        // Explicitly register resize nodes to ensure they are available
+        lf.register({
+            type: 'rect-resize',
+            view: RectResize.view,
+            model: class extends RectResize.model {
+                getTextStyle() { return getCustomTextStyle(super.getTextStyle(), this); }
+            }
+        });
+        lf.register({
+            type: 'ellipse-resize',
+            view: EllipseResize.view,
+            model: class extends EllipseResize.model {
+                getTextStyle() { return getCustomTextStyle(super.getTextStyle(), this); }
+            }
+        });
+        lf.register({
+            type: 'diamond-resize',
+            view: DiamondResize.view,
+            model: class extends DiamondResize.model {
+                getTextStyle() { return getCustomTextStyle(super.getTextStyle(), this); }
+            }
+        });
+        lf.register({
+            type: 'text',
+            view: TextNode,
+            model: class extends TextNodeModel {
+                getTextStyle() { return getCustomTextStyle(super.getTextStyle(), this); }
+            }
+        });
+
+        // Define a custom Line node based on Rect
+        class LineModel extends RectResize.model {
+            initNodeData(data) {
+                super.initNodeData(data);
+                this.width = data.width || 300;
+                this.height = data.height || 4;
+            }
+            getNodeStyle() {
+                const style = super.getNodeStyle();
+                style.fill = this.properties?.fontColor || '#94a3b8'; 
+                style.strokeWidth = 0;
+                return style;
+            }
+            getTextStyle() { return getCustomTextStyle(super.getTextStyle(), this); }
+        }
+        lf.register({
+            type: 'line-node',
+            view: RectResize.view,
+            model: LineModel
+        });
+
+        lf.setDefaultEdgeType('bezier');
+        lf.render(initialData);
+
+        // Events
+        lf.on('node:click', ({ data }) => {
+            openPanel(data);
+        });
+
+        lf.on('edge:click', ({ data }) => {
+            selectedNodeId = data.id; // Store ID for deletion
+        });
+
+        lf.on('blank:click', () => {
+            closePanel();
+        });
+
+        // Delete key support
+        lf.on('key:delete', () => {
+            closePanel();
+        });
+
+        document.getElementById('lf-save-btn').onclick = () => {
+            const data = lf.getGraphData();
+            fetch(`/vbpm/api/workflows/${workflowId}/save_logicflow/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({ graphData: data })
+            })
+            .then(res => res.json())
+            .then(res => {
+                alert('워크플로우가 저장되었습니다.');
+            });
+        };
+    });
+
+    function addLFNode(type, text, props = {}) {
+        if (currentMode === 'view') return;
+        const nodeConfig = {
+            type: type,
+            x: 300,
+            y: 200,
+            text: text,
+            ...props
+        };
+        try {
+            lf.addNode(nodeConfig);
+        } catch (e) {
+            console.warn(`커스텀 노드 타입(${type}) 로드 실패. 기본 타입으로 전환합니다.`, e);
+            const fallbackType = type.split('-')[0];
+            lf.addNode({
+                ...nodeConfig,
+                type: fallbackType
+            });
+        }
+    }
+
+    function handleDragStart(e, type) { } // Keeping for ref if needed
+
+    function setMode(mode) {
+        currentMode = mode;
+        const editBtn = document.getElementById('btn-edit-mode');
+        const viewBtn = document.getElementById('btn-view-mode');
+        const palette = document.getElementById('shapes-palette');
+        const editContent = document.getElementById('edit-mode-content');
+        const viewContent = document.getElementById('view-mode-content');
+
+        if (mode === 'edit') {
+            editBtn.classList.add('active');
+            viewBtn.classList.remove('active');
+            palette.style.display = 'flex';
+            editContent.classList.remove('hidden');
+            viewContent.classList.add('hidden');
+            lf.updateEditConfig({
+                isSilentMode: false,
+                stopZoomGraph: false,
+                stopScrollGraph: false,
+                nodeSelected: true,
+                edgeSelected: true,
+                nodeTextEdit: true,
+                edgeTextEdit: true,
+            });
+        } else {
+            editBtn.classList.remove('active');
+            viewBtn.classList.add('active');
+            palette.style.display = 'none';
+            editContent.classList.add('hidden');
+            viewContent.classList.remove('hidden');
+            lf.updateEditConfig({
+                isSilentMode: true, // Only viewer mode
+                stopZoomGraph: false,
+                stopScrollGraph: false,
+                nodeSelected: true,
+                edgeSelected: false,
+                nodeTextEdit: false,
+                edgeTextEdit: false,
+            });
+        }
+    }
+
+    function openPanel(nodeData) {
+        selectedNodeId = nodeData.id;
+        document.getElementById('panel-node-name').innerText = nodeData.text?.value || "노드 정보";
+        document.getElementById('detail-panel').classList.add('open');
+        
+        // Show/Hide Style controls
+        const styleControls = document.getElementById('text-style-controls');
+        if (currentMode === 'edit') {
+            styleControls.classList.remove('hidden');
+            // Populate current values from node properties
+            const props = nodeData.properties || {};
+            document.getElementById('detail-font-size').value = props.fontSize || 12;
+            document.getElementById('detail-font-color').value = props.fontColor || '#000000';
+        } else {
+            styleControls.classList.add('hidden');
+        }
+
+        // Fetch detail info
+        fetch(`/vbpm/api/workflows/${workflowId}/lf_node_detail/?node_id=${selectedNodeId}`)
+        .then(res => res.json())
+        .then(data => {
+            document.getElementById('detail-text-view').innerText = data.content || "설명이 없습니다.";
+            document.getElementById('detail-text-edit').value = data.content || "";
+            
+            const filesView = document.getElementById('detail-files-view');
+            filesView.innerHTML = '';
+            if (data.files && data.files.length > 0) {
+                data.files.forEach(f => {
+                    const isImg = f.filename.match(/\.(jpg|jpeg|png|gif|webp)$/i);
+                    const div = document.createElement('div');
+                    div.className = "flex flex-col gap-2 p-2 border border-slate-100 rounded-lg";
+                    if (isImg) {
+                        div.innerHTML = `<img src="${f.file}" class="rounded-lg max-w-full h-auto mb-1"/><a href="${f.file}" target="_blank" class="text-[10px] text-primary truncate">${f.filename}</a>`;
+                    } else {
+                        div.innerHTML = `<div class="flex items-center gap-2"><span class="material-symbols-outlined text-sm">description</span><a href="${f.file}" target="_blank" class="text-xs text-primary truncate hover:underline">${f.filename}</a></div>`;
+                    }
+                    filesView.appendChild(div);
+                });
+            } else {
+                filesView.innerHTML = '<p class="text-xs text-slate-400">첨부 파일이 없습니다.</p>';
+            }
+        });
+    }
+
+    function closePanel() {
+        document.getElementById('detail-panel').classList.remove('open');
+        selectedNodeId = null;
+    }
+
+    function deleteElement() {
+        if (currentMode === 'view' || !selectedNodeId) return;
+        if (confirm('정말 삭제하시겠습니까?')) {
+            lf.deleteNode(selectedNodeId);
+            lf.deleteEdge(selectedNodeId); // Might be an edge ID
+            closePanel();
+        }
+    }
+
+    function updateTextStyle() {
+        if (!selectedNodeId || currentMode === 'view') return;
+        const fontSize = document.getElementById('detail-font-size').value;
+        const fontColor = document.getElementById('detail-font-color').value;
+        
+        lf.setProperties(selectedNodeId, {
+            fontSize: parseInt(fontSize),
+            fontColor: fontColor
+        });
+    }
+
+    function saveNodeDetail() {
+        const content = document.getElementById('detail-text-edit').value;
+        const fileInput = document.getElementById('detail-file-input');
+        
+        const formData = new FormData();
+        formData.append('node_id', selectedNodeId);
+        formData.append('content', content);
+        for (let i = 0; i < fileInput.files.length; i++) {
+            formData.append('files', fileInput.files[i]);
+        }
+
+        fetch(`/vbpm/api/workflows/${workflowId}/lf_node_detail/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: formData
+        })
+        .then(res => res.json())
+        .then(data => {
+            alert('정보가 저장되었습니다.');
+            openPanel({ id: selectedNodeId, text: { value: document.getElementById('panel-node-name').innerText } });
+        });
+    }
+
+    // Expose functions to window for HTML onclick handlers
+    window.addLFNode = addLFNode;
+    window.setMode = setMode;
+    window.closePanel = closePanel;
+    window.deleteElement = deleteElement;
+    window.saveNodeDetail = saveNodeDetail;
+    window.updateTextStyle = updateTextStyle;
+</script>
+{% endblock %}

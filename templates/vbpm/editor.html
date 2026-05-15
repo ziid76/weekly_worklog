@@ -1,0 +1,238 @@
+{% extends 'basic.html' %}
+{% block page_name %}워크플로우 에디터: {{ workflow.name }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reactflow@11.11.3/dist/style.css">
+<style>
+    #editor-container {
+        width: 100%;
+        height: 600px; /* 고정 높이 또는 동적 계산 */
+        background: #f8fafc;
+        border-radius: 1.5rem;
+        overflow: hidden;
+        position: relative;
+        box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.05);
+    }
+    .react-flow__node {
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        border: none;
+        border-radius: 0.75rem;
+        background: white;
+        color: #1e293b;
+        font-weight: 600;
+        padding: 12px 20px;
+    }
+    .react-flow__node.selected {
+        box-shadow: 0 0 0 2px #0077C8;
+    }
+    .react-flow__handle {
+        width: 8px;
+        height: 8px;
+        background-color: #0077C8;
+    }
+    .react-flow__controls-button {
+        background: white;
+        border-bottom: 1px solid #f1f5f9;
+    }
+    .react-flow__minimap {
+        border-radius: 1rem;
+        overflow: hidden;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="flex flex-col gap-4">
+    <div class="flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+        <div class="flex items-center gap-4">
+            <a href="{% url 'workflow_list' %}" class="size-10 flex items-center justify-center hover:bg-slate-50 rounded-full transition-colors border border-slate-100">
+                <span class="material-symbols-outlined text-slate-600">arrow_back</span>
+            </a>
+            <div class="flex flex-col">
+                <h2 class="text-xl font-extrabold text-slate-900">{{ workflow.name }}</h2>
+                <div class="flex items-center gap-2">
+                    <span class="size-2 bg-emerald-500 rounded-full animate-pulse"></span>
+                    <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Live Editor</span>
+                </div>
+            </div>
+        </div>
+        <div class="flex items-center gap-3">
+            <button id="add-node-btn" class="bg-slate-900 text-white px-5 py-2 rounded-full font-bold hover:bg-slate-800 transition-all text-sm flex items-center gap-2">
+                <span class="material-symbols-outlined text-sm">add_box</span>
+                노드 추가
+            </button>
+            <button id="save-btn" class="bg-primary text-white px-6 py-2 rounded-full font-bold hover:shadow-lg hover:shadow-primary/20 transition-all text-sm flex items-center gap-2">
+                <span class="material-symbols-outlined text-sm">save</span>
+                전체 저장
+            </button>
+        </div>
+    </div>
+
+    <div id="editor-container" class="border border-slate-200">
+        <div id="react-flow-root" style="width: 100%; height: 100%;"></div>
+    </div>
+    
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+            <h4 class="font-bold text-slate-900 mb-2 flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary">info</span>
+                도움말
+            </h4>
+            <ul class="text-xs text-slate-500 flex flex-col gap-2">
+                <li>• 노드를 드래그하여 위치를 변경할 수 있습니다.</li>
+                <li>• 핸들을 연결하여 단계 간의 흐름을 정의합니다.</li>
+                <li>• 저장 버튼을 누르면 새로운 버전이 생성됩니다.</li>
+            </ul>
+        </div>
+        <div class="md:col-span-2 bg-white p-5 rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+            <h4 class="font-bold text-slate-900 mb-2 flex items-center gap-2">
+                <span class="material-symbols-outlined text-amber-500">history</span>
+                히스토리 (최근 5개)
+            </h4>
+            <div class="flex gap-4 overflow-x-auto pb-2">
+                {% for history in workflow.history.all|slice:":5" %}
+                <div class="min-w-[150px] p-3 bg-slate-50 rounded-xl border border-slate-100">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-[10px] font-black text-primary">v{{ history.version }}</span>
+                        <span class="text-[10px] text-slate-400">{{ history.created_at|date:"m-d H:i" }}</span>
+                    </div>
+                    <p class="text-[11px] text-slate-600 truncate">{{ history.description|default:"내용 없음" }}</p>
+                </div>
+                {% empty %}
+                <p class="text-xs text-slate-400">저장 이력이 없습니다.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Load React and React Flow from CDN -->
+<script type="importmap">
+  {
+    "imports": {
+      "react": "https://esm.sh/react@18",
+      "react-dom": "https://esm.sh/react-dom@18",
+      "react-dom/client": "https://esm.sh/react-dom@18/client",
+      "reactflow": "https://esm.sh/reactflow@11?external=react,react-dom"
+    }
+  }
+</script>
+
+<script type="module">
+    import React, { useState, useCallback, useEffect } from 'react';
+    import { createRoot } from 'react-dom/client';
+    import ReactFlow, { 
+        addEdge, 
+        Background, 
+        Controls, 
+        MiniMap,
+        applyEdgeChanges, 
+        applyNodeChanges 
+    } from 'reactflow';
+
+    const workflowId = "{{ workflow.id }}";
+    
+    // 초기 데이터 설정 (Django 템플릿 변수 매핑)
+    const initialNodes = [
+        {% for node in workflow.nodes.all %}
+        { 
+            id: '{{ node.node_id }}', 
+            type: '{{ node.type }}', 
+            position: { x: {{ node.position_x|default:0 }}, y: {{ node.position_y|default:0 }} }, 
+            data: { label: '{{ node.label|escapejs }}' } 
+        },
+        {% empty %}
+        { id: 'node_1', position: { x: 100, y: 100 }, data: { label: '시작 단계' } }
+        {% endfor %}
+    ];
+
+    const initialEdges = [
+        {% for edge in workflow.edges.all %}
+        { 
+            id: '{{ edge.edge_id }}', 
+            source: '{{ edge.source }}', 
+            target: '{{ edge.target }}' 
+        },
+        {% endfor %}
+    ];
+
+    function Flow() {
+        const [nodes, setNodes] = useState(initialNodes);
+        const [edges, setEdges] = useState(initialEdges);
+
+        const onNodesChange = useCallback(
+            (changes) => setNodes((nds) => applyNodeChanges(changes, nds)),
+            []
+        );
+        const onEdgesChange = useCallback(
+            (changes) => setEdges((eds) => applyEdgeChanges(changes, eds)),
+            []
+        );
+        const onConnect = useCallback(
+            (params) => setEdges((eds) => addEdge(params, eds)),
+            []
+        );
+
+        const addNode = useCallback(() => {
+            const newNode = {
+                id: `node_${Date.now()}`,
+                position: { x: 250, y: 5 },
+                data: { label: '새로운 단계' },
+            };
+            setNodes((nds) => nds.concat(newNode));
+        }, []);
+
+        const onSave = useCallback(() => {
+            const description = prompt("변경 사항에 대한 간단한 설명을 입력하세요:", "버전 업데이트");
+            if (description === null) return;
+
+            fetch(`/vbpm/api/workflows/${workflowId}/save_diagram/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({ nodes, edges, history_description: description })
+            })
+            .then(res => res.json())
+            .then(data => {
+                alert('워크플로우가 저장되었습니다. (버전: ' + data.version + ')');
+                window.location.reload();
+            })
+            .catch(err => {
+                alert('저장 중 오류가 발생했습니다.');
+                console.error(err);
+            });
+        }, [nodes, edges]);
+
+        useEffect(() => {
+            const saveBtn = document.getElementById('save-btn');
+            const addBtn = document.getElementById('add-node-btn');
+            if (saveBtn) saveBtn.onclick = onSave;
+            if (addBtn) addBtn.onclick = addNode;
+        }, [onSave, addNode]);
+
+        // JSX 대신 React.createElement 사용 (가장 안정적임)
+        return React.createElement(
+            ReactFlow,
+            {
+                nodes: nodes,
+                edges: edges,
+                onNodesChange: onNodesChange,
+                onEdgesChange: onEdgesChange,
+                onConnect: onConnect,
+                fitView: true
+            },
+            [
+                React.createElement(Background, { key: 'bg', color: "#cbd5e1", gap: 20 }),
+                React.createElement(Controls, { key: 'controls' }),
+                React.createElement(MiniMap, { key: 'minimap' })
+            ]
+        );
+    }
+
+    const root = createRoot(document.getElementById('react-flow-root'));
+    root.render(React.createElement(Flow));
+</script>
+{% endblock %}

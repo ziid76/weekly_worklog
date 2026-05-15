@@ -17,10 +17,122 @@ from django.db.models import Prefetch
 
 from django.views.decorators.csrf import csrf_exempt
 import json
-
+import os
+from django.views.decorators.clickjacking import xframe_options_exempt
+import requests
 
 def index(request):
     return HttpResponse("Monitor 앱입니다.")
+
+
+
+@login_required
+def web_monitor(request):
+    import os
+    embed_access_url = os.environ.get('EMBED_ACCESS_URL', 'http://152.70.250.31')
+    embed_key = os.environ.get('EMBED_ACCESS_KEY', '')
+    
+    context = {
+        'embed_access_url': embed_access_url,
+        'embed_key': embed_key,
+    }
+    return render(request, 'monitor/web_monitor.html', context)
+
+
+@login_required
+def web_monitor_detail(request, target_id):
+    import os
+    embed_access_url = os.environ.get('EMBED_ACCESS_URL', 'http://152.70.250.31')
+    embed_key = os.environ.get('EMBED_ACCESS_KEY', '')
+    
+    context = {
+        'target_id': target_id,
+        'embed_access_url': embed_access_url,
+        'embed_key': embed_key,
+    }
+    return render(request, 'monitor/web_monitor_detail.html', context)
+
+
+@login_required
+def web_monitor_api_detail_proxy(request, target_id):
+    """
+    브라우저의 CORS 및 Mixed Content 정책을 우회하기 위한 상세 데이터 API 프록시
+    """
+    embed_access_url = os.environ.get('EMBED_ACCESS_URL', 'http://152.70.250.31')
+    embed_key = os.environ.get('EMBED_ACCESS_KEY', '')
+    url = f"{embed_access_url}/web-monitor/api/target_detail/{target_id}/?key={embed_key}"
+    
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+    }
+    
+    try:
+        session = requests.Session()
+        response = session.get(url, headers=headers, timeout=30)
+        if response.status_code != 200:
+            return JsonResponse({
+                'error': f'Remote API returned {response.status_code}',
+                'details': response.text[:200]
+            }, status=response.status_code)
+            
+        return JsonResponse(response.json(), safe=False)
+
+    except requests.exceptions.Timeout:
+        return JsonResponse({'error': '모니터웹 시스템 연결 타임아웃 (30초)'}, status=504)
+    except Exception as e:
+        return JsonResponse({'error': f'모니터웹 시스템 연결 실패: {str(e)}'}, status=500)
+
+
+@login_required
+@xframe_options_exempt
+def web_monitor_proxy(request):
+    embed_access_url = os.environ.get('EMBED_ACCESS_URL', 'http://152.70.250.31')
+    embed_key = os.environ.get('EMBED_ACCESS_KEY', '')
+    url = embed_access_url+'/web-monitor/embed/?key='+embed_key
+    
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+    }
+    
+    try:
+        response = requests.get(url, headers=headers, timeout=10)
+        return HttpResponse(response.text)
+
+    except Exception as e:
+        return HttpResponse(f'<div style="color:red; padding:20px; font-family:sans-serif;">모니터링 페이지 연결 오류: {str(e)}</div>', status=500)
+
+
+@login_required
+def web_monitor_api_data_proxy(request):
+    """
+    브라우저의 CORS 및 Mixed Content 정책을 우회하기 위한 API 프록시
+    """
+    embed_access_url = os.environ.get('EMBED_ACCESS_URL', 'http://152.70.250.31')
+    embed_key = os.environ.get('EMBED_ACCESS_KEY', '')
+    url = f"{embed_access_url}/web-monitor/api/dashboard_data/?key={embed_key}"
+    
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+    }
+    
+    try:
+        session = requests.Session()
+        response = session.get(url, headers=headers, timeout=30)
+        # 리모트 서버가 JSON이 아닌 경우 등을 대비해 상태 코드 확인
+        if response.status_code != 200:
+            return JsonResponse({
+                'error': f'Remote API returned {response.status_code}',
+                'details': response.text[:200]
+            }, status=response.status_code)
+            
+        return JsonResponse(response.json(), safe=False)
+
+    except requests.exceptions.Timeout:
+        return JsonResponse({'error': '모니터웹 시스템 연결 타임아웃 (30초)'}, status=504)
+    except Exception as e:
+        return JsonResponse({'error': f'모니터웹 시스템 연결 실패: {str(e)}'}, status=500)
+
+
 
 
 @login_required
@@ -143,9 +255,7 @@ def operation_log_complete(request, pk):
                     leader = leader_membership.user
                     if leader.email:
                         detail_url = f"{getattr(settings, 'SITE_URL', 'http://localhost:8000')}/monitor/ops/logs/{log.id}/detail"
-                        kakao_message = f"""📋 시스템 일일점검 승인요청
-                        
-날짜: {log.date.strftime('%Y-%m-%d')}
+                        kakao_message = f"""날짜: {log.date.strftime('%Y-%m-%d')}
 담당자: {request.user.profile.display_name or request.user.username}
 팀: {leader_membership.team.name}
 
@@ -156,7 +266,8 @@ def operation_log_complete(request, pk):
                             text=kakao_message,
                             message_type="box",
                             button_text="승인 처리하기",
-                            button_url=detail_url
+                            button_url=detail_url,
+                            header_text="점검 승인 요청"
                         )
             except Exception as e:
                 print(f"카카오 알림 전송 실패: {e}")

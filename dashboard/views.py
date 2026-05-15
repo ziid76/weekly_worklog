@@ -53,12 +53,7 @@ def dashboard(request):
         status='in_progress'
     ).distinct().order_by('due_date')
     
-    # 연체된 업무
-    overdue_tasks = Task.objects.filter(
-        user_tasks,
-        due_date__lt=timezone.now().date(),
-        status__in=['todo', 'in_progress']
-    ).distinct().order_by('due_date')
+
 
     # 올해 업무 (Gantt 차트용: 올해 기간에 걸쳐 있는 모든 업무)
     current_year_filter = Q(start_date__year=current_year) | \
@@ -188,7 +183,6 @@ def dashboard(request):
         'medium_tasks': medium_tasks,
         'low_tasks': low_tasks,
         'urgent_deadline_tasks': urgent_deadline_tasks,
-        'overdue_tasks': overdue_tasks,
         'recent_tasks': recent_tasks,
         'recent_worklogs': recent_worklogs,
         'recent_notifications': recent_notifications,

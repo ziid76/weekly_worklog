@@ -33,6 +33,9 @@ urlpatterns = [
     path("notifications/", include("notifications.urls")),
     path('assets/', include('assets.urls')),
     path('hooks/', include('hooks.urls')),
+    path('vbpm/', include('vbpm.urls')),
+    path('reviewer/', include('reviewer.urls')),
+    path('v1/', include('accounts.api_urls')),
     path('', include('app.urls')),
     path('summernote/', include('django_summernote.urls')), 
 ]
