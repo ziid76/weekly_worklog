@@ -1,0 +1,217 @@
+{% extends "basic.html" %}
+{% load humanize %}
+
+{% block title %}운행일지 관리{% endblock %}
+{% block page_name %}운행일지 관리{% endblock %}
+
+{% block content %}
+<div class="max-w-[1600px] mx-auto p-2 md:p-8 flex flex-col gap-6 w-full min-w-0" style="overflow-x: hidden;">
+  <div>
+    <h1 class="text-3xl font-extrabold tracking-tight text-slate-900">운행일지 관리</h1>
+  </div>
+
+  {# --- 필터바 (2줄 컴팩트: 1줄=제목/요청자/결재자/운행일×2, 2줄=상태+버튼) --- #}
+  <form method="get" class="bg-white rounded-[2rem] border border-slate-200 shadow-sm p-4 md:p-6">
+    {# 1줄: 5칸 grid (운행일이 2칸 차지) #}
+    <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
+      <div class="flex flex-col gap-1">
+        <label class="text-[11px] font-black uppercase tracking-wider text-slate-500">제목 검색</label>
+        <input type="text" name="q" value="{{ filter.q }}"
+               placeholder="결재문서의 제목으로 검색"
+               class="rounded-full border border-slate-200 px-4 py-2 text-sm focus:ring-2 focus:ring-primary/40 focus:border-primary">
+      </div>
+      <div class="flex flex-col gap-1">
+        <label class="text-[11px] font-black uppercase tracking-wider text-slate-500">요청자</label>
+        <select name="author"
+                class="rounded-full border border-slate-200 px-4 py-2 text-sm focus:ring-2 focus:ring-primary/40 focus:border-primary">
+          <option value="">전체</option>
+          {% for d in drivers %}
+          <option value="{{ d.id }}" {% if filter.author == d.id|stringformat:"s" %}selected{% endif %}>{{ d.profile.get_korean_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="flex flex-col gap-1">
+        <label class="text-[11px] font-black uppercase tracking-wider text-slate-500">결재자</label>
+        <select name="reviewer"
+                class="rounded-full border border-slate-200 px-4 py-2 text-sm focus:ring-2 focus:ring-primary/40 focus:border-primary">
+          <option value="">전체</option>
+          {% for ex in executives %}
+          <option value="{{ ex.id }}" {% if filter.reviewer == ex.id|stringformat:"s" %}selected{% endif %}>{{ ex.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="flex flex-col gap-1 md:col-span-2">
+        <label class="text-[11px] font-black uppercase tracking-wider text-slate-500">
+          운행일 <span class="text-slate-400 font-medium normal-case tracking-normal">(범위 내 1건이라도 포함)</span>
+        </label>
+        <div class="flex items-center gap-1">
+          <input type="date" name="drive_from" value="{{ filter.drive_from }}"
+                 class="w-full rounded-full border border-slate-200 px-3 py-2 text-sm focus:ring-2 focus:ring-primary/40 focus:border-primary">
+          <span class="text-slate-400">~</span>
+          <input type="date" name="drive_to" value="{{ filter.drive_to }}"
+                 class="w-full rounded-full border border-slate-200 px-3 py-2 text-sm focus:ring-2 focus:ring-primary/40 focus:border-primary">
+        </div>
+      </div>
+    </div>
+
+    {# 2줄: 좌측 상태 / 우측 버튼 #}
+    <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mt-3">
+      <div class="flex flex-col gap-1 min-w-0 flex-1">
+        <label class="text-[11px] font-black uppercase tracking-wider text-slate-500">상태 (다중 선택)</label>
+        <div class="flex flex-wrap gap-2">
+          {% for value, label in status_choices %}
+          <label class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-slate-200 cursor-pointer hover:bg-slate-50"
+                 style="font-size: 0.77rem;">
+            <input type="checkbox" name="status" value="{{ value }}"
+                   {% if value in filter.statuses %}checked{% endif %}
+                   class="accent-primary">
+            <span class="font-medium text-slate-700">{{ label }}</span>
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="flex gap-2 shrink-0 self-end">
+        <button type="button" id="dl-filter-clear"
+                class="inline-flex items-center gap-1 rounded-full bg-slate-50 text-slate-600 font-bold px-5 py-2 hover:bg-slate-100 text-sm">
+          초기화
+        </button>
+        <button type="submit"
+                class="inline-flex items-center gap-1 rounded-full bg-primary text-white font-bold px-6 py-2 hover:bg-primary/90 shadow-md shadow-primary/20 text-sm">
+          <span class="material-symbols-outlined text-base">search</span>
+          조회
+        </button>
+      </div>
+    </div>
+  </form>
+
+  {# --- 결과 헤더: 카운트 + CSV 버튼 (조회결과 영역 위쪽) --- #}
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div class="text-sm text-slate-500">
+      총 <span class="font-bold text-slate-900">{{ paginator.count|default:0 }}</span>건
+      {% if page_obj %} · 페이지 {{ page_obj.number }} / {{ paginator.num_pages }}{% endif %}
+    </div>
+    <a href="{% url 'driving_log:admin_sheet_csv' %}{% if querystring %}?{{ querystring }}{% endif %}"
+       class="inline-flex items-center gap-2 rounded-full bg-emerald-600 text-white font-bold px-5 py-2 hover:bg-emerald-700 transition-all shadow-md shadow-emerald-600/20 text-sm self-start sm:self-auto">
+      <span class="material-symbols-outlined text-base">download</span>
+      CSV 내보내기
+    </a>
+  </div>
+
+  {% if sheets %}
+  {# --- 모바일: 카드 그리드 --- #}
+  <div class="md:hidden grid grid-cols-1 gap-3">
+    {% for sheet in sheets %}
+    <a href="{% url 'driving_log:admin_sheet_detail' sheet.pk %}"
+       class="bg-white rounded-[1.5rem] border border-slate-200 p-4 hover:shadow-md hover:border-primary/20 transition-all flex flex-col gap-2">
+      <div class="flex items-start justify-between gap-3">
+        <div class="min-w-0">
+          <p class="text-[11px] font-black uppercase tracking-wider text-slate-400">#{{ sheet.id }}</p>
+          <h2 class="text-base font-bold text-slate-900 truncate">{{ sheet.title|default:"(제목 없음)" }}</h2>
+          <p class="text-xs text-slate-500 mt-0.5">
+            {{ sheet.author.profile.get_korean_name }}{% if sheet.reviewer %} · {{ sheet.reviewer.name }}{% endif %}
+          </p>
+        </div>
+        {% include "driving_log/_status_badge.html" with status=sheet.status %}
+      </div>
+      <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600">
+        {% if sheet.period_start and sheet.period_end %}
+        <span>{{ sheet.period_start|date:"y.m.d" }} ~ {{ sheet.period_end|date:"y.m.d" }}</span>
+        {% endif %}
+        <span>{{ sheet.entry_count }}건</span>
+        <span class="font-bold text-primary">초과 {{ sheet.total_overtime_display }}</span>
+      </div>
+      <div class="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-slate-400">
+        {% if sheet.submitted_at %}<span>결재요청 {{ sheet.submitted_at|date:"y.m.d H:i" }}</span>{% endif %}
+        {% if sheet.reviewed_at %}<span>결재완료 {{ sheet.reviewed_at|date:"y.m.d H:i" }}</span>{% endif %}
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+
+  {# --- 데스크톱: 테이블 --- #}
+  <div class="hidden md:block bg-white rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-slate-50/50 border-b border-slate-100">
+          <tr class="text-center text-[11px] font-black text-slate-400 uppercase tracking-widest">
+            <th class="px-4 py-3 whitespace-nowrap">ID</th>
+            <th class="px-4 py-3">요청자</th>
+            <th class="px-4 py-3">결재자</th>
+            <th class="px-4 py-3">제목</th>
+            <th class="px-4 py-3 whitespace-nowrap">운행기간</th>
+            <th class="px-4 py-3 whitespace-nowrap">건수</th>
+            <th class="px-4 py-3 whitespace-nowrap">초과근무</th>
+            <th class="px-4 py-3 whitespace-nowrap">상태</th>
+            <th class="px-4 py-3 whitespace-nowrap">결재요청일</th>
+            <th class="px-4 py-3 whitespace-nowrap">결재완료일</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for sheet in sheets %}
+          <tr class="border-t border-slate-100 hover:bg-slate-50/50 transition-colors cursor-pointer"
+              onclick="window.location.href='{% url 'driving_log:admin_sheet_detail' sheet.pk %}'">
+            <td class="px-4 py-3 text-slate-500 whitespace-nowrap">#{{ sheet.id }}</td>
+            <td class="px-4 py-3 font-bold text-slate-900 whitespace-nowrap">{{ sheet.author.profile.get_korean_name }}</td>
+            <td class="px-4 py-3 text-slate-700 whitespace-nowrap">{% if sheet.reviewer %}{{ sheet.reviewer.name }}{% else %}<span class="text-slate-300">-</span>{% endif %}</td>
+            <td class="px-4 py-3 text-slate-800 max-w-xs truncate">{{ sheet.title|default:"(제목 없음)" }}</td>
+            <td class="px-4 py-3 text-slate-600 whitespace-nowrap">
+              {% if sheet.period_start and sheet.period_end %}
+                {{ sheet.period_start|date:"y.m.d" }} ~ {{ sheet.period_end|date:"y.m.d" }}
+              {% else %}<span class="text-slate-300">-</span>{% endif %}
+            </td>
+            <td class="px-4 py-3 text-right whitespace-nowrap">{{ sheet.entry_count }}</td>
+            <td class="px-4 py-3 text-right font-bold text-primary whitespace-nowrap">{{ sheet.total_overtime_display }}</td>
+            <td class="px-4 py-3 whitespace-nowrap">{% include "driving_log/_status_badge.html" with status=sheet.status %}</td>
+            <td class="px-4 py-3 text-slate-500 whitespace-nowrap">{% if sheet.submitted_at %}{{ sheet.submitted_at|date:"y.m.d H:i" }}{% else %}-{% endif %}</td>
+            <td class="px-4 py-3 text-slate-500 whitespace-nowrap">{% if sheet.reviewed_at %}{{ sheet.reviewed_at|date:"y.m.d H:i" }}{% else %}-{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {% if is_paginated %}
+  <div class="flex justify-center items-center gap-2 mt-4">
+    {% if page_obj.has_previous %}
+    <a class="rounded-full bg-slate-50 text-slate-600 px-4 py-2 hover:bg-slate-100 text-sm" href="?page={{ page_obj.previous_page_number }}{% if querystring %}&{{ querystring }}{% endif %}">이전</a>
+    {% endif %}
+    <span class="px-4 py-2 text-sm text-slate-500">{{ page_obj.number }} / {{ paginator.num_pages }}</span>
+    {% if page_obj.has_next %}
+    <a class="rounded-full bg-slate-50 text-slate-600 px-4 py-2 hover:bg-slate-100 text-sm" href="?page={{ page_obj.next_page_number }}{% if querystring %}&{{ querystring }}{% endif %}">다음</a>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% else %}
+  <div class="bg-white rounded-[2rem] border border-slate-200 shadow-sm p-12 flex flex-col items-center gap-3">
+    <span class="material-symbols-outlined text-slate-300" style="font-size: 64px;">search_off</span>
+    <h2 class="text-base font-bold text-slate-700">조회 결과가 없습니다</h2>
+    <p class="text-sm text-slate-500">필터 조건을 조정해보세요.</p>
+  </div>
+  {% endif %}
+</div>
+
+<script>
+(function () {
+  // [초기화] 클릭 시 페이지 리로드 없이 폼 입력값만 클리어.
+  // HTML 기본 reset 은 "초기 렌더값" 으로 돌아가므로(서버가 채워준 값이라 변화 없음)
+  // text/date/select/checkbox 를 수동으로 비운다.
+  var btn = document.getElementById('dl-filter-clear');
+  if (!btn) return;
+  btn.addEventListener('click', function () {
+    var form = btn.closest('form');
+    if (!form) return;
+    form.querySelectorAll('input[type="text"], input[type="search"], input[type="date"]').forEach(function (el) {
+      el.value = '';
+    });
+    form.querySelectorAll('input[type="checkbox"], input[type="radio"]').forEach(function (el) {
+      el.checked = false;
+    });
+    form.querySelectorAll('select').forEach(function (el) {
+      el.selectedIndex = 0;
+    });
+  });
+})();
+</script>
+{% endblock %}

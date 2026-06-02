@@ -1,0 +1,260 @@
+{% extends "basic.html" %}
+{% load humanize %}
+
+{% block title %}운행일지 상세 (관리){% endblock %}
+{% block page_name %}운행일지 상세 (관리){% endblock %}
+
+{% block content %}
+<div class="max-w-[1400px] mx-auto p-4 md:p-8 flex flex-col gap-6 w-full min-w-0" style="overflow-x: hidden;">
+  <div class="flex flex-col gap-3">
+    <a href="{% url 'driving_log:admin_sheet_list' %}"
+       class="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700 self-start">
+      <span class="material-symbols-outlined text-sm">arrow_back</span>
+      관리 목록으로
+    </a>
+    <div class="flex items-start justify-between gap-3">
+      <div class="min-w-0">
+        <p class="text-[11px] font-black uppercase tracking-wider text-slate-400">#{{ sheet.id }}</p>
+        <h1 class="font-extrabold tracking-tight text-slate-900 break-words" style="font-size: 1.15rem;">
+          {{ sheet.title|default:sheet }}
+        </h1>
+        <p class="text-xs font-medium text-slate-500 mt-1">
+          운전기사 <span class="font-bold text-slate-700">{{ sheet.author.profile.get_korean_name }}</span>
+          {% if sheet.author.email %} · {{ sheet.author.email }}{% endif %}
+        </p>
+        {% if sheet.period_start and sheet.period_end %}
+        <p class="text-xs font-medium text-slate-400 mt-0.5">
+          운행 {{ sheet.period_start|date:"Y-m-d" }} ~ {{ sheet.period_end|date:"Y-m-d" }}
+        </p>
+        {% endif %}
+        <p class="text-xs font-medium text-slate-400 mt-0.5">
+          작성일자 {{ sheet.updated_at|date:"Y-m-d H:i" }}
+        </p>
+      </div>
+      {% include "driving_log/_status_badge.html" with status=sheet.status %}
+    </div>
+  </div>
+
+  {# --- 승인 의견 강조 박스 --- #}
+  {% if sheet.status == 'approved' and sheet.review_comment %}
+  <div class="bg-emerald-50 border-2 border-emerald-200 rounded-[2rem] p-6 md:p-8 flex flex-col gap-3">
+    <div class="flex items-center gap-2">
+      <span class="material-symbols-outlined text-emerald-600">verified</span>
+      <h2 class="text-base font-extrabold text-emerald-700">승인되었습니다</h2>
+    </div>
+    <div class="bg-white rounded-2xl border border-emerald-100 p-4">
+      <p class="text-[11px] font-black uppercase tracking-wider text-emerald-600">결재 의견</p>
+      <p class="text-sm text-slate-800 whitespace-pre-line mt-1">{{ sheet.review_comment }}</p>
+    </div>
+    {% if sheet.reviewer %}
+    <p class="text-xs text-slate-500">
+      처리자 <span class="font-bold text-slate-700">{{ sheet.reviewer.name }}</span>
+      {% if sheet.reviewed_at %} · {{ sheet.reviewed_at|date:"Y-m-d H:i" }}{% endif %}
+    </p>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {# --- 반려 사유 강조 박스 --- #}
+  {% if sheet.status == 'rejected' or sheet.status == 'rejected_resubmitted' %}
+  <div class="bg-rose-50 border-2 border-rose-200 rounded-[2rem] p-6 md:p-8 flex flex-col gap-3">
+    <div class="flex items-center gap-2">
+      <span class="material-symbols-outlined text-rose-600">block</span>
+      <h2 class="text-base font-extrabold text-rose-700">반려되었습니다</h2>
+    </div>
+    {% if sheet.review_comment %}
+    <div class="bg-white rounded-2xl border border-rose-100 p-4">
+      <p class="text-[11px] font-black uppercase tracking-wider text-rose-600">반려 사유</p>
+      <p class="text-sm text-slate-800 whitespace-pre-line mt-1">{{ sheet.review_comment }}</p>
+    </div>
+    {% endif %}
+    {% if sheet.reviewer %}
+    <p class="text-xs text-slate-500">
+      처리자 <span class="font-bold text-slate-700">{{ sheet.reviewer.name }}</span>
+      {% if sheet.reviewed_at %} · {{ sheet.reviewed_at|date:"Y-m-d H:i" }}{% endif %}
+    </p>
+    {% endif %}
+    {% if sheet.status == 'rejected_resubmitted' and sheet.resubmitted_to %}
+    <div class="bg-white rounded-2xl border border-slate-200 p-4 flex items-center justify-between gap-3">
+      <div class="min-w-0">
+        <p class="text-[11px] font-black uppercase tracking-wider text-slate-500">재상신된 문서</p>
+        <p class="text-sm font-bold text-slate-800 truncate mt-0.5">{{ sheet.resubmitted_to.title|default:sheet.resubmitted_to }}</p>
+      </div>
+      <a href="{% url 'driving_log:admin_sheet_detail' sheet.resubmitted_to.pk %}"
+         class="shrink-0 inline-flex items-center gap-1 rounded-full bg-primary/10 text-primary font-bold px-4 py-2 hover:bg-primary/20 text-sm whitespace-nowrap">
+        이동
+        <span class="material-symbols-outlined text-sm">arrow_forward</span>
+      </a>
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {# --- 운행 내역 데스크톱 테이블 --- #}
+  <div class="hidden md:block bg-white rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden">
+    <table class="w-full text-sm">
+      <thead class="bg-slate-50/50">
+        <tr class="text-left text-[11px] font-black uppercase tracking-wider text-slate-400">
+          <th class="px-4 py-3">일자</th>
+          <th class="px-4 py-3">휴일</th>
+          <th class="px-4 py-3">운행 시작</th>
+          <th class="px-4 py-3">운행 종료</th>
+          <th class="px-4 py-3">누적거리</th>
+          <th class="px-4 py-3">차량번호</th>
+          <th class="px-4 py-3">운행시간</th>
+          <th class="px-4 py-3">초과근무</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for e in entries %}
+        <tr class="border-t border-slate-100 {% if e.is_holiday %}bg-amber-50/30{% endif %}">
+          <td class="px-4 py-3 font-bold text-slate-900">{{ e.log_date|date:"Y-m-d" }}</td>
+          <td class="px-4 py-3">{% if e.is_holiday %}<span class="text-amber-600 font-bold">휴일</span>{% else %}-{% endif %}</td>
+          <td class="px-4 py-3">{{ e.start_time|time:"H:i"|default:"-" }}</td>
+          <td class="px-4 py-3">{{ e.end_time|time:"H:i"|default:"-" }}</td>
+          <td class="px-4 py-3">{% if e.cumulative_distance != None %}{{ e.cumulative_distance|floatformat:0|intcomma }} km{% else %}-{% endif %}</td>
+          <td class="px-4 py-3">{{ e.vehicle_number|default:"-" }}</td>
+          <td class="px-4 py-3 font-bold text-slate-800">{{ e.run_minutes }}분</td>
+          <td class="px-4 py-3 font-bold text-primary">{{ e.overtime_minutes }}분</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="8" class="px-4 py-10 text-center text-slate-400">기록된 운행 내역이 없습니다.</td></tr>
+        {% endfor %}
+      </tbody>
+      <tfoot class="bg-slate-50 border-t border-slate-100">
+        <tr>
+          <td class="px-4 py-3 font-bold text-slate-600" colspan="6">합계</td>
+          <td class="px-4 py-3 font-black text-slate-800">{{ total_run_display }}</td>
+          <td class="px-4 py-3 font-black text-primary">{{ total_overtime_display }}</td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+
+  {# --- 운행 내역 모바일 카드 --- #}
+  <div class="md:hidden flex flex-col gap-3">
+    {% for e in entries %}
+    <div class="bg-white rounded-[1.5rem] border {% if e.is_holiday %}border-amber-200 bg-amber-50/40{% else %}border-slate-200{% endif %} shadow-sm p-4 flex flex-col gap-2">
+      <div class="flex items-center justify-between">
+        <div class="text-base font-extrabold text-slate-900">{{ e.log_date|date:"Y-m-d (D)" }}</div>
+        {% if e.is_holiday %}
+        <span class="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[10px] font-black uppercase tracking-wider">휴일</span>
+        {% endif %}
+      </div>
+      <div class="flex flex-col gap-1 text-sm">
+        <div class="flex items-center gap-1.5 text-slate-700 min-w-0">
+          <span class="material-symbols-outlined text-base text-slate-400 shrink-0">schedule</span>
+          <span class="font-medium truncate">{{ e.start_time|time:"H:i"|default:"-" }} ~ {{ e.end_time|time:"H:i"|default:"-" }}</span>
+        </div>
+        <div class="flex items-center gap-1.5 text-slate-700 min-w-0">
+          <span class="material-symbols-outlined text-base text-slate-400 shrink-0">straighten</span>
+          <span class="font-medium truncate">{% if e.cumulative_distance != None %}{{ e.cumulative_distance|floatformat:0|intcomma }} km{% else %}-{% endif %}</span>
+        </div>
+        {% if e.vehicle_number %}
+        <div class="flex items-center gap-1.5 text-slate-600 min-w-0">
+          <span class="material-symbols-outlined text-base text-slate-400 shrink-0">directions_car</span>
+          <span class="font-medium truncate">{{ e.vehicle_number }}</span>
+        </div>
+        {% endif %}
+      </div>
+      <div class="flex flex-col gap-1 border-t border-slate-100 pt-2 mt-1">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold uppercase tracking-wider text-slate-400">운행시간</span>
+          <span class="font-black text-slate-800 text-base">{{ e.run_minutes }}분</span>
+        </div>
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold uppercase tracking-wider text-slate-400">초과근무</span>
+          <span class="font-black text-primary text-base">{{ e.overtime_minutes }}분</span>
+        </div>
+      </div>
+    </div>
+    {% empty %}
+    <div class="bg-white rounded-[1.5rem] border border-slate-200 px-4 py-10 text-center text-slate-400 text-sm">
+      기록된 운행 내역이 없습니다.
+    </div>
+    {% endfor %}
+    {% if entries %}
+    <div class="bg-slate-900 text-white rounded-[1.5rem] p-4 flex flex-col gap-2 shadow-lg">
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-bold uppercase tracking-wider text-slate-300">합계 운행시간</span>
+        <span class="font-black text-lg">{{ total_run_display }}</span>
+      </div>
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-bold uppercase tracking-wider text-slate-300">합계 초과근무</span>
+        <span class="font-black text-xl">{{ total_overtime_display }}</span>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  {# --- 결재선 --- #}
+  {% if sheet.reviewer %}
+  <div class="bg-white rounded-[2rem] border border-slate-200 shadow-sm p-6">
+    <h2 class="text-sm font-bold uppercase tracking-wider text-slate-400">결재선</h2>
+    <p class="text-base font-bold text-slate-900 mt-1">{{ sheet.reviewer.name }}</p>
+    {% if sheet.reviewer.email %}
+    <p class="text-xs text-slate-500 mt-0.5 inline-flex items-center gap-1 break-all">
+      <span class="material-symbols-outlined text-sm text-slate-400">mail</span>
+      <span>{{ sheet.reviewer.email }}</span>
+    </p>
+    {% endif %}
+    {% if sheet.submitted_at %}
+    <p class="text-xs text-slate-500 mt-2">결재요청 {{ sheet.submitted_at|date:"Y-m-d H:i" }}</p>
+    {% endif %}
+    {% if sheet.reviewed_at %}
+    <p class="text-xs text-slate-500 mt-0.5">결재처리 {{ sheet.reviewed_at|date:"Y-m-d H:i" }}</p>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {# --- 결재 이력 타임라인 --- #}
+  <div class="bg-white rounded-[2rem] border border-slate-200 shadow-sm p-6">
+    <h2 class="text-sm font-bold uppercase tracking-wider text-slate-400 mb-4">결재 이력</h2>
+    {% if history %}
+    <ol class="flex flex-col gap-3">
+      {% for h in history %}
+      <li class="flex items-start gap-3 border-l-2 border-slate-100 pl-4 py-1">
+        <div class="flex flex-col gap-0.5 min-w-0 w-full">
+          <div class="flex items-center gap-2 flex-wrap">
+            {% if h.action == 'requested' %}
+              <span class="px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 text-[10px] font-black uppercase tracking-wider">결재요청</span>
+            {% elif h.action == 'approved' %}
+              <span class="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 text-[10px] font-black uppercase tracking-wider">승인</span>
+            {% elif h.action == 'rejected' %}
+              <span class="px-2 py-0.5 rounded-full bg-rose-50 text-rose-600 text-[10px] font-black uppercase tracking-wider">반려</span>
+            {% elif h.action == 'resubmitted' %}
+              <span class="px-2 py-0.5 rounded-full bg-violet-50 text-violet-600 text-[10px] font-black uppercase tracking-wider">재상신</span>
+            {% elif h.action == 'viewed_history' %}
+              <span class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 text-[10px] font-black uppercase tracking-wider">이력조회</span>
+            {% endif %}
+            <span class="text-xs text-slate-500">{{ h.created_at|date:"Y-m-d H:i:s" }}</span>
+            {% if h.actor_user %}
+            <span class="text-xs text-slate-700 font-bold">{{ h.actor_user.profile.get_korean_name }}</span>
+            {% elif h.actor_executive %}
+            <span class="text-xs text-slate-700 font-bold">{{ h.actor_executive.name }}</span>
+            {% endif %}
+            {% if h.ip_address %}
+            <span class="text-[10px] text-slate-400">{{ h.ip_address }}</span>
+            {% endif %}
+          </div>
+          {% if h.comment %}
+          <p class="text-sm text-slate-700 whitespace-pre-line mt-1 bg-slate-50 rounded-xl p-3">{{ h.comment }}</p>
+          {% endif %}
+        </div>
+      </li>
+      {% endfor %}
+    </ol>
+    {% else %}
+    <p class="text-sm text-slate-400">기록된 결재 이력이 없습니다.</p>
+    {% endif %}
+  </div>
+
+  {# --- 하단 액션 --- #}
+  <div class="flex justify-start bg-white rounded-[2rem] border border-slate-200 shadow-sm p-4">
+    <a href="{% url 'driving_log:admin_sheet_list' %}"
+       class="inline-flex items-center justify-center gap-1 rounded-full bg-slate-50 text-slate-600 font-bold px-5 py-2 hover:bg-slate-100 text-sm">
+      목록
+    </a>
+  </div>
+</div>
+{% endblock %}

@@ -128,6 +128,19 @@
                 </div>
                 </a>
                 <nav class="flex flex-col gap-2">
+                    {% if is_driving_only_user %}
+                    <!-- 운행일지 전용 사용자 (운전기사 + 매니저): 운행일지/운행일지 관리 만 노출 -->
+                    <a class="flex items-center gap-2 px-4 py-3 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors" href="/driving-log/">
+                        <span class="material-symbols-outlined">directions_car</span>
+                        <p class="text-sm font-bold">운행일지</p>
+                    </a>
+                    {% if is_driving_log_manager %}
+                    <a class="flex items-center gap-2 px-4 py-3 rounded-full text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors" href="{% url 'driving_log:admin_sheet_list' %}">
+                        <span class="material-symbols-outlined">supervisor_account</span>
+                        <p class="text-sm font-bold">운행일지 관리</p>
+                    </a>
+                    {% endif %}
+                    {% else %}
                     <!-- Work Management -->
                     <div class="accordion-item">
                         <button type="button" aria-expanded="false" class="accordion-btn flex w-full items-center justify-between gap-2 px-4 py-3 rounded-full text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors">
@@ -331,6 +344,14 @@
                             </a>
                         </div>
                     </div>
+                    {% if is_driving_log_manager %}
+                    <!-- 운행일지 관리 — driving_log_managers 그룹 또는 슈퍼유저 한정 -->
+                    <a class="flex items-center gap-2 px-4 py-3 rounded-full text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors" href="{% url 'driving_log:admin_sheet_list' %}">
+                        <span class="material-symbols-outlined">supervisor_account</span>
+                        <p class="text-sm font-bold">운행일지 관리</p>
+                    </a>
+                    {% endif %}
+
                     {% if user.profile.current_team_role == 'leader' or user.profile.current_team_role == 'admin' %}
                     <!-- Admin -->
                     <div class="accordion-item">
@@ -371,6 +392,7 @@
                             </a>
                         </div>
                     </div>
+                    {% endif %}
                     {% endif %}
                 </nav>
             </div>

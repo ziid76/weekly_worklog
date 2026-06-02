@@ -1,0 +1,11 @@
+{% if status == 'draft' %}
+<span class="shrink-0 px-3 py-1 rounded-full bg-amber-50 text-amber-600 border border-amber-100 text-[10px] font-black uppercase tracking-wider">임시저장</span>
+{% elif status == 'submitted' %}
+<span class="shrink-0 px-3 py-1 rounded-full bg-blue-50 text-blue-600 border border-blue-100 text-[10px] font-black uppercase tracking-wider">결재요청</span>
+{% elif status == 'approved' %}
+<span class="shrink-0 px-3 py-1 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100 text-[10px] font-black uppercase tracking-wider">승인</span>
+{% elif status == 'rejected' %}
+<span class="shrink-0 px-3 py-1 rounded-full bg-rose-50 text-rose-600 border border-rose-100 text-[10px] font-black uppercase tracking-wider">반려</span>
+{% elif status == 'rejected_resubmitted' %}
+<span class="shrink-0 px-3 py-1 rounded-full bg-slate-100 text-slate-500 border border-slate-200 text-[10px] font-black uppercase tracking-wider">반려(재기안)</span>
+{% endif %}

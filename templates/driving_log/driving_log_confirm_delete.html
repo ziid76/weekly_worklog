@@ -1,0 +1,21 @@
+{% extends "basic.html" %}
+
+{% block title %}운행일지 삭제 확인{% endblock %}
+{% block page_name %}운행일지 삭제 확인{% endblock %}
+
+{% block content %}
+<div class="max-w-[700px] mx-auto p-4 md:p-8 flex flex-col gap-6">
+  <div class="bg-white rounded-[2rem] border border-slate-200 shadow-sm p-8 flex flex-col gap-4">
+    <h1 class="text-2xl font-extrabold text-slate-900">정말 삭제하시겠습니까?</h1>
+    <p class="text-sm text-slate-500">
+      <span class="font-bold text-slate-700">{{ object.title|default:"(제목 없음)" }}</span> 를 영구 삭제합니다.<br>
+      되돌릴 수 없습니다.
+    </p>
+    <form method="post" class="flex justify-end gap-2 mt-2">
+      {% csrf_token %}
+      <a href="{% url 'driving_log:driving_log_list' %}" class="rounded-full bg-slate-50 text-slate-600 font-bold px-6 py-2.5 hover:bg-slate-100 transition-all">취소</a>
+      <button type="submit" class="rounded-full bg-rose-500 text-white font-bold px-6 py-2.5 hover:bg-rose-600 transition-all shadow-lg shadow-rose-500/20">삭제</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

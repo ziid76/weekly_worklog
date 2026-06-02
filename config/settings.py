@@ -66,6 +66,7 @@ INSTALLED_APPS = [
     'hooks',
     'vbpm',
     'reviewer',
+    'driving_log',
 ]
 
 MIDDLEWARE = [
@@ -76,6 +77,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'common.middleware.ThreadLocalUserMiddleware',  # Thread Local User Middleware
     'accounts.middleware.FirstLoginMiddleware',  # 첫 로그인 체크 미들웨어
+    'driving_log.middleware.DrivingOnlyRedirectMiddleware',  # 운전 전용 사용자 라우팅
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -95,6 +97,7 @@ TEMPLATES = [
                 'django.contrib.messages.context_processors.messages',
                 'notifications.context_processors.notifications',
                 'common.context_processors.service_request_counts',
+                'driving_log.context_processors.driving_only_flag',
             ],
         },
     },
@@ -135,6 +138,14 @@ AWS_SES_REGION_NAME = os.environ.get('AWS_SES_REGION_NAME', 'ap-northeast-2')
 AWS_SES_ACCESS_KEY_ID = os.environ.get('AWS_SES_ACCESS_KEY_ID')
 AWS_SES_SECRET_ACCESS_KEY = os.environ.get('AWS_SES_SECRET_ACCESS_KEY')
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'gemini@example.com')
+
+# 운행일지(driving_log) 전용 그룹웨어 SMTP. 기존 AWS SES 백엔드와 독립 — 발송 시점에 get_connection 으로 주입.
+# `or` 패턴: .env 에 키가 빈 값(예: `GROUPWARE_SMTP_PORT=`)으로 있을 때도 fallback 이 동작하도록.
+GROUPWARE_SMTP_HOST = os.environ.get('GROUPWARE_SMTP_HOST') or '192.9.200.145'
+GROUPWARE_SMTP_PORT = int(os.environ.get('GROUPWARE_SMTP_PORT') or '587')
+GROUPWARE_SMTP_USE_TLS = int(os.environ.get('GROUPWARE_SMTP_USE_TLS') or '0')
+GROUPWARE_SMTP_USERNAME = os.environ.get('GROUPWARE_SMTP_USERNAME') or ''
+GROUPWARE_SMTP_PASSWORD = os.environ.get('GROUPWARE_SMTP_PASSWORD') or ''
 
 
 # Database

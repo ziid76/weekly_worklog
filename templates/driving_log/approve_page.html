@@ -1,0 +1,178 @@
+{% extends "basic.html" %}
+
+{% block title %}운행일지 결재 - 승인{% endblock %}
+{% block page_name %}운행일지 결재{% endblock %}
+
+{% block content %}
+<div class="max-w-[960px] mx-auto p-4 md:p-8 pb-28 md:pb-8 flex flex-col gap-6">
+
+  {# 헤더 #}
+  <div class="bg-white rounded-[2rem] border border-slate-200 shadow-sm p-6 md:p-8">
+    <div class="flex items-start justify-between gap-4 flex-wrap">
+      <div class="min-w-0">
+        <p class="text-xs font-bold text-emerald-600 uppercase tracking-wider">승인 결재</p>
+        <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight text-slate-900 mt-1">
+          {{ sheet.title|default:sheet }}
+        </h1>
+        <p class="text-xs font-medium text-slate-400 mt-2">
+          요청자
+          <span class="font-bold text-slate-700">
+            {% if sheet.author.profile %}{{ sheet.author.profile.display_name }}{% else %}{{ sheet.author.username }}{% endif %}
+          </span>
+          · 수행임원 <span class="font-bold text-slate-700">{{ executive.name }}</span>
+          {% if sheet.period_start and sheet.period_end %}
+          · 운행 {{ sheet.period_start|date:"Y-m-d" }} ~ {{ sheet.period_end|date:"Y-m-d" }}
+          {% endif %}
+        </p>
+      </div>
+      {% if done %}
+        <span class="shrink-0 px-3 py-1 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100 text-[10px] font-black uppercase tracking-wider">처리완료 · 승인</span>
+      {% else %}
+        <span class="shrink-0 px-3 py-1 rounded-full bg-blue-50 text-blue-600 border border-blue-100 text-[10px] font-black uppercase tracking-wider">결재 대기</span>
+      {% endif %}
+    </div>
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+      <div>
+        <p class="text-[11px] font-black uppercase tracking-wider text-slate-400">운행 건수</p>
+        <p class="text-xl md:text-2xl font-extrabold text-slate-900 mt-1">{{ entries|length }}건</p>
+      </div>
+      <div>
+        <p class="text-[11px] font-black uppercase tracking-wider text-slate-400">합계 운행시간</p>
+        <p class="text-xl md:text-2xl font-extrabold text-slate-800 mt-1">{{ total_run_display }}</p>
+      </div>
+      <div>
+        <p class="text-[11px] font-black uppercase tracking-wider text-slate-400">합계 초과근무</p>
+        <p class="text-xl md:text-2xl font-extrabold text-primary mt-1">{{ total_overtime_display }}</p>
+      </div>
+      <div>
+        <p class="text-[11px] font-black uppercase tracking-wider text-slate-400">결재요청 일시</p>
+        <p class="text-sm font-bold text-slate-700 mt-1">{{ sheet.submitted_at|date:"Y-m-d H:i" }}</p>
+      </div>
+    </div>
+  </div>
+
+  {# 운행 내역 — 모바일: 카드 / 데스크톱: 테이블 #}
+  <div class="flex flex-col gap-3">
+    <h2 class="text-sm font-extrabold text-slate-700 px-1">운행 내역</h2>
+
+    {# 모바일: 카드 #}
+    <div class="md:hidden flex flex-col gap-3">
+      {% for e in entries %}
+      <div class="bg-white rounded-[1.5rem] border {% if e.is_holiday %}border-amber-200 bg-amber-50/40{% else %}border-slate-200{% endif %} shadow-sm p-4 flex flex-col gap-2">
+        <div class="flex items-center justify-between">
+          <div class="text-base font-extrabold text-slate-900">{{ e.log_date|date:"Y-m-d (D)" }}</div>
+          {% if e.is_holiday %}
+          <span class="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[10px] font-black uppercase tracking-wider">휴일</span>
+          {% endif %}
+        </div>
+        <div class="grid grid-cols-2 gap-x-3 gap-y-1.5 text-sm">
+          <div class="flex items-center gap-1.5 text-slate-700">
+            <span class="material-symbols-outlined text-base text-slate-400">schedule</span>
+            <span class="font-medium">{{ e.start_time|time:"H:i"|default:"-" }} ~ {{ e.end_time|time:"H:i"|default:"-" }}</span>
+          </div>
+          <div class="flex items-center gap-1.5 text-slate-700 justify-end">
+            <span class="material-symbols-outlined text-base text-slate-400">straighten</span>
+            <span class="font-medium">{{ e.cumulative_distance|default:"-" }}{% if e.cumulative_distance %} km{% endif %}</span>
+          </div>
+          {% if e.vehicle_number %}
+          <div class="col-span-2 flex items-center gap-1.5 text-slate-600">
+            <span class="material-symbols-outlined text-base text-slate-400">directions_car</span>
+            <span class="font-medium">{{ e.vehicle_number }}</span>
+          </div>
+          {% endif %}
+        </div>
+        <div class="flex flex-col gap-1 border-t border-slate-100 pt-2 mt-1">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-400">운행시간</span>
+            <span class="font-black text-slate-800 text-base">{{ e.run_minutes }}분</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-400">초과근무</span>
+            <span class="font-black text-primary text-base">{{ e.overtime_minutes }}분</span>
+          </div>
+        </div>
+      </div>
+      {% empty %}
+      <div class="bg-white rounded-[1.5rem] border border-slate-200 px-4 py-10 text-center text-slate-400 text-sm">
+        기록된 운행 내역이 없습니다.
+      </div>
+      {% endfor %}
+    </div>
+
+    {# 데스크톱: 테이블 #}
+    <div class="hidden md:block bg-white rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="bg-slate-50/50">
+            <tr class="text-left text-[11px] font-black uppercase tracking-wider text-slate-400">
+              <th class="px-4 py-3">일자</th>
+              <th class="px-4 py-3">휴일</th>
+              <th class="px-4 py-3">운행 시작</th>
+              <th class="px-4 py-3">운행 종료</th>
+              <th class="px-4 py-3">누적거리</th>
+              <th class="px-4 py-3">차량번호</th>
+              <th class="px-4 py-3 text-right">운행시간</th>
+              <th class="px-4 py-3 text-right">초과근무</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            {% for e in entries %}
+            <tr class="{% if e.is_holiday %}bg-amber-50/40{% endif %}">
+              <td class="px-4 py-3 font-bold text-slate-800">{{ e.log_date|date:"Y-m-d" }}</td>
+              <td class="px-4 py-3 {% if e.is_holiday %}text-amber-600 font-bold{% else %}text-slate-400{% endif %}">{% if e.is_holiday %}휴일{% else %}-{% endif %}</td>
+              <td class="px-4 py-3 text-slate-600">{{ e.start_time|time:"H:i"|default:"-" }}</td>
+              <td class="px-4 py-3 text-slate-600">{{ e.end_time|time:"H:i"|default:"-" }}</td>
+              <td class="px-4 py-3 text-slate-600">{{ e.cumulative_distance|default:"-" }}{% if e.cumulative_distance %} km{% endif %}</td>
+              <td class="px-4 py-3 text-slate-600">{{ e.vehicle_number|default:"-" }}</td>
+              <td class="px-4 py-3 text-right font-bold text-slate-800">{{ e.run_minutes }}분</td>
+              <td class="px-4 py-3 text-right font-bold text-primary">{{ e.overtime_minutes }}분</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="8" class="px-4 py-12 text-center text-sm text-slate-400">기록된 운행 내역이 없습니다.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  {# 결재 박스 #}
+  {% if done %}
+    <div class="bg-emerald-50 border border-emerald-200 rounded-[2rem] p-6 md:p-8 flex flex-col items-center gap-3 text-center">
+      <span class="material-symbols-outlined text-emerald-600" style="font-size:48px;">verified</span>
+      <h2 class="text-xl md:text-2xl font-extrabold text-emerald-700">승인이 완료되었습니다</h2>
+      {% if comment %}
+        <div class="mt-2 w-full max-w-md text-left bg-white rounded-2xl border border-emerald-100 p-4">
+          <p class="text-[11px] font-black uppercase tracking-wider text-emerald-600">결재 의견</p>
+          <p class="text-sm text-slate-700 whitespace-pre-line mt-1">{{ comment }}</p>
+        </div>
+      {% endif %}
+      <p class="text-xs text-slate-500 mt-2">이 창은 닫으셔도 됩니다. 결과는 운전기사에게 시스템 내에서 표시됩니다.</p>
+    </div>
+  {% else %}
+    <form method="post" class="bg-white rounded-[2rem] border border-slate-200 shadow-sm p-6 md:p-8 flex flex-col gap-4">
+      {% csrf_token %}
+      <div>
+        <label for="approve-comment" class="block text-sm font-bold text-slate-700 mb-2">
+          결재 의견 <span class="text-slate-400 font-medium">(선택)</span>
+        </label>
+        <textarea
+          id="approve-comment" name="comment" rows="3"
+          class="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:outline-none focus:border-primary focus:ring focus:ring-primary/15"
+          placeholder="(선택) 운전기사에게 전달할 의견이 있다면 적어주세요."></textarea>
+      </div>
+      <div class="flex items-center justify-end gap-3 flex-wrap">
+        <p class="text-xs text-slate-400 mr-auto">아래 버튼을 누르면 결재가 즉시 처리되며, 같은 링크는 다시 사용할 수 없습니다.</p>
+        <button type="submit"
+                class="inline-flex items-center gap-2 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold px-6 py-3 shadow-lg shadow-emerald-500/20 transition-all">
+          <span class="material-symbols-outlined" style="font-size:20px;">check_circle</span>
+          최종 승인
+        </button>
+      </div>
+    </form>
+  {% endif %}
+
+  <p class="text-xs text-slate-400 text-center">삼천리 ITMS · 운행일지 관리 시스템</p>
+</div>
+{% endblock %}

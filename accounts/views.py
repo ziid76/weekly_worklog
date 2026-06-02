@@ -22,6 +22,13 @@ class CustomLoginView(LoginView):
         # 로그인 성공 후 첫 로그인 여부 체크
         if hasattr(self.request.user, 'profile') and self.request.user.profile.is_first_login:
             return '/useraccounts/first-login-password-change/'
+        # 운전 전용 사용자는 운행일지 화면으로 직진
+        try:
+            from driving_log.permissions import is_driving_log_only_user
+            if is_driving_log_only_user(self.request.user):
+                return '/driving-log/'
+        except Exception:
+            pass
         return super().get_success_url()
 
 

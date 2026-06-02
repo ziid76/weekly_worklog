@@ -1,0 +1,19 @@
+{% extends "basic.html" %}
+
+{% block title %}운행일지 - 권한 필요{% endblock %}
+
+{% block content %}
+<div class="max-w-[1400px] mx-auto p-4 md:p-8">
+  <div class="bg-white rounded-[2rem] border border-slate-200 shadow-sm p-12 flex flex-col items-center gap-6">
+    <span class="material-symbols-outlined text-amber-500" style="font-size:64px;">lock</span>
+    <h1 class="text-3xl font-extrabold tracking-tight text-slate-900">운행일지 사용 권한이 필요합니다</h1>
+    <p class="text-sm font-medium text-slate-500 text-center max-w-md">
+      이 페이지는 운행일지 사용 권한이 부여된 사용자만 접근할 수 있습니다.<br>
+      지원팀 관리자에게 <b>driving_log_users</b> 그룹 추가를 요청해 주세요.
+    </p>
+    <a href="javascript:history.back()" class="rounded-full bg-primary text-white font-bold px-6 py-2.5 hover:bg-primary/90 transition-all shadow-lg shadow-primary/20">
+      이전 페이지로 돌아가기
+    </a>
+  </div>
+</div>
+{% endblock %}

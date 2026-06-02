@@ -35,6 +35,7 @@ urlpatterns = [
     path('hooks/', include('hooks.urls')),
     path('vbpm/', include('vbpm.urls')),
     path('reviewer/', include('reviewer.urls')),
+    path('driving-log/', include('driving_log.urls')),
     path('v1/', include('accounts.api_urls')),
     path('', include('app.urls')),
     path('summernote/', include('django_summernote.urls')), 

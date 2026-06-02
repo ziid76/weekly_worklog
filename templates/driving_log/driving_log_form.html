@@ -1,0 +1,758 @@
+{% extends "basic.html" %}
+{% load static %}
+
+{% block title %}운행일지 {% if mode == 'edit' %}편집{% else %}신규 작성{% endif %}{% endblock %}
+{% block page_name %}운행일지 {% if mode == 'edit' %}편집{% else %}신규 작성{% endif %}{% endblock %}
+
+{% block extra_css %}
+<style>
+  .dl-row { background:#fff; }
+  .dl-row.is-holiday { background:#fff7ed; }
+  .dl-input { width:100%; padding:.5rem .75rem; border:1px solid #e2e8f0; border-radius:.75rem; font-size:.875rem; }
+  .dl-input:focus { outline:none; border-color:#0077C8; box-shadow:0 0 0 3px rgba(0,119,200,.15); }
+  @media (max-width: 767px) {
+    .dl-table-head { display:none; }
+    .dl-row { display:grid; grid-template-columns: 1fr; gap:.5rem; padding:1rem; border:1px solid #e2e8f0; border-radius:1.25rem; }
+  }
+  @media (min-width: 768px) {
+    .dl-row { display:grid; grid-template-columns: 1.3fr .8fr 1fr 1fr 1fr 1.2fr 1fr 1fr .6fr; gap:.5rem; padding:.5rem; align-items:center; border-bottom:1px solid #f1f5f9; }
+    .dl-table-head { display:grid; grid-template-columns: 1.3fr .8fr 1fr 1fr 1fr 1.2fr 1fr 1fr .6fr; gap:.5rem; padding:.75rem .5rem; background:#f8fafc; border-radius:.75rem .75rem 0 0; font-size:.7rem; font-weight:900; text-transform:uppercase; color:#94a3b8; letter-spacing:.05em; }
+  }
+  .dl-cell-label { display:block; font-size:.7rem; font-weight:700; text-transform:uppercase; color:#94a3b8; margin-bottom:.25rem; letter-spacing:.05em; }
+  @media (min-width: 768px) { .dl-cell-label { display:none; } }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-[1400px] p-2 md:p-8 pb-28 md:pb-8 flex flex-col gap-6" id="driving-log-form-root"
+     data-sheet-id="{{ object.pk|default_if_none:'' }}"
+     data-mode="{{ mode }}"
+     data-max-entries="{{ MAX_ENTRIES }}"
+     data-save-url="{% if object.pk %}{% url 'driving_log:driving_log_save_api' object.pk %}{% endif %}"
+     data-submit-url="{% if object.pk %}{% url 'driving_log:driving_log_submit_api' object.pk %}{% endif %}"
+     data-executives-url="{% url 'driving_log:driving_log_executives_api' %}"
+     data-list-url="{% url 'driving_log:driving_log_list' %}"
+     data-is-resubmit="{% if sheet.resubmitted_from %}1{% else %}0{% endif %}"
+     data-fixed-exec-id="{{ sheet.reviewer.id|default_if_none:'' }}"
+     data-fixed-exec-name="{{ sheet.reviewer.name|default_if_none:''|escape }}"
+     data-fixed-exec-email="{{ sheet.reviewer.email|default_if_none:''|escape }}">
+
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div>
+      <a href="{% url 'driving_log:driving_log_list' %}" class="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700">
+        <span class="material-symbols-outlined text-sm">arrow_back</span>
+        목록으로
+      </a>
+      <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight text-slate-900 mt-1">
+        운행일지 편집
+      </h1>
+    </div>
+    <div class="text-sm text-slate-500" id="dl-save-status">저장됨</div>
+  </div>
+
+  {# --- 제목(입력) + 작성일자(read-only) + CSRF --- #}
+  <div class="bg-white rounded-[2rem] border border-slate-200 shadow-sm p-6 flex flex-col gap-3">
+    <div>
+      <label for="dl-title" class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">제목</label>
+      <input id="dl-title" type="text"
+             class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none"
+             placeholder="비워두면 자동 생성됩니다 (예: 2026-05-01 ~ 2026-05-14 운행일지)"
+             value="{{ sheet.title|default_if_none:'' }}">
+    </div>
+    <p class="text-xs font-medium text-slate-400">
+      작성일자 {{ sheet.updated_at|date:"Y-m-d H:i" }}
+    </p>
+    <form style="display:none">{% csrf_token %}</form>
+  </div>
+
+  {% if mode == 'edit' %}
+  {# --- 14일 입력 영역 --- #}
+  <div class="bg-white rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden">
+    <div class="p-6 border-b border-slate-100">
+      <h2 class="text-lg font-bold text-slate-900">운행 내역</h2>
+      <p class="text-xs text-slate-500 mt-0.5">최대 <b>{{ MAX_ENTRIES }}행</b>까지 입력 가능합니다.</p>
+    </div>
+
+    <div class="p-4 md:p-6 flex flex-col gap-2 md:gap-0">
+      <div class="dl-table-head">
+        <div>일자 <span class="text-rose-500">*</span></div>
+        <div>휴일</div>
+        <div>운행 시작 <span class="text-rose-500">*</span></div>
+        <div>운행 종료 <span class="text-rose-500">*</span></div>
+        <div>누적거리(km) <span class="text-rose-500">*</span></div>
+        <div>차량번호 <span class="text-rose-500">*</span></div>
+        <div>운행시간</div>
+        <div>초과근무</div>
+        <div></div>
+      </div>
+      <div id="dl-rows"></div>
+      {# 행 추가 버튼을 마지막 행 아래로 — 모바일에서 새 행 추가 후 곧장 다음 입력으로 이어지도록 #}
+      <div class="pt-3">
+        <button type="button" id="dl-add-row"
+                class="w-full md:w-auto inline-flex items-center justify-center gap-1 rounded-full bg-primary/10 text-primary font-bold px-4 py-2.5 hover:bg-primary/20">
+          <span class="material-symbols-outlined text-base">add</span> 행 추가
+        </button>
+      </div>
+    </div>
+
+    <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex flex-col gap-2">
+      <div class="flex items-center justify-between">
+        <p class="text-sm font-bold text-slate-600">합계 운행시간</p>
+        <p class="text-xl font-black text-slate-800" id="dl-total-run">{{ total_run_display }}</p>
+      </div>
+      <div class="flex items-center justify-between">
+        <p class="text-sm font-bold text-slate-600">합계 초과근무</p>
+        <p class="text-xl font-black text-primary" id="dl-total-overtime">{{ total_overtime_display }}</p>
+      </div>
+    </div>
+  </div>
+
+  {# --- 하단 액션바: 모바일은 fixed (viewport 기준), 데스크톱은 sticky --- #}
+  <div class="fixed bottom-4 left-3 right-3 z-20 flex items-center gap-1.5 bg-white/95 backdrop-blur rounded-full border border-slate-200 shadow-lg p-1.5
+              md:sticky md:left-auto md:right-auto md:gap-2 md:p-2">
+    {% if sheet.status == 'draft' or sheet.status == 'rejected' %}
+    <a href="{% url 'driving_log:driving_log_delete' sheet.pk %}"
+       class="shrink-0 inline-flex items-center justify-center size-9 md:size-10 rounded-full bg-rose-50 text-rose-500 hover:bg-rose-100 transition-all"
+       title="삭제">
+      <span class="material-symbols-outlined text-base">delete</span>
+    </a>
+    {% endif %}
+    <a href="{% url 'driving_log:driving_log_list' %}"
+       class="shrink-0 rounded-full bg-slate-50 text-slate-600 font-bold px-3 py-2 hover:bg-slate-100 transition-all text-sm whitespace-nowrap">
+      목록
+    </a>
+    <button type="button" id="dl-save-btn"
+            class="shrink-0 rounded-full bg-slate-50 text-slate-700 font-bold px-3 py-2 hover:bg-slate-100 transition-all text-sm whitespace-nowrap">
+      임시저장
+    </button>
+    <button type="button" id="dl-submit-btn"
+            class="flex-1 min-w-0 rounded-full bg-primary text-white font-bold px-3 py-2 hover:bg-primary/90 transition-all shadow-md shadow-primary/20 text-sm whitespace-nowrap truncate">
+      결재요청
+    </button>
+  </div>
+  {% endif %}
+</div>
+
+{# --- 결재요청 모달: 2단계 (1) 임원 선택 → (2) 최종 확인 --- #}
+<div id="dl-approval-modal" class="fixed inset-0 z-30 bg-slate-900/50 backdrop-blur-sm hidden items-center justify-center p-4">
+  <div class="bg-white rounded-[2rem] shadow-2xl max-w-md w-full p-6 flex flex-col gap-4 max-h-[90vh] overflow-y-auto">
+    <div class="flex items-center justify-between">
+      <h2 class="text-xl font-extrabold text-slate-900" id="dl-approval-title">결재요청</h2>
+      <button type="button" id="dl-approval-close" class="size-9 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 inline-flex items-center justify-center">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+
+    {# Step 1: 임원 선택 #}
+    <div id="dl-approval-step1" class="flex flex-col gap-4">
+      <div>
+        <label for="dl-approval-executive" class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">수행임원</label>
+        <select id="dl-approval-executive"
+                class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none bg-white">
+          <option value="">선택해주세요</option>
+        </select>
+        <p id="dl-approval-empty" class="hidden mt-2 text-xs text-rose-500">
+          등록된 수행임원이 없습니다. 지원팀 관리자에게 임원 등록을 요청해주세요.
+        </p>
+      </div>
+      <p class="text-xs text-slate-500">
+        선택한 임원의 이메일로 결재 요청 메일이 발송됩니다.<br>
+        메일의 승인/반려 링크는 발송 후 <b>15일</b> 동안 유효합니다.
+      </p>
+      <div class="flex justify-end gap-2 mt-2">
+        <button type="button" id="dl-approval-cancel"
+                class="rounded-full bg-slate-50 text-slate-600 font-bold px-5 py-2 hover:bg-slate-100 transition-all">
+          취소
+        </button>
+        <button type="button" id="dl-approval-next"
+                class="rounded-full bg-primary text-white font-bold px-5 py-2 hover:bg-primary/90 transition-all shadow-md shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed">
+          다음
+        </button>
+      </div>
+    </div>
+
+    {# Step 2: 최종 확인 #}
+    <div id="dl-approval-step2" class="hidden flex flex-col gap-4">
+      <p class="text-sm text-slate-600">아래 내용으로 결재요청을 발송합니다. 내용을 확인해주세요.</p>
+      <div class="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex flex-col gap-3 text-sm">
+        <div>
+          <p class="text-[10px] font-black uppercase tracking-wider text-slate-400">제목</p>
+          <p class="text-slate-900 font-bold mt-0.5 break-words" id="dl-confirm-title">-</p>
+        </div>
+        <div class="grid grid-cols-2 gap-3 border-t border-slate-200 pt-3">
+          <div>
+            <p class="text-[10px] font-black uppercase tracking-wider text-slate-400">수행임원</p>
+            <p class="text-slate-900 font-bold mt-0.5 break-words" id="dl-confirm-executive-name">-</p>
+            <p class="text-[11px] text-slate-500 mt-0.5 break-all" id="dl-confirm-executive-email">-</p>
+          </div>
+          <div>
+            <p class="text-[10px] font-black uppercase tracking-wider text-slate-400">운행 기간</p>
+            <p class="text-slate-900 font-bold mt-0.5" id="dl-confirm-period">-</p>
+          </div>
+          <div>
+            <p class="text-[10px] font-black uppercase tracking-wider text-slate-400">운행 건수</p>
+            <p class="text-slate-900 font-bold mt-0.5" id="dl-confirm-count">-</p>
+          </div>
+          <div>
+            <p class="text-[10px] font-black uppercase tracking-wider text-slate-400">합계 운행시간</p>
+            <p class="text-slate-900 font-extrabold mt-0.5" id="dl-confirm-run">-</p>
+          </div>
+          <div>
+            <p class="text-[10px] font-black uppercase tracking-wider text-slate-400">합계 초과근무</p>
+            <p class="text-primary font-extrabold mt-0.5" id="dl-confirm-overtime">-</p>
+          </div>
+        </div>
+      </div>
+      <p class="text-xs text-slate-500">
+        발송 후에는 임원의 결재(승인/반려) 전까지 운행일지를 수정할 수 없습니다.
+      </p>
+      <div class="flex justify-end gap-2 mt-2">
+        <button type="button" id="dl-approval-back"
+                class="rounded-full bg-slate-50 text-slate-600 font-bold px-5 py-2 hover:bg-slate-100 transition-all">
+          이전
+        </button>
+        <button type="button" id="dl-approval-submit"
+                class="rounded-full bg-primary text-white font-bold px-5 py-2 hover:bg-primary/90 transition-all shadow-md shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed">
+          결재요청 보내기
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{{ entries_data|json_script:"dl-entries-initial" }}
+
+<script>
+(function() {
+  const root = document.getElementById('driving-log-form-root');
+  if (!root || root.dataset.mode !== 'edit') return;
+
+  const MAX = parseInt(root.dataset.maxEntries, 10) || 14;
+  const SAVE_URL = root.dataset.saveUrl;
+  const SUBMIT_URL = root.dataset.submitUrl;
+  const EXECUTIVES_URL = root.dataset.executivesUrl;
+  const LIST_URL = root.dataset.listUrl;
+  const CSRF = document.querySelector('input[name=csrfmiddlewaretoken]').value;
+  // 재상신 sheet: 임원이 원본과 동일하게 고정 — 결재요청 모달은 임원 선택을 건너뛰고 곧장 확인창으로.
+  const IS_RESUBMIT = root.dataset.isResubmit === '1';
+  const FIXED_EXEC_ID = root.dataset.fixedExecId || '';
+  const FIXED_EXEC_NAME = root.dataset.fixedExecName || '';
+  const FIXED_EXEC_EMAIL = root.dataset.fixedExecEmail || '';
+
+  function showToast(message) {
+    const t = document.createElement('div');
+    t.className = 'fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-6 py-3 rounded-full shadow-2xl z-[100] text-sm font-bold';
+    t.style.transition = 'opacity 0.25s ease, transform 0.25s ease';
+    t.style.opacity = '0';
+    t.style.transform = 'translate(-50%, 12px)';
+    t.textContent = message;
+    document.body.appendChild(t);
+    requestAnimationFrame(() => {
+      t.style.opacity = '1';
+      t.style.transform = 'translate(-50%, 0)';
+    });
+    setTimeout(() => {
+      t.style.opacity = '0';
+      t.style.transform = 'translate(-50%, 12px)';
+      setTimeout(() => t.remove(), 300);
+    }, 1400);
+  }
+
+  const rowsEl = document.getElementById('dl-rows');
+  const totalEl = document.getElementById('dl-total-overtime');
+  const totalRunEl = document.getElementById('dl-total-run');
+  const saveBtn = document.getElementById('dl-save-btn');
+  const submitBtn = document.getElementById('dl-submit-btn');
+  const addBtn = document.getElementById('dl-add-row');
+  const statusEl = document.getElementById('dl-save-status');
+
+  const initial = JSON.parse(document.getElementById('dl-entries-initial').textContent || '[]');
+
+  function fmt(min) {
+    min = parseInt(min || 0, 10);
+    return (Math.floor(min/60)) + '시간 ' + (min%60) + '분';
+  }
+  // 누적거리: 숫자 외 모두 제거 후 천단위 콤마 (정규식으로 입력 제어)
+  function formatCD(v) {
+    if (v == null || v === '') return '';
+    const digits = String(v).replace(/[^\d]/g, '');
+    if (!digits) return '';
+    return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  }
+  function parseCD(v) {
+    if (v == null || v === '') return null;
+    const digits = String(v).replace(/[^\d]/g, '');
+    return digits ? parseInt(digits, 10) : null;
+  }
+  function attachCDMask(input) {
+    input.addEventListener('input', (e) => {
+      const before = e.target.value;
+      const caret = e.target.selectionStart;
+      // 콤마 적용 전까지 caret 왼쪽의 숫자 개수 (콤마 복원 후 위치 보정용)
+      const digitsLeftOfCaret = before.slice(0, caret).replace(/[^\d]/g, '').length;
+      const formatted = formatCD(before);
+      e.target.value = formatted;
+      // caret 위치 재계산: 왼쪽 숫자 N개 다음 위치
+      let pos = 0, seen = 0;
+      while (pos < formatted.length && seen < digitsLeftOfCaret) {
+        if (/\d/.test(formatted[pos])) seen++;
+        pos++;
+      }
+      e.target.setSelectionRange(pos, pos);
+    });
+  }
+  function calcOvertime(row) {
+    const date = row.querySelector('[data-field=log_date]').value;
+    const start = row.querySelector('[data-field=start_time]').value;
+    const end = row.querySelector('[data-field=end_time]').value;
+    const isHoliday = row.querySelector('[data-field=is_holiday]').checked;
+    if (!date || !start || !end) return 0;
+    const s = new Date(date + 'T' + start);
+    const e = new Date(date + 'T' + end);
+    if (e <= s) return 0;
+    const totalMin = Math.floor((e - s) / 60000);
+    const d = new Date(date + 'T00:00:00');
+    const weekday = d.getDay(); // 0=일 1=월 ... 6=토
+    const isWeekend = weekday === 0 || weekday === 6;
+    if (isWeekend || isHoliday) return totalMin;
+    const workS = new Date(date + 'T09:00');
+    const workE = new Date(date + 'T18:00');
+    const overlapS = s > workS ? s : workS;
+    const overlapE = e < workE ? e : workE;
+    const overlap = Math.max(0, Math.floor((overlapE - overlapS) / 60000));
+    return totalMin - overlap;
+  }
+  function calcRun(row) {
+    // 운행시간 = end - start. 자정 넘는 운행은 일자 2건 분리 정책이라 e>s 가정.
+    const date = row.querySelector('[data-field=log_date]').value;
+    const start = row.querySelector('[data-field=start_time]').value;
+    const end = row.querySelector('[data-field=end_time]').value;
+    if (!date || !start || !end) return 0;
+    const s = new Date(date + 'T' + start);
+    const e = new Date(date + 'T' + end);
+    if (e <= s) return 0;
+    return Math.floor((e - s) / 60000);
+  }
+  function autoHoliday(row) {
+    const date = row.querySelector('[data-field=log_date]').value;
+    const cb = row.querySelector('[data-field=is_holiday]');
+    if (!date) return;
+    const d = new Date(date + 'T00:00:00');
+    const w = d.getDay();
+    // 토/일이면 자동 체크 (사용자가 끄지 않은 한)
+    if (w === 0 || w === 6) {
+      if (!cb.dataset.userTouched) cb.checked = true;
+    } else {
+      if (!cb.dataset.userTouched) cb.checked = false;
+    }
+  }
+  function recalcRow(row) {
+    autoHoliday(row);
+    const ot = calcOvertime(row);
+    const run = calcRun(row);
+    row.querySelector('[data-field=overtime_display]').textContent = fmt(ot);
+    row.querySelector('[data-field=run_display]').textContent = fmt(run);
+    row.classList.toggle('is-holiday', row.querySelector('[data-field=is_holiday]').checked);
+    recalcTotal();
+  }
+  function recalcTotal() {
+    let totalOt = 0, totalRun = 0;
+    rowsEl.querySelectorAll('.dl-row').forEach(r => {
+      totalOt += calcOvertime(r);
+      totalRun += calcRun(r);
+    });
+    totalEl.textContent = fmt(totalOt);
+    if (totalRunEl) totalRunEl.textContent = fmt(totalRun);
+  }
+  function makeRow(data) {
+    data = data || {};
+    const div = document.createElement('div');
+    div.className = 'dl-row';
+    div.innerHTML = `
+      <div>
+        <span class="dl-cell-label">일자 <span class="text-rose-500">*</span></span>
+        <input class="dl-input" type="date" data-field="log_date" value="${data.log_date || ''}">
+      </div>
+      <div>
+        <span class="dl-cell-label">휴일여부</span>
+        <label class="inline-flex items-center gap-2 text-sm pt-1">
+          <input type="checkbox" data-field="is_holiday" class="rounded text-primary" ${data.is_holiday ? 'checked' : ''}>
+          <span class="text-slate-600">휴일</span>
+        </label>
+      </div>
+      <div>
+        <span class="dl-cell-label">운행 시작 <span class="text-rose-500">*</span></span>
+        <input class="dl-input" type="time" data-field="start_time" value="${data.start_time || ''}">
+      </div>
+      <div>
+        <span class="dl-cell-label">운행 종료 <span class="text-rose-500">*</span></span>
+        <input class="dl-input" type="time" data-field="end_time" value="${data.end_time || ''}">
+      </div>
+      <div>
+        <span class="dl-cell-label">누적거리(KM) <span class="text-rose-500">*</span></span>
+        <input class="dl-input" type="text" inputmode="numeric" autocomplete="off" data-field="cumulative_distance" value="${formatCD(data.cumulative_distance)}">
+      </div>
+      <div>
+        <span class="dl-cell-label">차량번호 <span class="text-rose-500">*</span></span>
+        <input class="dl-input" type="text" data-field="vehicle_number" placeholder="서울 12가 1234" value="${(data.vehicle_number || '').replace(/"/g,'&quot;')}">
+      </div>
+      <div>
+        <span class="dl-cell-label">운행시간</span>
+        <div class="font-bold text-slate-800" data-field="run_display">${fmt(data.run_minutes || 0)}</div>
+      </div>
+      <div>
+        <span class="dl-cell-label">초과근무</span>
+        <div class="font-bold text-primary" data-field="overtime_display">${fmt(data.overtime_minutes || 0)}</div>
+      </div>
+      <div class="flex md:justify-end">
+        <button type="button" class="dl-remove inline-flex items-center justify-center size-9 rounded-lg bg-slate-50 text-slate-400 hover:bg-rose-50 hover:text-rose-500 transition-all">
+          <span class="material-symbols-outlined text-base">delete</span>
+        </button>
+      </div>
+    `;
+    if (data.is_holiday) div.classList.add('is-holiday');
+
+    // 휴일 체크박스는 별도 처리 — userTouched 플래그를 먼저 셋팅한 뒤 recalcRow를 호출해야
+    // autoHoliday 가 사용자가 방금 토글한 값을 곧바로 되돌리는 race condition 을 막을 수 있다.
+    div.querySelectorAll('input').forEach(inp => {
+      if (inp.dataset.field === 'is_holiday') return;
+      inp.addEventListener('change', () => { markDirty(); recalcRow(div); });
+      inp.addEventListener('input', markDirty);
+    });
+    // 누적거리 필드: 숫자만 + 천단위 콤마 마스킹
+    const cdInput = div.querySelector('[data-field=cumulative_distance]');
+    if (cdInput) attachCDMask(cdInput);
+    const holidayCb = div.querySelector('[data-field=is_holiday]');
+    holidayCb.addEventListener('change', () => {
+      holidayCb.dataset.userTouched = '1';
+      markDirty();
+      recalcRow(div);
+    });
+    div.querySelector('.dl-remove').addEventListener('click', () => {
+      div.remove();
+      markDirty();
+      recalcTotal();
+    });
+    return div;
+  }
+  function addRow(data) {
+    if (rowsEl.children.length >= MAX) {
+      alert('한 운행일지에는 최대 ' + MAX + '일까지 작성할 수 있습니다.');
+      return;
+    }
+    const row = makeRow(data);
+    rowsEl.appendChild(row);
+  }
+  // 직전 행에서 차량번호를 가져옴 (사용자가 매번 입력하는 수고 줄이기)
+  function lastVehicleNumber() {
+    const rows = rowsEl.querySelectorAll('.dl-row');
+    if (rows.length === 0) return '';
+    const lastInput = rows[rows.length - 1].querySelector('[data-field=vehicle_number]');
+    return lastInput ? (lastInput.value || '').trim() : '';
+  }
+
+  // 초기 렌더
+  if (initial.length === 0) {
+    addRow({}); // 빈 행 하나
+  } else {
+    initial.forEach(d => addRow(d));
+  }
+  recalcTotal();
+
+  addBtn.addEventListener('click', () => {
+    addRow({ vehicle_number: lastVehicleNumber() });
+  });
+
+  // 저장 로직
+  let saveTimer = null;
+  let dirty = false;
+  function markDirty() {
+    dirty = true;
+    if (statusEl) statusEl.textContent = '저장 대기 중…';
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => save(false), 5000);
+  }
+  function collect() {
+    const entries = [];
+    rowsEl.querySelectorAll('.dl-row').forEach(r => {
+      entries.push({
+        log_date: r.querySelector('[data-field=log_date]').value,
+        is_holiday: r.querySelector('[data-field=is_holiday]').checked,
+        start_time: r.querySelector('[data-field=start_time]').value,
+        end_time: r.querySelector('[data-field=end_time]').value,
+        cumulative_distance: parseCD(r.querySelector('[data-field=cumulative_distance]').value),
+        vehicle_number: r.querySelector('[data-field=vehicle_number]').value,
+      });
+    });
+    const titleEl = document.getElementById('dl-title');
+    return {
+      title: titleEl ? titleEl.value : '',
+      entries: entries,
+    };
+  }
+  async function save(showFeedback) {
+    if (!SAVE_URL) return;
+    if (statusEl) statusEl.textContent = '저장 중…';
+    try {
+      const res = await fetch(SAVE_URL, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-CSRFToken': CSRF},
+        body: JSON.stringify(collect()),
+      });
+      const data = await res.json();
+      if (!data.success) {
+        if (statusEl) statusEl.textContent = '저장 실패';
+        if (showFeedback) alert(data.error || '저장 실패');
+        return false;
+      }
+      dirty = false;
+      if (statusEl) statusEl.textContent = '저장됨';
+      if (data.total_overtime_display) totalEl.textContent = data.total_overtime_display;
+      if (data.total_run_display && totalRunEl) totalRunEl.textContent = data.total_run_display;
+      if (showFeedback) {
+        // 토스트 대신 짧은 시각 피드백
+        statusEl && (statusEl.textContent = '저장 완료');
+      }
+      return true;
+    } catch (err) {
+      if (statusEl) statusEl.textContent = '저장 실패';
+      if (showFeedback) alert('네트워크 오류로 저장에 실패했습니다.');
+      return false;
+    }
+  }
+  // 제목 변경도 변경 사항으로 처리
+  const titleInputEl = document.getElementById('dl-title');
+  if (titleInputEl) titleInputEl.addEventListener('input', markDirty);
+
+  // 임시저장: 저장 → 토스트 (현재 화면 유지, 목록 이동 없음)
+  saveBtn.addEventListener('click', async () => {
+    const ok = await save(false);
+    if (!ok) return;
+    showToast('저장되었습니다');
+  });
+
+  // === 결재요청 모달 (2단계) ===
+  const approvalModal = document.getElementById('dl-approval-modal');
+  const approvalStep1 = document.getElementById('dl-approval-step1');
+  const approvalStep2 = document.getElementById('dl-approval-step2');
+  const approvalSelect = document.getElementById('dl-approval-executive');
+  const approvalEmpty = document.getElementById('dl-approval-empty');
+  const approvalSubmit = document.getElementById('dl-approval-submit');
+  const approvalNext = document.getElementById('dl-approval-next');
+  const approvalBack = document.getElementById('dl-approval-back');
+  const approvalCancel = document.getElementById('dl-approval-cancel');
+  const approvalClose = document.getElementById('dl-approval-close');
+  const confirmTitle = document.getElementById('dl-confirm-title');
+  const confirmExecName = document.getElementById('dl-confirm-executive-name');
+  const confirmExecEmail = document.getElementById('dl-confirm-executive-email');
+  const confirmPeriod = document.getElementById('dl-confirm-period');
+  const confirmCount = document.getElementById('dl-confirm-count');
+  const confirmRun = document.getElementById('dl-confirm-run');
+  const confirmOvertime = document.getElementById('dl-confirm-overtime');
+
+  function showStep1() {
+    approvalStep1.classList.remove('hidden');
+    approvalStep1.classList.add('flex');
+    approvalStep2.classList.add('hidden');
+    approvalStep2.classList.remove('flex');
+  }
+  function showStep2() {
+    approvalStep1.classList.add('hidden');
+    approvalStep1.classList.remove('flex');
+    approvalStep2.classList.remove('hidden');
+    approvalStep2.classList.add('flex');
+    // 재상신 모드에서는 [이전] 버튼이 의미 없으므로 숨긴다.
+    if (IS_RESUBMIT) approvalBack.classList.add('hidden');
+  }
+
+  function openApprovalModal() {
+    approvalSelect.innerHTML = '<option value="">불러오는 중…</option>';
+    approvalEmpty.classList.add('hidden');
+    approvalSubmit.disabled = false;
+    approvalNext.disabled = false;
+    approvalModal.classList.remove('hidden');
+    approvalModal.classList.add('flex');
+
+    // 재상신 모드: 임원이 이미 결정되어 있으므로 step1 (임원 선택) 을 건너뛰고
+    // step2 (최종 확인) 로 곧장 이동한다.
+    if (IS_RESUBMIT && FIXED_EXEC_ID) {
+      // hidden select 에도 값 셋팅 (submit 시 사용)
+      approvalSelect.innerHTML = '';
+      const opt = document.createElement('option');
+      opt.value = FIXED_EXEC_ID;
+      opt.dataset.name = FIXED_EXEC_NAME;
+      opt.dataset.email = FIXED_EXEC_EMAIL;
+      opt.selected = true;
+      opt.textContent = FIXED_EXEC_EMAIL ? `${FIXED_EXEC_NAME} — ${FIXED_EXEC_EMAIL}` : FIXED_EXEC_NAME;
+      approvalSelect.appendChild(opt);
+      confirmExecName.textContent = FIXED_EXEC_NAME || '-';
+      confirmExecEmail.textContent = FIXED_EXEC_EMAIL || '-';
+      fillConfirmSummary();
+      showStep2();
+      return;
+    }
+    showStep1();
+
+    fetch(EXECUTIVES_URL, {headers: {'X-Requested-With': 'XMLHttpRequest'}})
+      .then(r => r.json())
+      .then(data => {
+        if (!data.success) {
+          approvalSelect.innerHTML = '<option value="">불러오기 실패</option>';
+          return;
+        }
+        approvalSelect.innerHTML = '<option value="">선택해주세요</option>';
+        if (!data.executives || data.executives.length === 0) {
+          approvalEmpty.classList.remove('hidden');
+          return;
+        }
+        data.executives.forEach(e => {
+          const opt = document.createElement('option');
+          opt.value = e.id;
+          opt.dataset.name = e.name;
+          opt.dataset.email = e.email || '';
+          opt.textContent = e.email ? `${e.name} — ${e.email}` : e.name;
+          approvalSelect.appendChild(opt);
+        });
+      })
+      .catch(() => {
+        approvalSelect.innerHTML = '<option value="">불러오기 실패</option>';
+      });
+  }
+  function closeApprovalModal() {
+    approvalModal.classList.add('hidden');
+    approvalModal.classList.remove('flex');
+  }
+  approvalCancel.addEventListener('click', closeApprovalModal);
+  approvalClose.addEventListener('click', closeApprovalModal);
+  approvalModal.addEventListener('click', e => {
+    if (e.target === approvalModal) closeApprovalModal();
+  });
+  approvalBack.addEventListener('click', showStep1);
+
+  // 운행 기간 / 건수 / 합계 OT 를 현재 행 데이터로부터 계산해 확인 화면에 채운다.
+  function fillConfirmSummary() {
+    const rows = rowsEl.querySelectorAll('.dl-row');
+    const dates = [];
+    let totalOT = 0, totalRun = 0;
+    rows.forEach(r => {
+      const d = r.querySelector('[data-field=log_date]').value;
+      if (d) dates.push(d);
+      totalOT += calcOvertime(r);
+      totalRun += calcRun(r);
+    });
+    dates.sort();
+    const period = (dates.length === 0) ? '-'
+      : (dates[0] === dates[dates.length - 1] ? dates[0]
+         : `${dates[0]} ~ ${dates[dates.length - 1]}`);
+    confirmPeriod.textContent = period;
+    confirmCount.textContent = `${rows.length}건`;
+    if (confirmRun) confirmRun.textContent = fmt(totalRun);
+    confirmOvertime.textContent = fmt(totalOT);
+    const titleEl = document.getElementById('dl-title');
+    confirmTitle.textContent = (titleEl && titleEl.value.trim())
+      ? titleEl.value.trim()
+      : (dates.length
+          ? (dates[0] === dates[dates.length - 1]
+              ? `${dates[0]} 운행일지`
+              : `${dates[0]} ~ ${dates[dates.length - 1]} 운행일지`)
+          : '-');
+  }
+
+  approvalNext.addEventListener('click', () => {
+    const execId = approvalSelect.value;
+    if (!execId) {
+      showToast('수행임원을 선택해주세요');
+      return;
+    }
+    const opt = approvalSelect.options[approvalSelect.selectedIndex];
+    confirmExecName.textContent = opt.dataset.name || opt.textContent;
+    confirmExecEmail.textContent = opt.dataset.email || '-';
+    fillConfirmSummary();
+    showStep2();
+  });
+
+  // 결재요청 직전 검증: 휴일여부 제외 모든 필드 필수 (임시저장은 느슨하게 유지)
+  function validateForSubmit() {
+    const rows = rowsEl.querySelectorAll('.dl-row');
+    if (rows.length === 0) {
+      showToast('운행 내역을 1건 이상 입력해주세요');
+      return false;
+    }
+    const required = [
+      {field: 'log_date',            label: '일자'},
+      {field: 'start_time',          label: '운행 시작'},
+      {field: 'end_time',            label: '운행 종료'},
+      {field: 'cumulative_distance', label: '누적거리'},
+      {field: 'vehicle_number',      label: '차량번호'},
+    ];
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      for (const r of required) {
+        const inp = row.querySelector(`[data-field=${r.field}]`);
+        const v = (inp.value || '').trim();
+        if (!v) {
+          showToast(`${i+1}번째 행의 ${r.label}을(를) 입력해주세요`);
+          inp.focus();
+          inp.scrollIntoView({behavior: 'smooth', block: 'center'});
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
+  submitBtn.addEventListener('click', async () => {
+    // 필수 입력 검증 (임시저장과 분리)
+    if (!validateForSubmit()) return;
+    // 변경사항 있으면 먼저 저장
+    if (dirty) {
+      const ok = await save(false);
+      if (!ok) {
+        showToast('저장에 실패해 결재요청을 진행할 수 없습니다');
+        return;
+      }
+    }
+    openApprovalModal();
+  });
+
+  approvalSubmit.addEventListener('click', async () => {
+    const execId = approvalSelect.value;
+    if (!execId) {
+      showToast('수행임원을 선택해주세요');
+      return;
+    }
+    approvalSubmit.disabled = true;
+    try {
+      const res = await fetch(SUBMIT_URL, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-CSRFToken': CSRF},
+        body: JSON.stringify({executive_id: parseInt(execId, 10)}),
+      });
+      const data = await res.json();
+      if (!data.success) {
+        showToast(data.error || '결재요청 실패');
+        approvalSubmit.disabled = false;
+        return;
+      }
+      dirty = false;
+      closeApprovalModal();
+      if (data.mail_warning) {
+        showToast(data.mail_warning);
+        setTimeout(() => { window.location.href = data.redirect_url; }, 1500);
+      } else {
+        showToast('결재요청이 발송되었습니다');
+        setTimeout(() => { window.location.href = data.redirect_url; }, 900);
+      }
+    } catch (e) {
+      showToast('네트워크 오류로 결재요청에 실패했습니다');
+      approvalSubmit.disabled = false;
+    }
+  });
+
+  // 페이지 이탈 경고
+  window.addEventListener('beforeunload', e => {
+    if (dirty) { e.preventDefault(); e.returnValue = ''; }
+  });
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,126 @@
+{% extends "basic.html" %}
+
+{% block title %}운행일지 결재 이력{% endblock %}
+{% block page_name %}결재 이력 조회{% endblock %}
+
+{% block content %}
+<div class="max-w-[1200px] mx-auto p-4 md:p-8 pb-28 md:pb-8 flex flex-col gap-6">
+
+  <div class="bg-white rounded-[2rem] border border-slate-200 shadow-sm p-6 md:p-8">
+    <p class="text-xs font-bold text-primary uppercase tracking-wider">결재 이력</p>
+    <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight text-slate-900 mt-1">
+      {{ executive.name }} 결재 이력
+    </h1>
+    <p class="text-xs font-medium text-slate-400 mt-2">
+      이 페이지는 <b>{{ expires_at|date:"Y-m-d H:i" }}</b> 까지 유효합니다. 만료 후에는 재발급된 링크를 이용해 주세요.
+    </p>
+  </div>
+
+  <div class="flex items-center justify-between px-1">
+    <h2 class="text-sm font-extrabold text-slate-700">최근 결재 ({{ sheets|length }}건)</h2>
+    <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">최근 100건</span>
+  </div>
+
+  {% if sheets %}
+  {# --- 모바일: 카드 리스트 (클릭 시 상세 페이지로 이동) --- #}
+  <div class="md:hidden flex flex-col gap-3">
+    {% for s in sheets %}
+    <a href="{% url 'driving_log:driving_log_history_sheet_detail_email' token=token sheet_pk=s.pk %}"
+       class="bg-white rounded-[1.75rem] border border-slate-200 shadow-sm p-5 flex flex-col gap-3 hover:shadow-md hover:border-primary/20 transition-all">
+      <div class="flex items-start justify-between gap-3">
+        <div class="min-w-0">
+          <p class="text-base font-bold text-slate-900 truncate">
+            {% if s.author.profile %}{{ s.author.profile.display_name }}{% else %}{{ s.author.username }}{% endif %}
+          </p>
+          <p class="text-xs font-medium text-slate-500 mt-0.5 truncate">
+            {{ s.title|default:"(제목 없음)" }}
+          </p>
+          <p class="text-xs font-medium text-slate-400 mt-0.5">
+            {% if s.period_start and s.period_end %}
+              {{ s.period_start|date:"Y-m-d" }} ~ {{ s.period_end|date:"Y-m-d" }}
+            {% else %}-{% endif %}
+          </p>
+        </div>
+        {% if s.status == 'approved' %}
+          <span class="shrink-0 px-3 py-1 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100 text-[10px] font-black uppercase tracking-wider">승인</span>
+        {% elif s.status == 'rejected' %}
+          <span class="shrink-0 px-3 py-1 rounded-full bg-rose-50 text-rose-600 border border-rose-100 text-[10px] font-black uppercase tracking-wider">반려</span>
+        {% elif s.status == 'rejected_resubmitted' %}
+          <span class="shrink-0 px-3 py-1 rounded-full bg-slate-100 text-slate-500 border border-slate-200 text-[10px] font-black uppercase tracking-wider">반려(재기안)</span>
+        {% endif %}
+      </div>
+      <div class="grid grid-cols-2 gap-3 text-sm border-t border-slate-100 pt-3">
+        <div class="flex flex-col">
+          <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">건수</span>
+          <span class="font-bold text-slate-700 mt-0.5">{{ s.entries.count }}건</span>
+        </div>
+        <div class="flex flex-col">
+          <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">초과근무 합</span>
+          <span class="font-bold text-primary mt-0.5">{{ s.total_overtime_display }}</span>
+        </div>
+        <div class="flex flex-col col-span-2">
+          <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">처리일</span>
+          <span class="font-medium text-slate-600 mt-0.5">{{ s.reviewed_at|date:"Y-m-d H:i"|default:"-" }}</span>
+        </div>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+
+  {# --- 데스크톱: 테이블 (정보 밀도 우선) --- #}
+  <div class="hidden md:block bg-white rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-slate-50/50">
+          <tr class="text-left text-[11px] font-black uppercase tracking-wider text-slate-400">
+            <th class="px-4 py-3">운전기사</th>
+            <th class="px-4 py-3">제목</th>
+            <th class="px-4 py-3">운행 기간</th>
+            <th class="px-4 py-3">건수</th>
+            <th class="px-4 py-3">초과근무 합</th>
+            <th class="px-4 py-3">상태</th>
+            <th class="px-4 py-3">처리일</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          {% for s in sheets %}
+          <tr class="hover:bg-slate-50/50 transition-colors cursor-pointer"
+              onclick="window.location.href='{% url 'driving_log:driving_log_history_sheet_detail_email' token=token sheet_pk=s.pk %}'">
+            <td class="px-4 py-3 font-bold text-slate-800 whitespace-nowrap">
+              {% if s.author.profile %}{{ s.author.profile.display_name }}{% else %}{{ s.author.username }}{% endif %}
+            </td>
+            <td class="px-4 py-3 text-slate-700 max-w-xs truncate">{{ s.title|default:"(제목 없음)" }}</td>
+            <td class="px-4 py-3 text-slate-600 whitespace-nowrap">
+              {% if s.period_start and s.period_end %}
+                {{ s.period_start|date:"Y-m-d" }} ~ {{ s.period_end|date:"Y-m-d" }}
+              {% else %}-{% endif %}
+            </td>
+            <td class="px-4 py-3 text-slate-600 whitespace-nowrap">{{ s.entries.count }}건</td>
+            <td class="px-4 py-3 font-bold text-primary whitespace-nowrap">{{ s.total_overtime_display }}</td>
+            <td class="px-4 py-3 whitespace-nowrap">
+              {% if s.status == 'approved' %}
+                <span class="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100 text-[10px] font-black uppercase tracking-wider">승인</span>
+              {% elif s.status == 'rejected' %}
+                <span class="px-2.5 py-1 rounded-full bg-rose-50 text-rose-600 border border-rose-100 text-[10px] font-black uppercase tracking-wider">반려</span>
+              {% elif s.status == 'rejected_resubmitted' %}
+                <span class="px-2.5 py-1 rounded-full bg-slate-100 text-slate-500 border border-slate-200 text-[10px] font-black uppercase tracking-wider">반려(재기안)</span>
+              {% endif %}
+            </td>
+            <td class="px-4 py-3 text-slate-600 whitespace-nowrap">{{ s.reviewed_at|date:"Y-m-d H:i"|default:"-" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {% else %}
+  <div class="bg-white rounded-[2rem] border border-slate-200 shadow-sm p-10 md:p-12 flex flex-col items-center gap-3 text-center">
+    <span class="material-symbols-outlined text-slate-300" style="font-size:56px;">history</span>
+    <p class="text-sm font-bold text-slate-500">처리한 결재 이력이 없습니다.</p>
+  </div>
+  {% endif %}
+
+  <p class="text-xs text-slate-400 text-center">삼천리 ITMS · 운행일지 관리 시스템</p>
+</div>
+{% endblock %}

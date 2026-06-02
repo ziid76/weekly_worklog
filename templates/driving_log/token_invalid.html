@@ -1,0 +1,47 @@
+{% extends "basic.html" %}
+
+{% block title %}유효하지 않은 링크{% endblock %}
+{% block page_name %}유효하지 않은 링크{% endblock %}
+
+{% block content %}
+<div class="max-w-[640px] mx-auto p-4 md:p-8">
+  <div class="bg-white rounded-[2rem] border border-slate-200 shadow-sm p-12 flex flex-col items-center gap-6 text-center">
+    {% if reason == 'expired' %}
+      <span class="material-symbols-outlined text-amber-500" style="font-size:64px;">schedule</span>
+      <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight text-slate-900">링크가 만료되었습니다.</h1>
+      {% if scope == 'history_view' %}
+      <p class="text-sm font-medium text-slate-500 max-w-md leading-relaxed">
+        결재 이력 조회 유효기간이 지났습니다.
+      </p>
+      {% else %}
+      <p class="text-sm font-medium text-slate-500 max-w-md leading-relaxed">
+        유효기간이 지나 결재가 만료되었습니다.<br>
+        원 요청자의 재기안이 필요합니다.
+      </p>
+      {% endif %}
+    {% elif reason == 'used' %}
+      <span class="material-symbols-outlined text-slate-400" style="font-size:64px;">task_alt</span>
+      <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight text-slate-900">이미 처리된 결재입니다</h1>
+      <p class="text-sm font-medium text-slate-500 max-w-md leading-relaxed">
+        이 결재 링크는 이미 사용되었습니다.<br>
+        승인/반려는 한 번만 처리할 수 있습니다.
+      </p>
+    {% elif reason == 'mismatch' %}
+      <span class="material-symbols-outlined text-rose-500" style="font-size:64px;">block</span>
+      <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight text-slate-900">접근할 수 없는 링크입니다</h1>
+      <p class="text-sm font-medium text-slate-500 max-w-md leading-relaxed">
+        결재선이 변경되었거나 잘못된 링크입니다.<br>
+        운전기사에게 결재요청 메일을 다시 보내달라고 요청해 주세요.
+      </p>
+    {% else %}
+      <span class="material-symbols-outlined text-rose-500" style="font-size:64px;">error</span>
+      <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight text-slate-900">유효하지 않은 링크입니다</h1>
+      <p class="text-sm font-medium text-slate-500 max-w-md leading-relaxed">
+        링크 주소를 다시 확인해 주세요.<br>
+        문제가 계속되면 운전기사에게 결재요청 메일을 재발송 요청해 주세요.
+      </p>
+    {% endif %}
+    <p class="text-xs text-slate-400 mt-4">삼천리 ITMS · 운행일지 관리 시스템</p>
+  </div>
+</div>
+{% endblock %}
