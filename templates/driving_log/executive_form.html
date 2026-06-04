@@ -1,0 +1,70 @@
+{% extends "basic.html" %}
+
+{% block title %}{% if mode == 'edit' %}임원 수정{% else %}임원 등록{% endif %}{% endblock %}
+{% block page_name %}{% if mode == 'edit' %}임원 수정{% else %}임원 등록{% endif %}{% endblock %}
+
+{% block content %}
+<div class="max-w-[700px] mx-auto p-4 md:p-8 flex flex-col gap-6">
+  <div>
+    <h1 class="text-3xl font-extrabold tracking-tight text-slate-900">
+      {% if mode == 'edit' %}임원 수정{% else %}임원 등록{% endif %}
+    </h1>
+    <p class="text-sm text-slate-500 mt-1">결재선에 사용할 수행임원 정보를 입력합니다.</p>
+  </div>
+
+  <form method="post" class="bg-white rounded-[2rem] border border-slate-200 shadow-sm p-6 md:p-8 flex flex-col gap-5">
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+    <div class="rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-sm px-4 py-3">
+      {{ form.non_field_errors }}
+    </div>
+    {% endif %}
+
+    {# 이름 #}
+    <div class="flex flex-col gap-1.5">
+      <label for="{{ form.name.id_for_label }}" class="text-[11px] font-black uppercase tracking-wider text-slate-500">
+        이름 <span class="text-rose-500">*</span>
+      </label>
+      {{ form.name }}
+      {% if form.name.errors %}<p class="text-xs text-rose-600">{{ form.name.errors|striptags }}</p>{% endif %}
+    </div>
+
+    {# 수신 이메일 #}
+    <div class="flex flex-col gap-1.5">
+      <label for="{{ form.email.id_for_label }}" class="text-[11px] font-black uppercase tracking-wider text-slate-500">
+        수신 이메일 <span class="text-rose-500">*</span>
+      </label>
+      {{ form.email }}
+      <p class="text-xs text-slate-400">결재요청 메일이 이 주소로 발송됩니다.</p>
+      {% if form.email.errors %}<p class="text-xs text-rose-600">{{ form.email.errors|striptags }}</p>{% endif %}
+    </div>
+
+    {# 표시 순서 #}
+    <div class="flex flex-col gap-1.5">
+      <label for="{{ form.display_order.id_for_label }}" class="text-[11px] font-black uppercase tracking-wider text-slate-500">
+        표시 순서
+      </label>
+      {{ form.display_order }}
+      <p class="text-xs text-slate-400">숫자가 작을수록 결재요청 목록에서 위에 표시됩니다.</p>
+      {% if form.display_order.errors %}<p class="text-xs text-rose-600">{{ form.display_order.errors|striptags }}</p>{% endif %}
+    </div>
+
+    {# 활성화 여부 #}
+    <div class="flex items-center gap-3 rounded-2xl bg-slate-50 px-4 py-3">
+      {{ form.is_active }}
+      <label for="{{ form.is_active.id_for_label }}" class="text-sm font-bold text-slate-700 cursor-pointer">
+        활성 (비활성 임원은 결재요청 시 선택 목록에서 제외됩니다)
+      </label>
+    </div>
+    {% if form.is_active.errors %}<p class="text-xs text-rose-600">{{ form.is_active.errors|striptags }}</p>{% endif %}
+
+    <div class="flex justify-end gap-2 mt-2">
+      <a href="{% url 'driving_log:executive_list' %}" class="rounded-full bg-slate-50 text-slate-600 font-bold px-6 py-2.5 hover:bg-slate-100 transition-all">취소</a>
+      <button type="submit" class="rounded-full bg-primary text-white font-bold px-8 py-2.5 hover:bg-primary/90 transition-all shadow-md shadow-primary/20">
+        {% if mode == 'edit' %}저장{% else %}등록{% endif %}
+      </button>
+    </div>
+  </form>
+</div>
+{% endblock %}

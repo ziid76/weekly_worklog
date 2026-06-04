@@ -39,6 +39,18 @@ def is_driving_log_manager(user):
     return user.groups.filter(name=DRIVING_LOG_MANAGER_GROUP).exists()
 
 
+def in_driving_log_manager_group(user):
+    """순수 그룹 멤버십 판정 (슈퍼유저/스태프 우회 없음) — 사이드바 메뉴 노출 가드용.
+
+    `is_driving_log_manager()` 는 슈퍼유저도 통과시켜 뷰 접근을 허용하지만,
+    메뉴(운행일지 관리 / 임원 관리)는 실제 `driving_log_managers` 그룹 보유자에게만
+    노출한다. (IT 스태프·슈퍼유저에게 운행 메뉴가 보이지 않도록 — 요건)
+    """
+    if not user.is_authenticated:
+        return False
+    return user.groups.filter(name=DRIVING_LOG_MANAGER_GROUP).exists()
+
+
 def is_driving_log_only_user(user):
     """운행일지 전용 사용자 — 다른 ITMS 메뉴 접근 차단(미들웨어 리다이렉트) 대상.
 

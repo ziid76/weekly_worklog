@@ -14,7 +14,9 @@ from django.views import View
 from django.views.decorators.http import require_GET, require_POST
 
 from django.views.generic import DeleteView, DetailView, ListView
+from django.views.generic.edit import CreateView, UpdateView
 
+from .forms import ExecutiveForm
 from .models import ApprovalHistory, ApprovalToken, DrivingLogEntry, DrivingLogSheet, Executive
 from .overtime import format_minutes
 from .permissions import (
@@ -952,3 +954,75 @@ def driving_log_admin_csv_export(request):
             (s.review_comment or '').replace('\n', ' ').replace('\r', ' '),
         ])
     return response
+
+
+# ---------------------------------------------------------------------------
+# 임원 관리 (수행임원 마스터 CRUD) — 지원팀 관리자(driving_log_managers) 전용.
+# 기존 Django admin 의 Executive 입력을 프로그램단으로 옮긴 화면.
+# ---------------------------------------------------------------------------
+
+class ExecutiveListView(DrivingLogManagerRequiredMixin, ListView):
+    """수행임원 목록. 활성/비활성 모두 표시(편집 위해).
+
+    권한: driving_log_managers 그룹 또는 슈퍼유저 (is_staff 사용 안 함).
+    """
+    model = Executive
+    template_name = 'driving_log/executive_list.html'
+    context_object_name = 'executives'
+
+    def get_queryset(self):
+        # Meta.ordering(display_order, name) 을 그대로 사용.
+        return Executive.objects.all()
+
+
+class ExecutiveCreateView(DrivingLogManagerRequiredMixin, CreateView):
+    """수행임원 신규 등록."""
+    model = Executive
+    form_class = ExecutiveForm
+    template_name = 'driving_log/executive_form.html'
+    success_url = reverse_lazy('driving_log:executive_list')
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx['mode'] = 'create'
+        return ctx
+
+
+class ExecutiveUpdateView(DrivingLogManagerRequiredMixin, UpdateView):
+    """수행임원 수정."""
+    model = Executive
+    form_class = ExecutiveForm
+    template_name = 'driving_log/executive_form.html'
+    success_url = reverse_lazy('driving_log:executive_list')
+    context_object_name = 'executive'
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx['mode'] = 'edit'
+        return ctx
+
+
+class ExecutiveDeleteView(DrivingLogManagerRequiredMixin, DeleteView):
+    """수행임원 삭제.
+
+    결재선(DrivingLogSheet.reviewer)에 사용된 임원은 on_delete=PROTECT 라
+    하드 삭제가 불가하다. 이 경우 삭제를 막고 [비활성화] 를 안내한다.
+    (비활성 임원은 결재요청 모달 목록에서 제외되므로 사실상 은퇴 처리와 동일.)
+    """
+    model = Executive
+    template_name = 'driving_log/executive_confirm_delete.html'
+    success_url = reverse_lazy('driving_log:executive_list')
+    context_object_name = 'executive'
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx['review_sheet_count'] = self.object.review_sheets.count()
+        return ctx
+
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        if self.object.review_sheets.exists():
+            # 결재 이력이 있는 임원은 삭제 차단 — 확인 페이지를 차단 안내와 함께 재렌더.
+            ctx = self.get_context_data(object=self.object)
+            return self.render_to_response(ctx)
+        return super().post(request, *args, **kwargs)

@@ -40,4 +40,18 @@ urlpatterns = [
     path('admin/sheets/<int:pk>/',
          views.DrivingLogAdminDetailView.as_view(),
          name='admin_sheet_detail'),
+
+    # 임원 관리 (수행임원 마스터 CRUD) — driving_log_managers 전용
+    path('admin/executives/',
+         views.ExecutiveListView.as_view(),
+         name='executive_list'),
+    path('admin/executives/create/',
+         views.ExecutiveCreateView.as_view(),
+         name='executive_create'),
+    path('admin/executives/<int:pk>/edit/',
+         views.ExecutiveUpdateView.as_view(),
+         name='executive_edit'),
+    path('admin/executives/<int:pk>/delete/',
+         views.ExecutiveDeleteView.as_view(),
+         name='executive_delete'),
 ]

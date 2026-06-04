@@ -139,6 +139,10 @@
                         <span class="material-symbols-outlined">supervisor_account</span>
                         <p class="text-sm font-bold">운행일지 관리</p>
                     </a>
+                    <a class="flex items-center gap-2 px-4 py-3 rounded-full text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors" href="{% url 'driving_log:executive_list' %}">
+                        <span class="material-symbols-outlined">badge</span>
+                        <p class="text-sm font-bold">임원 관리</p>
+                    </a>
                     {% endif %}
                     {% else %}
                     <!-- Work Management -->
@@ -345,10 +349,14 @@
                         </div>
                     </div>
                     {% if is_driving_log_manager %}
-                    <!-- 운행일지 관리 — driving_log_managers 그룹 또는 슈퍼유저 한정 -->
+                    <!-- 운행일지 관리 / 임원 관리 — driving_log_managers 그룹 보유자 한정 -->
                     <a class="flex items-center gap-2 px-4 py-3 rounded-full text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors" href="{% url 'driving_log:admin_sheet_list' %}">
                         <span class="material-symbols-outlined">supervisor_account</span>
                         <p class="text-sm font-bold">운행일지 관리</p>
+                    </a>
+                    <a class="flex items-center gap-2 px-4 py-3 rounded-full text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors" href="{% url 'driving_log:executive_list' %}">
+                        <span class="material-symbols-outlined">badge</span>
+                        <p class="text-sm font-bold">임원 관리</p>
                     </a>
                     {% endif %}
 

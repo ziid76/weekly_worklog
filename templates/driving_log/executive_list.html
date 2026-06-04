@@ -1,0 +1,94 @@
+{% extends "basic.html" %}
+
+{% block title %}임원 관리{% endblock %}
+{% block page_name %}임원 관리{% endblock %}
+
+{% block content %}
+<div class="max-w-[1100px] mx-auto p-2 md:p-8 flex flex-col gap-6 w-full min-w-0" style="overflow-x: hidden;">
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div>
+      <h1 class="text-3xl font-extrabold tracking-tight text-slate-900">임원 관리</h1>
+      <p class="text-sm text-slate-500 mt-1">결재선에 사용되는 수행임원 마스터를 등록·수정·삭제합니다.</p>
+    </div>
+    <a href="{% url 'driving_log:executive_create' %}"
+       class="inline-flex items-center gap-2 rounded-full bg-primary text-white font-bold px-6 py-2.5 hover:bg-primary/90 shadow-md shadow-primary/20 text-sm self-start sm:self-auto">
+      <span class="material-symbols-outlined text-base">add</span>
+      임원 등록
+    </a>
+  </div>
+
+  {% if executives %}
+  {# --- 모바일: 카드 --- #}
+  <div class="md:hidden grid grid-cols-1 gap-3">
+    {% for ex in executives %}
+    <div class="bg-white rounded-[1.5rem] border border-slate-200 p-4 flex flex-col gap-2">
+      <div class="flex items-start justify-between gap-3">
+        <div class="min-w-0">
+          <h2 class="text-base font-bold text-slate-900 truncate">{{ ex.name }}</h2>
+          <p class="text-xs text-slate-500 mt-0.5 truncate">{{ ex.email }}</p>
+        </div>
+        {% if ex.is_active %}
+        <span class="shrink-0 inline-flex items-center px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[11px] font-bold">활성</span>
+        {% else %}
+        <span class="shrink-0 inline-flex items-center px-2.5 py-1 rounded-full bg-slate-100 text-slate-500 text-[11px] font-bold">비활성</span>
+        {% endif %}
+      </div>
+      <div class="flex items-center justify-between gap-2">
+        <span class="text-[11px] text-slate-400">표시순서 {{ ex.display_order }}</span>
+        <div class="flex gap-2">
+          <a href="{% url 'driving_log:executive_edit' ex.pk %}" class="rounded-full bg-slate-50 text-slate-600 font-bold px-4 py-1.5 hover:bg-slate-100 text-sm">수정</a>
+          <a href="{% url 'driving_log:executive_delete' ex.pk %}" class="rounded-full bg-rose-50 text-rose-600 font-bold px-4 py-1.5 hover:bg-rose-100 text-sm">삭제</a>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {# --- 데스크톱: 테이블 --- #}
+  <div class="hidden md:block bg-white rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-slate-50/50 border-b border-slate-100">
+          <tr class="text-left text-[11px] font-black text-slate-400 uppercase tracking-widest">
+            <th class="px-5 py-3 whitespace-nowrap text-center">표시순서</th>
+            <th class="px-5 py-3">이름</th>
+            <th class="px-5 py-3">수신 이메일</th>
+            <th class="px-5 py-3 whitespace-nowrap text-center">활성</th>
+            <th class="px-5 py-3 whitespace-nowrap text-right">관리</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for ex in executives %}
+          <tr class="border-t border-slate-100 hover:bg-slate-50/50 transition-colors">
+            <td class="px-5 py-3 text-center text-slate-500 whitespace-nowrap">{{ ex.display_order }}</td>
+            <td class="px-5 py-3 font-bold text-slate-900 whitespace-nowrap">{{ ex.name }}</td>
+            <td class="px-5 py-3 text-slate-700">{{ ex.email }}</td>
+            <td class="px-5 py-3 text-center whitespace-nowrap">
+              {% if ex.is_active %}
+              <span class="inline-flex items-center px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[11px] font-bold">활성</span>
+              {% else %}
+              <span class="inline-flex items-center px-2.5 py-1 rounded-full bg-slate-100 text-slate-500 text-[11px] font-bold">비활성</span>
+              {% endif %}
+            </td>
+            <td class="px-5 py-3 whitespace-nowrap text-right">
+              <div class="inline-flex gap-2">
+                <a href="{% url 'driving_log:executive_edit' ex.pk %}" class="rounded-full bg-slate-50 text-slate-600 font-bold px-4 py-1.5 hover:bg-slate-100">수정</a>
+                <a href="{% url 'driving_log:executive_delete' ex.pk %}" class="rounded-full bg-rose-50 text-rose-600 font-bold px-4 py-1.5 hover:bg-rose-100">삭제</a>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {% else %}
+  <div class="bg-white rounded-[2rem] border border-slate-200 shadow-sm p-12 flex flex-col items-center gap-3">
+    <span class="material-symbols-outlined text-slate-300" style="font-size: 64px;">badge</span>
+    <h2 class="text-base font-bold text-slate-700">등록된 임원이 없습니다</h2>
+    <p class="text-sm text-slate-500">[임원 등록] 으로 수행임원을 추가하세요.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
