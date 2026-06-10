@@ -1,6 +1,6 @@
 import json
 import logging
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.models import User
@@ -54,6 +54,23 @@ class DrivingLogSheetListView(DrivingLogUserRequiredMixin, ListView):
             .filter(author=self.request.user)
             .select_related('reviewer')
         )
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        # 최근 5일 이내 '반려'된 본인 운행일지 → 목록 최초 진입 시 가운데 모달로 안내.
+        # 재상신된 건(rejected_resubmitted)·승인 건은 status 필터로 자동 제외.
+        # '확인 여부'는 클라이언트 localStorage 로 관리하므로 DB 마이그레이션이 필요 없다.
+        since = timezone.now() - timedelta(days=5)
+        ctx['rejected_alerts'] = (
+            DrivingLogSheet.objects
+            .filter(
+                author=self.request.user,
+                status=DrivingLogSheet.STATUS_REJECTED,
+                reviewed_at__gte=since,
+            )
+            .order_by('-reviewed_at')
+        )
+        return ctx
 
 
 class DrivingLogSheetCreateView(DrivingLogUserRequiredMixin, View):
@@ -902,7 +919,7 @@ def driving_log_admin_csv_export(request):
     qs = (
         DrivingLogSheet.objects
         .select_related('author', 'author__profile', 'reviewer')
-        .annotate(entry_count=Count('entries', distinct=True))
+        .prefetch_related('entries')
     )
     qs = _apply_admin_filters(qs, request).order_by('-submitted_at', '-created_at')
 
@@ -912,47 +929,52 @@ def driving_log_admin_csv_export(request):
     response['Content-Disposition'] = f'attachment; filename*=UTF-8\'\'{encoded}'
     response.write('﻿')  # Excel UTF-8 BOM
 
+    # 운행 내역(entry) 1건 = CSV 1행. 시트(헤더) 식별정보는 행마다 반복.
     writer = csv.writer(response)
     writer.writerow([
-        'ID', '요청자', '결재자', '제목',
-        '운행기간', '건수',
-        '운행시간(분)', '운행시간(표시)',
-        '초과근무(분)', '초과근무(표시)',
-        '상태', '결재요청일', '결재완료일', '결재 의견',
+        '운행일지ID', '요청자', '결재자', '제목', '상태', '결재요청일', '결재완료일',
+        '운행일자', '휴일', '시작시간', '종료시간', '누적거리(km)', '차량번호',
+        '운행시간(분)', '운행시간(표시)', '초과근무(분)', '초과근무(표시)',
+        '결재 의견',
     ])
-    for s in qs.iterator():
-        # 운전기사 표시명: profile.get_korean_name → user.last_name+first_name → username
+    for s in qs:
+        # 운전기사 표시명: profile.get_korean_name → username
         author_name = s.author.username if s.author_id else ''
         if s.author_id and hasattr(s.author, 'profile'):
             try:
                 author_name = s.author.profile.get_korean_name
             except Exception:
                 pass
-        # 운행기간: 화면과 동일하게 'yy.mm.dd ~ yy.mm.dd' 한 컬럼으로
-        if s.period_start and s.period_end:
-            period_str = f"{s.period_start:%y.%m.%d} ~ {s.period_end:%y.%m.%d}"
-        elif s.period_start:
-            period_str = f"{s.period_start:%y.%m.%d}"
-        elif s.period_end:
-            period_str = f"{s.period_end:%y.%m.%d}"
-        else:
-            period_str = ''
-        writer.writerow([
+        comment = (s.review_comment or '').replace('\n', ' ').replace('\r', ' ')
+        # 행마다 반복되는 시트(헤더) 공통 컬럼
+        sheet_cols = [
             s.id,
             author_name,
             s.reviewer.name if s.reviewer_id else '',
             s.title or '',
-            period_str,
-            s.entry_count,
-            s.total_run_minutes or 0,
-            format_minutes(s.total_run_minutes),
-            s.total_overtime_minutes or 0,
-            format_minutes(s.total_overtime_minutes),
             s.get_status_display(),
             s.submitted_at.strftime('%Y-%m-%d %H:%M:%S') if s.submitted_at else '',
             s.reviewed_at.strftime('%Y-%m-%d %H:%M:%S') if s.reviewed_at else '',
-            (s.review_comment or '').replace('\n', ' ').replace('\r', ' '),
-        ])
+        ]
+        entries = list(s.entries.all())  # Meta.ordering(log_date, id) 순
+        if not entries:
+            # 운행 내역이 없는 시트도 전체 목록에서 누락되지 않게 한 행 출력.
+            writer.writerow(sheet_cols + ['', '', '', '', '', '', '', '', '', '', comment])
+            continue
+        for e in entries:
+            writer.writerow(sheet_cols + [
+                e.log_date.strftime('%Y-%m-%d') if e.log_date else '',
+                '휴일' if e.is_holiday else '',
+                e.start_time.strftime('%H:%M') if e.start_time else '',
+                e.end_time.strftime('%H:%M') if e.end_time else '',
+                e.cumulative_distance if e.cumulative_distance is not None else '',
+                e.vehicle_number or '',
+                e.run_minutes or 0,
+                e.run_display,
+                e.overtime_minutes or 0,
+                e.overtime_display,
+                comment,
+            ])
     return response
 
 

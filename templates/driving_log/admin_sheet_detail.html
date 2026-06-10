@@ -97,11 +97,11 @@
         <tr class="text-left text-[11px] font-black uppercase tracking-wider text-slate-400">
           <th class="px-4 py-3">일자</th>
           <th class="px-4 py-3">휴일</th>
-          <th class="px-4 py-3">운행 시작</th>
-          <th class="px-4 py-3">운행 종료</th>
+          <th class="px-4 py-3">시작시간</th>
+          <th class="px-4 py-3">종료시간</th>
           <th class="px-4 py-3">누적거리</th>
           <th class="px-4 py-3">차량번호</th>
-          <th class="px-4 py-3">운행시간</th>
+          <th class="px-4 py-3">운행시간(대기포함)</th>
           <th class="px-4 py-3">초과근무</th>
         </tr>
       </thead>
@@ -114,8 +114,8 @@
           <td class="px-4 py-3">{{ e.end_time|time:"H:i"|default:"-" }}</td>
           <td class="px-4 py-3">{% if e.cumulative_distance != None %}{{ e.cumulative_distance|floatformat:0|intcomma }} km{% else %}-{% endif %}</td>
           <td class="px-4 py-3">{{ e.vehicle_number|default:"-" }}</td>
-          <td class="px-4 py-3 font-bold text-slate-800">{{ e.run_minutes }}분</td>
-          <td class="px-4 py-3 font-bold text-primary">{{ e.overtime_minutes }}분</td>
+          <td class="px-4 py-3 font-bold text-slate-800">{{ e.run_display }}</td>
+          <td class="px-4 py-3 font-bold text-primary">{{ e.overtime_display }}</td>
         </tr>
         {% empty %}
         <tr><td colspan="8" class="px-4 py-10 text-center text-slate-400">기록된 운행 내역이 없습니다.</td></tr>
@@ -159,12 +159,12 @@
       </div>
       <div class="flex flex-col gap-1 border-t border-slate-100 pt-2 mt-1">
         <div class="flex items-center justify-between">
-          <span class="text-xs font-bold uppercase tracking-wider text-slate-400">운행시간</span>
-          <span class="font-black text-slate-800 text-base">{{ e.run_minutes }}분</span>
+          <span class="text-xs font-bold uppercase tracking-wider text-slate-400">운행시간(대기포함)</span>
+          <span class="font-black text-slate-800 text-base">{{ e.run_display }}</span>
         </div>
         <div class="flex items-center justify-between">
           <span class="text-xs font-bold uppercase tracking-wider text-slate-400">초과근무</span>
-          <span class="font-black text-primary text-base">{{ e.overtime_minutes }}분</span>
+          <span class="font-black text-primary text-base">{{ e.overtime_display }}</span>
         </div>
       </div>
     </div>
@@ -176,7 +176,7 @@
     {% if entries %}
     <div class="bg-slate-900 text-white rounded-[1.5rem] p-4 flex flex-col gap-2 shadow-lg">
       <div class="flex items-center justify-between">
-        <span class="text-xs font-bold uppercase tracking-wider text-slate-300">합계 운행시간</span>
+        <span class="text-xs font-bold uppercase tracking-wider text-slate-300">합계 근무시간</span>
         <span class="font-black text-lg">{{ total_run_display }}</span>
       </div>
       <div class="flex items-center justify-between">

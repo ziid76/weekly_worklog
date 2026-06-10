@@ -16,7 +16,7 @@
   }
   @media (min-width: 768px) {
     .dl-row { display:grid; grid-template-columns: 1.3fr .8fr 1fr 1fr 1fr 1.2fr 1fr 1fr .6fr; gap:.5rem; padding:.5rem; align-items:center; border-bottom:1px solid #f1f5f9; }
-    .dl-table-head { display:grid; grid-template-columns: 1.3fr .8fr 1fr 1fr 1fr 1.2fr 1fr 1fr .6fr; gap:.5rem; padding:.75rem .5rem; background:#f8fafc; border-radius:.75rem .75rem 0 0; font-size:.7rem; font-weight:900; text-transform:uppercase; color:#94a3b8; letter-spacing:.05em; }
+    .dl-table-head { display:grid; grid-template-columns: 1.3fr .8fr 1fr 1fr 1fr 1.2fr 1fr 1fr .6fr; gap:.5rem; padding:.75rem .5rem; background:#f8fafc; border-radius:.75rem .75rem 0 0; font-size:.7rem; font-weight:900; text-transform:uppercase; color:#94a3b8; letter-spacing:.05em; text-align:center; }
   }
   .dl-cell-label { display:block; font-size:.7rem; font-weight:700; text-transform:uppercase; color:#94a3b8; margin-bottom:.25rem; letter-spacing:.05em; }
   @media (min-width: 768px) { .dl-cell-label { display:none; } }
@@ -77,11 +77,11 @@
       <div class="dl-table-head">
         <div>일자 <span class="text-rose-500">*</span></div>
         <div>휴일</div>
-        <div>운행 시작 <span class="text-rose-500">*</span></div>
-        <div>운행 종료 <span class="text-rose-500">*</span></div>
+        <div>시작시간 <span class="text-rose-500">*</span></div>
+        <div>종료시간 <span class="text-rose-500">*</span></div>
         <div>누적거리(km) <span class="text-rose-500">*</span></div>
         <div>차량번호 <span class="text-rose-500">*</span></div>
-        <div>운행시간</div>
+        <div>운행시간(대기포함)</div>
         <div>초과근무</div>
         <div></div>
       </div>
@@ -97,7 +97,7 @@
 
     <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex flex-col gap-2">
       <div class="flex items-center justify-between">
-        <p class="text-sm font-bold text-slate-600">합계 운행시간</p>
+        <p class="text-sm font-bold text-slate-600">합계 근무시간</p>
         <p class="text-xl font-black text-slate-800" id="dl-total-run">{{ total_run_display }}</p>
       </div>
       <div class="flex items-center justify-between">
@@ -156,8 +156,7 @@
         </p>
       </div>
       <p class="text-xs text-slate-500">
-        선택한 임원의 이메일로 결재 요청 메일이 발송됩니다.<br>
-        메일의 승인/반려 링크는 발송 후 <b>15일</b> 동안 유효합니다.
+        선택한 임원의 이메일로 결재 요청 메일이 발송됩니다.
       </p>
       <div class="flex justify-end gap-2 mt-2">
         <button type="button" id="dl-approval-cancel"
@@ -194,7 +193,7 @@
             <p class="text-slate-900 font-bold mt-0.5" id="dl-confirm-count">-</p>
           </div>
           <div>
-            <p class="text-[10px] font-black uppercase tracking-wider text-slate-400">합계 운행시간</p>
+            <p class="text-[10px] font-black uppercase tracking-wider text-slate-400">합계 근무시간</p>
             <p class="text-slate-900 font-extrabold mt-0.5" id="dl-confirm-run">-</p>
           </div>
           <div>
@@ -381,11 +380,11 @@
         </label>
       </div>
       <div>
-        <span class="dl-cell-label">운행 시작 <span class="text-rose-500">*</span></span>
+        <span class="dl-cell-label">시작시간 <span class="text-rose-500">*</span></span>
         <input class="dl-input" type="time" data-field="start_time" value="${data.start_time || ''}">
       </div>
       <div>
-        <span class="dl-cell-label">운행 종료 <span class="text-rose-500">*</span></span>
+        <span class="dl-cell-label">종료시간 <span class="text-rose-500">*</span></span>
         <input class="dl-input" type="time" data-field="end_time" value="${data.end_time || ''}">
       </div>
       <div>
@@ -397,7 +396,7 @@
         <input class="dl-input" type="text" data-field="vehicle_number" placeholder="서울 12가 1234" value="${(data.vehicle_number || '').replace(/"/g,'&quot;')}">
       </div>
       <div>
-        <span class="dl-cell-label">운행시간</span>
+        <span class="dl-cell-label">운행시간(대기포함)</span>
         <div class="font-bold text-slate-800" data-field="run_display">${fmt(data.run_minutes || 0)}</div>
       </div>
       <div>
@@ -680,8 +679,8 @@
     }
     const required = [
       {field: 'log_date',            label: '일자'},
-      {field: 'start_time',          label: '운행 시작'},
-      {field: 'end_time',            label: '운행 종료'},
+      {field: 'start_time',          label: '시작시간'},
+      {field: 'end_time',            label: '종료시간'},
       {field: 'cumulative_distance', label: '누적거리'},
       {field: 'vehicle_number',      label: '차량번호'},
     ];

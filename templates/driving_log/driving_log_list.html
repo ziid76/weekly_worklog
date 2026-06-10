@@ -129,4 +129,87 @@
   </div>
   {% endif %}
 </div>
+
+{# --- 반려 안내 모달: 최근 5일 내 '반려' 건을 목록 최초 진입 시 가운데 모달로 안내 (확인 여부는 localStorage 관리). 재상신하면 원본 status 가 rejected_resubmitted 로 바뀌어 자동 제외됨 --- #}
+{% if rejected_alerts %}
+<div id="dl-reject-alert-modal" class="fixed inset-0 z-30 bg-slate-900/50 backdrop-blur-sm hidden items-center justify-center p-4">
+  <div class="bg-white rounded-[2rem] shadow-2xl max-w-md w-full p-6 flex flex-col gap-4 max-h-[90vh] overflow-y-auto">
+    <div class="flex items-center gap-3">
+      <span class="material-symbols-outlined text-rose-500" style="font-size:30px;">cancel</span>
+      <h2 class="text-xl font-extrabold text-slate-900">반려된 운행일지가 있습니다</h2>
+    </div>
+    <p class="text-sm text-slate-600">아래 운행일지가 반려되었습니다. 상세 화면에서 내용을 확인 후 재상신해주세요.</p>
+    <div class="flex flex-col gap-3">
+      {% for s in rejected_alerts %}
+      <div class="dl-reject-alert-item border border-rose-100 bg-rose-50/50 rounded-2xl p-4 flex flex-col gap-2" data-sheet-id="{{ s.pk }}">
+        <div class="flex items-start justify-between gap-3">
+          <p class="font-bold text-slate-900 break-words">{{ s.title|default:"(제목 없음)" }}</p>
+          <span class="shrink-0 px-2.5 py-1 rounded-full bg-rose-100 text-rose-600 text-[10px] font-black uppercase tracking-wider">반려</span>
+        </div>
+        <p class="text-xs text-slate-400">결재일 {{ s.reviewed_at|date:"Y-m-d H:i" }}</p>
+        {% if s.review_comment %}
+        <div class="text-sm text-slate-700 bg-white border border-rose-100 rounded-xl p-3 break-words">
+          <span class="text-[10px] font-black uppercase tracking-wider text-rose-400 block mb-1">반려 사유</span>
+          {{ s.review_comment }}
+        </div>
+        {% endif %}
+        <a href="{% url 'driving_log:driving_log_detail' s.pk %}"
+           class="inline-flex items-center justify-center gap-1 rounded-full bg-white border border-rose-200 text-rose-600 font-bold px-4 py-2 text-sm hover:bg-rose-50 self-start">
+          <span class="material-symbols-outlined text-base">visibility</span> 상세보기
+        </a>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="flex justify-end mt-1">
+      <button type="button" id="dl-reject-alert-confirm"
+              class="rounded-full bg-primary text-white font-bold px-6 py-2 hover:bg-primary/90 transition-all shadow-md shadow-primary/20">
+        확인
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  const KEY = 'dl_seen_rejected';
+  const modal = document.getElementById('dl-reject-alert-modal');
+  if (!modal) return;
+
+  function readSeen() {
+    try {
+      const v = JSON.parse(localStorage.getItem(KEY) || '[]');
+      return Array.isArray(v) ? v : [];
+    } catch (e) { return []; }
+  }
+
+  const seen = readSeen();
+  const remaining = [];
+  // 이미 확인한(localStorage 에 있는) 건은 모달에서 제거, 남은 것만 표시 대상으로.
+  modal.querySelectorAll('.dl-reject-alert-item').forEach(it => {
+    const id = parseInt(it.dataset.sheetId, 10);
+    if (seen.indexOf(id) !== -1) {
+      it.remove();
+    } else {
+      remaining.push(id);
+    }
+  });
+  if (remaining.length === 0) return; // 모두 확인함 → 모달 표시 안 함
+
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+
+  function dismiss() {
+    let cur = readSeen();
+    remaining.forEach(id => { if (cur.indexOf(id) === -1) cur.push(id); });
+    if (cur.length > 200) cur = cur.slice(cur.length - 200); // 누적 방지(최근 200개만 유지)
+    try { localStorage.setItem(KEY, JSON.stringify(cur)); } catch (e) {}
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  }
+
+  document.getElementById('dl-reject-alert-confirm').addEventListener('click', dismiss);
+  modal.addEventListener('click', e => { if (e.target === modal) dismiss(); });
+})();
+</script>
+{% endif %}
 {% endblock %}

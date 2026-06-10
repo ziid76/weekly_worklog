@@ -56,7 +56,7 @@ def send_driving_log_request_mail(sheet):
     """운행일지 결재 요청 메일 발송.
 
     수행임원의 이메일로 결재 링크가 포함된 HTML 메일을 보낸다.
-    승인/반려 토큰은 3일(72시간) 유효, 이력조회 토큰은 1시간 유효.
+    승인/반려 토큰·이력조회 토큰 모두 30일(720시간) 유효.
 
     기존 AWS SES 백엔드(EMAIL_BACKEND)는 그대로 두고, 본 함수만 그룹웨어 SMTP 서버
     (GROUPWARE_SMTP_*)로 발송한다. 발신자는 운전기사 본인 이메일(sheet.author.email).
@@ -81,8 +81,8 @@ def send_driving_log_request_mail(sheet):
         )
         return
 
-    approve_ttl_hours = getattr(settings, 'DRIVING_LOG_APPROVE_TTL_HOURS', 360)  # 기본 15일(360h)
-    history_ttl_hours = getattr(settings, 'DRIVING_LOG_HISTORY_TTL_HOURS', 1)
+    approve_ttl_hours = getattr(settings, 'DRIVING_LOG_APPROVE_TTL_HOURS', 720)  # 기본 30일(720h)
+    history_ttl_hours = getattr(settings, 'DRIVING_LOG_HISTORY_TTL_HOURS', 720)  # 기본 30일(720h)
     now = timezone.now()
     approve_expires_at = now + timedelta(hours=approve_ttl_hours)
     history_expires_at = now + timedelta(hours=history_ttl_hours)

@@ -127,6 +127,16 @@ class DrivingLogEntry(models.Model):
     def __str__(self):
         return f'{self.sheet_id} / {self.log_date}'
 
+    @property
+    def run_display(self):
+        m = self.run_minutes or 0
+        return f'{m // 60}시간 {m % 60}분'
+
+    @property
+    def overtime_display(self):
+        m = self.overtime_minutes or 0
+        return f'{m // 60}시간 {m % 60}분'
+
     def save(self, *args, **kwargs):
         from .overtime import calc_overtime_minutes, calc_run_minutes
         self.overtime_minutes = calc_overtime_minutes(
